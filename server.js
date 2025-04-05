@@ -1,8 +1,7 @@
-// server.js
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
-const cors = require("cors");
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
+import cors from "cors";
 
 const app = express();
 app.use(cors());
@@ -17,7 +16,7 @@ const io = new Server(server, {
 
 const users = new Map(); // socketId -> name
 const pointerMap = new Map(); // from -> to
-const raisedHands = new Set();
+let liveSpeaker = null;
 
 io.on("connection", (socket) => {
   console.log("🚪 New connection:", socket.id);
@@ -27,6 +26,7 @@ io.on("connection", (socket) => {
     console.log(`👤 ${name} joined`);
     broadcastUserList();
     sendInitialPointerMap(socket);
+    sendCurrentLiveSpeaker(socket);
   });
 
   socket.on("leave", ({ name }) => {
@@ -44,31 +44,37 @@ io.on("connection", (socket) => {
     pointerMap.set(from, to);
     io.emit("update-pointing", { from, to });
     console.log(`🔁 ${from} ➡️ ${to}`);
-    checkIfFocusAchieved(from);
+    evaluateSync();
   });
 
-  socket.on("raise-hand", ({ name }) => {
-    raisedHands.add(name);
-    io.emit("hand-raised", name);
-    console.log(`✋ ${name} raised their hand`);
-    checkIfFocusAchieved(name);
-  });
+  function evaluateSync() {
+    const candidates = Array.from(users.values());
+    let newLiveSpeaker = null;
 
-  socket.on("lower-hand", ({ name }) => {
-    raisedHands.delete(name);
-    io.emit("hand-lowered", name);
-  });
+    for (const candidate of candidates) {
+      const everyoneElse = Array.from(users.values()).filter(
+        (n) => n !== candidate
+      );
+      const allPointing = everyoneElse.every(
+        (name) => pointerMap.get(name) === candidate
+      );
+      const selfPointing = pointerMap.get(candidate) === candidate;
 
-  function checkIfFocusAchieved(candidate) {
-    if (!raisedHands.has(candidate)) return;
-    const all = [...users.values()].filter((name) => name !== candidate);
-    const everyonePointing = all.every(
-      (name) => pointerMap.get(name) === candidate
-    );
+      if (allPointing && selfPointing) {
+        newLiveSpeaker = candidate;
+        break;
+      }
+    }
 
-    if (everyonePointing) {
-      console.log(`🎤 All attention on ${candidate}. Activating camera.`);
-      io.emit("camera-activate", { name: candidate });
+    if (newLiveSpeaker !== liveSpeaker) {
+      liveSpeaker = newLiveSpeaker;
+      if (liveSpeaker) {
+        console.log(`🎤 All attention on ${liveSpeaker}. Going LIVE.`);
+        io.emit("live-speaker", { name: liveSpeaker });
+      } else {
+        console.log("🔇 No speaker in sync. Clearing Live tag.");
+        io.emit("live-speaker-cleared");
+      }
     }
   }
 
@@ -77,23 +83,32 @@ io.on("connection", (socket) => {
     if (!name) return;
     users.delete(socket.id);
     pointerMap.delete(name);
-    raisedHands.delete(name);
 
     for (const [from, to] of pointerMap.entries()) {
       if (to === name) pointerMap.delete(from);
     }
 
     broadcastUserList();
+    evaluateSync();
   }
 
   function broadcastUserList() {
-    const list = [...users.values()].map((name) => ({ name }));
+    const list = Array.from(users.values()).map((name) => ({ name }));
     io.emit("user-list", list);
   }
 
   function sendInitialPointerMap(socket) {
-    const map = [...pointerMap.entries()].map(([from, to]) => ({ from, to }));
+    const map = Array.from(pointerMap.entries()).map(([from, to]) => ({
+      from,
+      to,
+    }));
     socket.emit("initial-pointer-map", map);
+  }
+
+  function sendCurrentLiveSpeaker(socket) {
+    if (liveSpeaker) {
+      socket.emit("live-speaker", { name: liveSpeaker });
+    }
   }
 });
 
