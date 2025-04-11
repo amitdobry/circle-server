@@ -1,18 +1,18 @@
 // avatarManager.ts
 
 const avatarPool = [
-  { id: "monkv2", emoji: "🧘" },
-  { id: "pharaohv2", emoji: "🛕" },
-  { id: "elementalv2", emoji: "🔥" },
-  { id: "ninjav2", emoji: "🥷" },
-  { id: "wolvesv2", emoji: "🐺" },
-  { id: "piratev2", emoji: "🏴‍☠️" },
-  { id: "pandav2", emoji: "🐼" },
-  { id: "farmerv2", emoji: "👨‍🌾" },
-  { id: "tennisPlayerv2", emoji: "🎾" },
-  { id: "chipmunksv2", emoji: "🐿️" },
-  { id: "babyDragonv2", emoji: "🐉" },
-  { id: "babyv2", emoji: "👶" },
+  { id: "Monk", emoji: "🧘" },
+  { id: "Pharaoh", emoji: "🛕" },
+  { id: "Elemental", emoji: "🔥" },
+  { id: "Ninja", emoji: "🥷" },
+  { id: "Wolves", emoji: "🐺" },
+  { id: "Pirate", emoji: "🏴‍☠️" },
+  { id: "Panda", emoji: "🐼" },
+  { id: "Farmer", emoji: "👨‍🌾" },
+  { id: "TennisPlayer", emoji: "🎾" },
+  { id: "Chipmunks", emoji: "🐿️" },
+  { id: "BabyDragon", emoji: "🐉" },
+  { id: "Baby", emoji: "👶" },
 ];
 
 export const emojiLookup: Record<string, string> = Object.fromEntries(
