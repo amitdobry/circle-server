@@ -12,6 +12,11 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
 });
 
+// 🧪 Health check route
+app.get("/isAlive", (_req, res) => {
+  res.status(200).send("🟢 SoulCircle server is alive.");
+});
+
 setupSocketHandlers(io);
 
 const PORT = process.env.PORT || 3001;
