@@ -14,6 +14,7 @@ const users = new Map<string, UserInfo>(); // socketId -> { name, avatarId }
 
 const pointerMap = new Map<string, string>(); // from -> to
 let liveSpeaker: string | null = null;
+let currentLogInput: string = ""; // optional state if needed later
 
 export function setupSocketHandlers(io: Server) {
   io.on("connection", (socket: Socket) => {
@@ -72,6 +73,34 @@ export function setupSocketHandlers(io: Server) {
       }
       evaluateSync();
     });
+
+    socket.on(
+      "logBar:update",
+      ({ text, userName }: { text: string; userName: string }) => {
+        const user = users.get(socket.id);
+
+        if (!user) {
+          console.log(
+            `🚫 Rejected logBar:update — unknown user (${socket.id})`
+          );
+          return;
+        }
+
+        if (user.name !== liveSpeaker) {
+          console.log(
+            `🚫 Rejected logBar:update — ${user.name} is not live (liveSpeaker=${liveSpeaker})`
+          );
+          return;
+        }
+
+        console.log(`📡 logBar:update from ${user.name}:`, text);
+
+        io.emit("logBar:update", {
+          text,
+          userName,
+        });
+      }
+    );
 
     // Optional P2P (currently dormant)
     socket.on("peer-signal", ({ to, from, signal }) => {
@@ -157,6 +186,11 @@ export function setupSocketHandlers(io: Server) {
         if (liveSpeaker) {
           logToConsole(`🎤 All attention on ${liveSpeaker}. Going LIVE.`);
           io.emit("live-speaker", { name: liveSpeaker });
+
+          io.emit("logBar:update", {
+            text: `${liveSpeaker}: `,
+            userName: liveSpeaker,
+          });
         } else {
           logToConsole("🔇 No speaker in sync. Clearing Live tag.");
           io.emit("live-speaker-cleared");
