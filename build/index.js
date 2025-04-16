@@ -14,6 +14,10 @@ const server = http_1.default.createServer(app);
 const io = new socket_io_1.Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] },
 });
+// 🧪 Health check route
+app.get("/isAlive", (_req, res) => {
+    res.status(200).send("🟢 SoulCircle server is alive.");
+});
 (0, socketHandler_1.setupSocketHandlers)(io);
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
