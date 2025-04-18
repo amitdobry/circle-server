@@ -10,26 +10,45 @@ let currentLogInput = ""; // optional state if needed later
 function setupSocketHandlers(io) {
     io.on("connection", (socket) => {
         console.log(`🪪 New connection: ${socket.id}`);
-        socket.on("join", ({ name, avatarId }) => {
-            users.set(socket.id, { name, avatarId });
-            socket.on("joined-table", ({ name }) => {
-                const avatar = users.get(socket.id)?.avatarId;
-                const emoji = avatarManager_1.emojiLookup[avatar || ""] || "";
-                logToConsole(`🪑 ${emoji} ${name} has fully entered the table`);
-                sendCurrentUserListTo(socket); // send only to this socket
-            });
-            function sendCurrentUserListTo(socket) {
-                const list = Array.from(users.values());
-                socket.emit("user-list", list);
-            }
-            const claimed = (0, avatarManager_1.claimAvatar)(avatarId, name);
-            if (!claimed) {
-                console.warn(`⚠️ Avatar ${avatarId} is already taken`);
-                socket.emit("avatar-claim-failed", { avatarId });
+        socket.on("joined-table", ({ name }) => {
+            const avatar = users.get(socket.id)?.avatarId;
+            const emoji = avatarManager_1.emojiLookup[avatar || ""] || "";
+            logToConsole(`🪑 ${emoji} ${name} has fully entered the table`);
+            sendCurrentUserListTo(socket); // send only to this socket
+        });
+        function sendCurrentUserListTo(socket) {
+            const list = Array.from(users.values());
+            socket.emit("user-list", list);
+        }
+        socket.on("request-join", ({ name, avatarId }) => {
+            console.log(`📨 Request to join: ${name} as ${avatarId}`);
+            if (!name || name.length > 30) {
+                socket.emit("join-rejected", { reason: "Invalid name." });
                 return;
             }
+            // 🔥 Check for duplicate name
+            const nameAlreadyTaken = Array.from(users.values()).some((user) => user.name.toLowerCase() === name.toLowerCase());
+            if (nameAlreadyTaken) {
+                console.warn(`⚠️ Name "${name}" already taken`);
+                socket.emit("join-rejected", {
+                    reason: "Name already taken. Please choose another.",
+                });
+                return;
+            }
+            // 🔥 Try to claim the avatar
+            const claimed = (0, avatarManager_1.claimAvatar)(avatarId, name);
+            if (!claimed) {
+                console.warn(`⚠️ Avatar ${avatarId} already taken`);
+                socket.emit("join-rejected", {
+                    reason: "Avatar already taken. Please choose another.",
+                });
+                return;
+            }
+            // ✅ All good: Save user and broadcast
+            users.set(socket.id, { name, avatarId });
             const emoji = avatarManager_1.emojiLookup[avatarId] || "";
             logToConsole(`👤 ${emoji} ${name} joined as ${avatarId}`);
+            socket.emit("join-approved", { name, avatarId });
             broadcastUserList();
             broadcastAvatarState();
             sendInitialPointerMap(socket);
