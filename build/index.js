@@ -16,7 +16,7 @@ const io = new socket_io_1.Server(server, {
 });
 // 🧪 Health check route
 app.get("/isAlive", (_req, res) => {
-    res.status(200).send("🟢 SoulCircle server is alive.");
+    res.status(200).send("🟢 SoulCircle server is alive..");
 });
 (0, socketHandler_1.setupSocketHandlers)(io);
 const PORT = process.env.PORT || 3001;
