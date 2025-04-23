@@ -7,7 +7,11 @@ import {
   releaseAvatarByName,
   emojiLookup,
 } from "./avatarManager";
+import { gestureCatalog } from "./ui-config/gestureCatalog";
 
+type GestureCatalogType = typeof gestureCatalog;
+type ListenerType = keyof GestureCatalogType; // "ear" | "brain" | "mouth"
+type SubGestureCode<T extends ListenerType> = keyof GestureCatalogType[T];
 type UserInfo = { name: string; avatarId: string };
 
 const users = new Map<string, UserInfo>(); // socketId -> { name, avatarId }
@@ -75,6 +79,60 @@ export function setupSocketHandlers(io: Server) {
       broadcastAvatarState();
       sendInitialPointerMap(socket);
       sendCurrentLiveSpeaker(socket);
+    });
+
+    socket.on("ListenerEmits", ({ name, type, subType }) => {
+      const user = users.get(socket.id);
+
+      if (!user) {
+        console.warn(`🛑 Rejected ListenerEmits — unknown socket ${socket.id}`);
+        return;
+      }
+
+      if (!["ear", "brain", "mouth"].includes(type)) {
+        console.warn(`🌀 Invalid ListenerEmit type: ${type}`);
+        return;
+      }
+
+      const safeType = type as ListenerType;
+      const rawGesture =
+        gestureCatalog[safeType]?.[
+          subType as keyof GestureCatalogType[typeof safeType]
+        ];
+      const gesture = rawGesture as import("./ui-config/Gestures").Gesture;
+
+      if (!gesture) {
+        console.warn(`🚫 Unknown gesture code: ${type}:${subType}`);
+        return;
+      }
+
+      const emoji = gesture.emoji;
+      const label = gesture.label;
+
+      switch (safeType) {
+        case "ear":
+          logToConsole(`🎧 ${emoji} ${name} says: "${label}"`);
+          //   io.emit("TextBoxUpdate", gesture.getBroadcastPayload(name));
+          break;
+
+        case "brain":
+          logToConsole(`🧠 ${name} requested silence: "${gesture.label}"`);
+          //   io.emit("PauseForThought", {
+          //     by: name,
+          //     reasonCode: subType,
+          //     ...gesture.getBroadcastPayload(name), // includes label, emoji, color
+          //   });
+          break;
+
+        case "mouth":
+          logToConsole(`👄 ${name} requests the mic: "${gesture.label}"`);
+          pointerMap.set(name, name);
+          io.emit("update-pointing", { from: name, to: name });
+          evaluateSync();
+          break;
+      }
+
+      gesture.triggerEffect?.(); // Optional future rituals
     });
 
     socket.on("leave", ({ name }) => {
