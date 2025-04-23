@@ -3,6 +3,11 @@ import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import { setupSocketHandlers } from "./server/socketHandler";
+const buildTime = new Date().toLocaleString("en-GB", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "UTC",
+});
 
 const app = express();
 app.use(cors());
@@ -14,7 +19,12 @@ const io = new Server(server, {
 
 // 🧪 Health check route
 app.get("/isAlive", (_req, res) => {
-  res.status(200).send("🟢 SoulCircle server is alive..");
+  res.status(200).send(`
+    <div style="font-family: monospace; color: green; padding: 1em;">
+      🟢 SoulCircle server is alive..<br/>
+      🕒 Build Time: ${buildTime}
+    </div>
+  `);
 });
 
 setupSocketHandlers(io);
