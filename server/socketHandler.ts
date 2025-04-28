@@ -8,6 +8,7 @@ import {
   emojiLookup,
 } from "./avatarManager";
 import { gestureCatalog } from "./ui-config/gestureCatalog";
+import { getAllGestureButtons } from "./ui-config/gesture.service";
 
 type GestureCatalogType = typeof gestureCatalog;
 type ListenerType = keyof GestureCatalogType; // "ear" | "brain" | "mouth"
@@ -196,6 +197,12 @@ export function setupSocketHandlers(io: Server) {
           break;
         }
       }
+    });
+
+    socket.on("request:gestureButtons", () => {
+      console.log("[Server] Received request:gestureButtons");
+      const buttons = getAllGestureButtons();
+      socket.emit("receive:gestureButtons", buttons);
     });
 
     // Request: list of avatars

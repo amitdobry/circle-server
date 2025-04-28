@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.setupSocketHandlers = setupSocketHandlers;
 const avatarManager_1 = require("./avatarManager");
 const gestureCatalog_1 = require("./ui-config/gestureCatalog");
+const gesture_service_1 = require("./ui-config/gesture.service");
 const users = new Map(); // socketId -> { name, avatarId }
 const pointerMap = new Map(); // from -> to
 let liveSpeaker = null;
@@ -142,6 +143,11 @@ function setupSocketHandlers(io) {
                     break;
                 }
             }
+        });
+        socket.on("request:gestureButtons", () => {
+            console.log("[Server] Received request:gestureButtons");
+            const buttons = (0, gesture_service_1.getAllGestureButtons)();
+            socket.emit("receive:gestureButtons", buttons);
         });
         // Request: list of avatars
         socket.on("get-avatars", () => {
