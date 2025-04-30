@@ -5,6 +5,7 @@ exports.setupSocketHandlers = setupSocketHandlers;
 const avatarManager_1 = require("./avatarManager");
 const gestureCatalog_1 = require("./ui-config/gestureCatalog");
 const gesture_service_1 = require("./ui-config/gesture.service");
+const routeAction_1 = require("./actions/routeAction"); // adjust path if needed
 const users = new Map(); // socketId -> { name, avatarId }
 const pointerMap = new Map(); // from -> to
 let liveSpeaker = null;
@@ -14,6 +15,7 @@ function setupSocketHandlers(io) {
         console.log(`🪪 New connection: ${socket.id}`);
         socket.on("joined-table", ({ name }) => {
             const avatar = users.get(socket.id)?.avatarId;
+            console.log(`[Server] 🔔 'joined-table' received from socket ${socket.id}, name: ${name}`);
             const emoji = avatarManager_1.emojiLookup[avatar || ""] || "";
             logToConsole(`🪑 ${emoji} ${name} has fully entered the table`);
             sendCurrentUserListTo(socket); // send only to this socket
@@ -56,7 +58,7 @@ function setupSocketHandlers(io) {
             sendInitialPointerMap(socket);
             sendCurrentLiveSpeaker(socket);
         });
-        socket.on("ListenerEmits", ({ name, type, subType }) => {
+        socket.on("listenerEmits", ({ name, type, subType, actionType }) => {
             const user = users.get(socket.id);
             if (!user) {
                 console.warn(`🛑 Rejected ListenerEmits — unknown socket ${socket.id}`);
@@ -66,36 +68,15 @@ function setupSocketHandlers(io) {
                 console.warn(`🌀 Invalid ListenerEmit type: ${type}`);
                 return;
             }
-            const safeType = type;
-            const rawGesture = gestureCatalog_1.gestureCatalog[safeType]?.[subType];
-            const gesture = rawGesture;
-            if (!gesture) {
-                console.warn(`🚫 Unknown gesture code: ${type}:${subType}`);
-                return;
-            }
-            const emoji = gesture.emoji;
-            const label = gesture.label;
-            switch (safeType) {
-                case "ear":
-                    logToConsole(`🎧 ${emoji} ${name} says: "${label}"`);
-                    //   io.emit("TextBoxUpdate", gesture.getBroadcastPayload(name));
-                    break;
-                case "brain":
-                    logToConsole(`🧠 ${name} requested silence: "${gesture.label}"`);
-                    //   io.emit("PauseForThought", {
-                    //     by: name,
-                    //     reasonCode: subType,
-                    //     ...gesture.getBroadcastPayload(name), // includes label, emoji, color
-                    //   });
-                    break;
-                case "mouth":
-                    logToConsole(`👄 ${name} requests the mic: "${gesture.label}"`);
-                    pointerMap.set(name, name);
-                    io.emit("update-pointing", { from: name, to: name });
-                    evaluateSync();
-                    break;
-            }
-            gesture.triggerEffect?.(); // Optional future rituals
+            (0, routeAction_1.routeAction)({ name, type, subType, actionType }, {
+                io,
+                log: logToConsole,
+                pointerMap,
+                evaluateSync,
+                gestureCatalog: gestureCatalog_1.gestureCatalog,
+                socketId: socket.id,
+                users,
+            });
         });
         socket.on("leave", ({ name }) => {
             logToConsole(`👋 ${name} left manually`);
@@ -107,17 +88,22 @@ function setupSocketHandlers(io) {
             cleanupUser(socket);
         });
         socket.on("pointing", ({ from, to }) => {
-            pointerMap.set(from, to);
-            io.emit("update-pointing", { from, to });
-            const avatarId = Array.from(users.values()).find((u) => u.name === from)?.avatarId || "";
-            const emoji = avatarManager_1.emojiLookup[avatarId] || "";
-            if (from === to) {
-                logToConsole(`✋ ${emoji} ${from} wishes to speak`);
-            }
-            else {
-                logToConsole(`🔁 ${emoji} ${from} ➡️ ${to}`);
-            }
-            evaluateSync();
+            console.log("[Client] Emitting pointing to:", from, to);
+            (0, routeAction_1.routeAction)({
+                from,
+                type: "pointing",
+                subType: "manual",
+                actionType: "pointAtSpeaker",
+                to,
+            }, {
+                io,
+                log: logToConsole,
+                pointerMap,
+                evaluateSync,
+                gestureCatalog: gestureCatalog_1.gestureCatalog,
+                socketId: socket.id,
+                users,
+            });
         });
         socket.on("logBar:update", ({ text, userName }) => {
             const user = users.get(socket.id);

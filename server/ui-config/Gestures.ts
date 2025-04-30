@@ -3,20 +3,23 @@ export class Gesture {
   label: string;
   emoji: string;
   color: string;
-  tailwind: string; // 💥 New!
+  tailwind: string;
+  actionType: string | undefined;
 
   constructor(
     code: string,
     label: string,
     emoji: string,
     color: string,
-    tailwind: string
+    tailwind: string,
+    actionType: string
   ) {
     this.code = code;
     this.label = label;
     this.emoji = emoji;
     this.color = color;
     this.tailwind = tailwind; // 💥 New!
+    this.actionType = actionType;
   }
 
   getBroadcastPayload(from: string) {
@@ -27,7 +30,8 @@ export class Gesture {
       label: this.label,
       emoji: this.emoji,
       color: this.color,
-      tailwind: this.tailwind, // Pass it through
+      tailwind: this.tailwind,
+      actionType: this.actionType,
     };
   }
 
@@ -42,7 +46,8 @@ export class Gesture {
       label: this.label,
       emoji: this.emoji,
       color: this.color,
-      tailwind: this.tailwind, // Pass it through
+      tailwind: this.tailwind,
+      actionType: this.actionType,
     };
   }
 }
