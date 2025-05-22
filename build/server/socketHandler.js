@@ -1,15 +1,33 @@
 "use strict";
 // socketHandler.ts
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getPointerMap = getPointerMap;
+exports.getLiveSpeaker = getLiveSpeaker;
+exports.setLiveSpeaker = setLiveSpeaker;
+exports.getUsers = getUsers;
 exports.setupSocketHandlers = setupSocketHandlers;
 const avatarManager_1 = require("./avatarManager");
 const gestureCatalog_1 = require("./ui-config/gestureCatalog");
 const gesture_service_1 = require("./ui-config/gesture.service");
 const routeAction_1 = require("./actions/routeAction"); // adjust path if needed
+const panelConfigService_1 = require("./panelConfigService"); // or wherever you store them
 const users = new Map(); // socketId -> { name, avatarId }
 const pointerMap = new Map(); // from -> to
 let liveSpeaker = null;
 let currentLogInput = ""; // optional state if needed later
+// Export getter functions
+function getPointerMap() {
+    return pointerMap;
+}
+function getLiveSpeaker() {
+    return liveSpeaker;
+}
+function setLiveSpeaker(name) {
+    liveSpeaker = name;
+}
+function getUsers() {
+    return new Map(users); // cloned copy
+}
 function setupSocketHandlers(io) {
     io.on("connection", (socket) => {
         console.log(`🪪 New connection: ${socket.id}`);
@@ -49,7 +67,12 @@ function setupSocketHandlers(io) {
                 return;
             }
             // ✅ All good: Save user and broadcast
-            users.set(socket.id, { name, avatarId });
+            users.set(socket.id, {
+                name,
+                avatarId,
+                state: "regular",
+                interruptedBy: "",
+            });
             const emoji = avatarManager_1.emojiLookup[avatarId] || "";
             logToConsole(`👤 ${emoji} ${name} joined as ${avatarId}`);
             socket.emit("join-approved", { name, avatarId });
@@ -58,13 +81,13 @@ function setupSocketHandlers(io) {
             sendInitialPointerMap(socket);
             sendCurrentLiveSpeaker(socket);
         });
-        socket.on("listenerEmits", ({ name, type, subType, actionType }) => {
+        socket.on("clientEmits", ({ name, type, subType, actionType }) => {
             const user = users.get(socket.id);
             if (!user) {
-                console.warn(`🛑 Rejected ListenerEmits — unknown socket ${socket.id}`);
+                console.warn(`🛑 Rejected clientEmits — unknown socket ${socket.id}`);
                 return;
             }
-            if (!["ear", "brain", "mouth"].includes(type)) {
+            if (!["ear", "brain", "mouth", "mic"].includes(type)) {
                 console.warn(`🌀 Invalid ListenerEmit type: ${type}`);
                 return;
             }
@@ -135,6 +158,16 @@ function setupSocketHandlers(io) {
             const buttons = (0, gesture_service_1.getAllGestureButtons)();
             socket.emit("receive:gestureButtons", buttons);
         });
+        socket.on("request:panelConfig", ({ userName }) => {
+            if (!userName) {
+                console.warn("⚠️ No userName provided in request:panelConfig");
+                return;
+            }
+            console.log(`🛠️ Building panel config for ${userName}`);
+            const config = (0, panelConfigService_1.getPanelConfigFor)(userName);
+            console.log("[Server] Sending attention panel config:", JSON.stringify(config, null, 2));
+            socket.emit("receive:panelConfig", config);
+        });
         // Request: list of avatars
         socket.on("get-avatars", () => {
             socket.emit("avatars", (0, avatarManager_1.getAvailableAvatars)());
@@ -188,6 +221,10 @@ function setupSocketHandlers(io) {
                     newLiveSpeaker = candidate.name;
                     break;
                 }
+            }
+            for (const [socketId, user] of users.entries()) {
+                user.state = user.name === newLiveSpeaker ? "speaking" : "regular";
+                users.set(socketId, user);
             }
             if (newLiveSpeaker !== liveSpeaker) {
                 liveSpeaker = newLiveSpeaker;

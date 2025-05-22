@@ -9,11 +9,25 @@ import {
 } from "./avatarManager";
 import { gestureCatalog } from "./ui-config/gestureCatalog";
 import { getAllGestureButtons } from "./ui-config/gesture.service";
+import { routeAction } from "./actions/routeAction"; // adjust path if needed
+import { getPanelConfigFor } from "./panelConfigService"; // or wherever you store them
 
 type GestureCatalogType = typeof gestureCatalog;
 type ListenerType = keyof GestureCatalogType; // "ear" | "brain" | "mouth"
 type SubGestureCode<T extends ListenerType> = keyof GestureCatalogType[T];
-type UserInfo = { name: string; avatarId: string };
+type UserState =
+  | "regular"
+  | "speaking"
+  | "thinking"
+  | "hasClickedMouth"
+  | "hasClickedBrain";
+
+type UserInfo = {
+  name: string;
+  avatarId: string;
+  state: UserState;
+  interruptedBy: string;
+};
 
 const users = new Map<string, UserInfo>(); // socketId -> { name, avatarId }
 
@@ -21,12 +35,33 @@ const pointerMap = new Map<string, string>(); // from -> to
 let liveSpeaker: string | null = null;
 let currentLogInput: string = ""; // optional state if needed later
 
+// Export getter functions
+
+export function getPointerMap() {
+  return pointerMap;
+}
+
+export function getLiveSpeaker() {
+  return liveSpeaker;
+}
+
+export function setLiveSpeaker(name: string | null) {
+  liveSpeaker = name;
+}
+
+export function getUsers() {
+  return new Map(users); // cloned copy
+}
+
 export function setupSocketHandlers(io: Server) {
   io.on("connection", (socket: Socket) => {
     console.log(`🪪 New connection: ${socket.id}`);
 
     socket.on("joined-table", ({ name }) => {
       const avatar = users.get(socket.id)?.avatarId;
+      console.log(
+        `[Server] 🔔 'joined-table' received from socket ${socket.id}, name: ${name}`
+      );
       const emoji = emojiLookup[avatar || ""] || "";
       logToConsole(`🪑 ${emoji} ${name} has fully entered the table`);
       sendCurrentUserListTo(socket); // send only to this socket
@@ -69,7 +104,12 @@ export function setupSocketHandlers(io: Server) {
       }
 
       // ✅ All good: Save user and broadcast
-      users.set(socket.id, { name, avatarId });
+      users.set(socket.id, {
+        name,
+        avatarId,
+        state: "regular",
+        interruptedBy: "",
+      });
 
       const emoji = emojiLookup[avatarId] || "";
       logToConsole(`👤 ${emoji} ${name} joined as ${avatarId}`);
@@ -82,58 +122,31 @@ export function setupSocketHandlers(io: Server) {
       sendCurrentLiveSpeaker(socket);
     });
 
-    socket.on("ListenerEmits", ({ name, type, subType }) => {
+    socket.on("clientEmits", ({ name, type, subType, actionType }) => {
       const user = users.get(socket.id);
 
       if (!user) {
-        console.warn(`🛑 Rejected ListenerEmits — unknown socket ${socket.id}`);
+        console.warn(`🛑 Rejected clientEmits — unknown socket ${socket.id}`);
         return;
       }
 
-      if (!["ear", "brain", "mouth"].includes(type)) {
+      if (!["ear", "brain", "mouth", "mic"].includes(type)) {
         console.warn(`🌀 Invalid ListenerEmit type: ${type}`);
         return;
       }
 
-      const safeType = type as ListenerType;
-      const rawGesture =
-        gestureCatalog[safeType]?.[
-          subType as keyof GestureCatalogType[typeof safeType]
-        ];
-      const gesture = rawGesture as import("./ui-config/Gestures").Gesture;
-
-      if (!gesture) {
-        console.warn(`🚫 Unknown gesture code: ${type}:${subType}`);
-        return;
-      }
-
-      const emoji = gesture.emoji;
-      const label = gesture.label;
-
-      switch (safeType) {
-        case "ear":
-          logToConsole(`🎧 ${emoji} ${name} says: "${label}"`);
-          //   io.emit("TextBoxUpdate", gesture.getBroadcastPayload(name));
-          break;
-
-        case "brain":
-          logToConsole(`🧠 ${name} requested silence: "${gesture.label}"`);
-          //   io.emit("PauseForThought", {
-          //     by: name,
-          //     reasonCode: subType,
-          //     ...gesture.getBroadcastPayload(name), // includes label, emoji, color
-          //   });
-          break;
-
-        case "mouth":
-          logToConsole(`👄 ${name} requests the mic: "${gesture.label}"`);
-          pointerMap.set(name, name);
-          io.emit("update-pointing", { from: name, to: name });
-          evaluateSync();
-          break;
-      }
-
-      gesture.triggerEffect?.(); // Optional future rituals
+      routeAction(
+        { name, type, subType, actionType },
+        {
+          io,
+          log: logToConsole,
+          pointerMap,
+          evaluateSync,
+          gestureCatalog,
+          socketId: socket.id,
+          users,
+        }
+      );
     });
 
     socket.on("leave", ({ name }) => {
@@ -148,17 +161,25 @@ export function setupSocketHandlers(io: Server) {
     });
 
     socket.on("pointing", ({ from, to }) => {
-      pointerMap.set(from, to);
-      io.emit("update-pointing", { from, to });
-      const avatarId =
-        Array.from(users.values()).find((u) => u.name === from)?.avatarId || "";
-      const emoji = emojiLookup[avatarId] || "";
-      if (from === to) {
-        logToConsole(`✋ ${emoji} ${from} wishes to speak`);
-      } else {
-        logToConsole(`🔁 ${emoji} ${from} ➡️ ${to}`);
-      }
-      evaluateSync();
+      console.log("[Client] Emitting pointing to:", from, to);
+      routeAction(
+        {
+          from,
+          type: "pointing",
+          subType: "manual",
+          actionType: "pointAtSpeaker",
+          to,
+        },
+        {
+          io,
+          log: logToConsole,
+          pointerMap,
+          evaluateSync,
+          gestureCatalog,
+          socketId: socket.id,
+          users,
+        }
+      );
     });
 
     socket.on(
@@ -203,6 +224,22 @@ export function setupSocketHandlers(io: Server) {
       console.log("[Server] Received request:gestureButtons");
       const buttons = getAllGestureButtons();
       socket.emit("receive:gestureButtons", buttons);
+    });
+
+    socket.on("request:panelConfig", ({ userName }) => {
+      if (!userName) {
+        console.warn("⚠️ No userName provided in request:panelConfig");
+        return;
+      }
+
+      console.log(`🛠️ Building panel config for ${userName}`);
+
+      const config = getPanelConfigFor(userName);
+      console.log(
+        "[Server] Sending attention panel config:",
+        JSON.stringify(config, null, 2)
+      );
+      socket.emit("receive:panelConfig", config);
     });
 
     // Request: list of avatars
@@ -272,6 +309,11 @@ export function setupSocketHandlers(io: Server) {
           newLiveSpeaker = candidate.name;
           break;
         }
+      }
+
+      for (const [socketId, user] of users.entries()) {
+        user.state = user.name === newLiveSpeaker ? "speaking" : "regular";
+        users.set(socketId, user);
       }
 
       if (newLiveSpeaker !== liveSpeaker) {

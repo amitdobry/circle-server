@@ -19,4 +19,39 @@ export const config = [
     type: "pointing",
     handler: "handlePointAtSpeaker",
   },
+  {
+    actionType: "selectMouth",
+    type: "mouth",
+    handler: "handleSelectMouth",
+  },
+  {
+    actionType: "unSelectMouth",
+    type: "mouth",
+    handler: "handleUnselectMouth",
+  },
+  {
+    actionType: "selectBrain",
+    type: "brain",
+    handler: "handleSelectBrain",
+  },
+  {
+    actionType: "unSelectBrain",
+    type: "brain",
+    handler: "handleUnSelectBrain",
+  },
+  {
+    actionType: "dropTheMic",
+    type: "mic",
+    handler: "handleDropTheMic",
+  },
+  {
+    actionType: "wishToSpeakAfterMicDropped",
+    type: "mic",
+    handler: "handleWishToSpeakAfterMicDropped",
+  },
+  {
+    actionType: "declineRequestAfterMicDropped",
+    type: "mic",
+    handler: "handleDeclineToSpeak",
+  },
 ];

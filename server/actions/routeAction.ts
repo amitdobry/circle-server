@@ -12,15 +12,29 @@ type ActionPayload = {
   to?: string;
   // more fields in future...
 };
+type UserState =
+  | "regular"
+  | "speaking"
+  | "thinking"
+  | "waiting"
+  | "hasClickedMouth"
+  | "hasClickedBrain"
+  | "hasDroppedTheMic"
+  | "micIsDropped"
+  | "wantsToPickUpTheMic"
+  | "appendingConcentToPickUpTheMic";
 
 type ActionContext = {
   io: Server;
   log: (msg: string) => void;
-  pointerMap: Map<string, string>;
+  pointerMap: Map<string, string | null>;
   evaluateSync: () => void;
   gestureCatalog: typeof gestureCatalog;
   socketId: string;
-  users: Map<string, { name: string; avatarId: string }>;
+  users: Map<
+    string,
+    { name: string; avatarId: string; state: UserState; interruptedBy: string }
+  >;
 };
 
 function routeAction(payload: ActionPayload, context: ActionContext) {
