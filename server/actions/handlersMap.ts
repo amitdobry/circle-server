@@ -10,7 +10,7 @@ import { handleUnSelectBrain } from "./handlers/handleUnSelectBrain";
 import { handleDropTheMic } from "./handlers/handleDropTheMic";
 import { handleWishToSpeakAfterMicDropped } from "./handlers/handleWishToSpeakAfterMicDropped";
 import { handleDeclineToSpeakAfterMicDropped } from "./handlers/handleDeclineToSpeakAfterMicDropped";
-import { handleConcentNewSpeakerFromMicDropped } from "./handlers/handleConcentNewSpeakerFromMicDropped";
+import { handleConcentNewSpeakerFromMicDropped } from "./handlers/handleConcentNewSpeakerFromMicDroppedd";
 
 export const handlersMap: Record<
   string,
