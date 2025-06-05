@@ -1,6 +1,8 @@
 "use strict";
 // socketHandler.ts
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getIsSyncPauseMode = getIsSyncPauseMode;
+exports.setIsSyncPauseMode = setIsSyncPauseMode;
 exports.getPointerMap = getPointerMap;
 exports.getLiveSpeaker = getLiveSpeaker;
 exports.setLiveSpeaker = setLiveSpeaker;
@@ -15,7 +17,13 @@ const users = new Map(); // socketId -> { name, avatarId }
 const pointerMap = new Map(); // from -> to
 let liveSpeaker = null;
 let currentLogInput = ""; // optional state if needed later
-// Export getter functions
+let isSyncPauseMode = false;
+function getIsSyncPauseMode() {
+    return isSyncPauseMode;
+}
+function setIsSyncPauseMode(value) {
+    isSyncPauseMode = value;
+}
 function getPointerMap() {
     return pointerMap;
 }
@@ -26,7 +34,7 @@ function setLiveSpeaker(name) {
     liveSpeaker = name;
 }
 function getUsers() {
-    return new Map(users); // cloned copy
+    return users;
 }
 function setupSocketHandlers(io) {
     io.on("connection", (socket) => {
@@ -165,7 +173,10 @@ function setupSocketHandlers(io) {
             }
             console.log(`🛠️ Building panel config for ${userName}`);
             const config = (0, panelConfigService_1.getPanelConfigFor)(userName);
-            console.log("[Server] Sending attention panel config:", JSON.stringify(config, null, 2));
+            // console.log(
+            //   "[Server] Sending attention panel config:",
+            //   JSON.stringify(config, null, 2)
+            // );
             socket.emit("receive:panelConfig", config);
         });
         // Request: list of avatars
@@ -214,8 +225,8 @@ function setupSocketHandlers(io) {
             const candidates = Array.from(users.values());
             let newLiveSpeaker = null;
             for (const candidate of candidates) {
-                const everyoneElse = candidates.filter((n) => n.name !== candidate.name);
-                const allPointing = everyoneElse.every((n) => pointerMap.get(n.name) === candidate.name);
+                const everyoneElse = candidates.filter((u) => u.name !== candidate.name);
+                const allPointing = everyoneElse.every((u) => pointerMap.get(u.name) === candidate.name);
                 const selfPointing = pointerMap.get(candidate.name) === candidate.name;
                 if (allPointing && selfPointing) {
                     newLiveSpeaker = candidate.name;
@@ -223,18 +234,32 @@ function setupSocketHandlers(io) {
                 }
             }
             for (const [socketId, user] of users.entries()) {
-                user.state = user.name === newLiveSpeaker ? "speaking" : "regular";
-                users.set(socketId, user);
+                if (user.name === newLiveSpeaker) {
+                    user.state = "speaking";
+                    users.set(socketId, user);
+                }
             }
             if (newLiveSpeaker !== liveSpeaker) {
                 liveSpeaker = newLiveSpeaker;
                 if (liveSpeaker) {
                     logToConsole(`🎤 All attention on ${liveSpeaker}. Going LIVE.`);
+                    // 💡 Reset concent-mode users to regular listeners
+                    for (const [socketId, user] of users.entries()) {
+                        if (user.name !== liveSpeaker) {
+                            user.state = "regular";
+                            users.set(socketId, user);
+                        }
+                    }
+                    setIsSyncPauseMode(false);
                     io.emit("live-speaker", { name: liveSpeaker });
                     io.emit("logBar:update", {
                         text: `${liveSpeaker}: `,
                         userName: liveSpeaker,
                     });
+                    for (const [socketId, user] of users.entries()) {
+                        const config = (0, panelConfigService_1.getPanelConfigFor)(user.name);
+                        io.to(socketId).emit("receive:panelConfig", config);
+                    }
                 }
                 else {
                     logToConsole("🔇 No speaker in sync. Clearing Live tag.");

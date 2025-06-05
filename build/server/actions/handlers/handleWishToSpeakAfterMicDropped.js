@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleWishToSpeakAfterMicDropped = handleWishToSpeakAfterMicDropped;
 const panelConfigService_1 = require("../../panelConfigService");
-const socketHandler_1 = require("../../socketHandler");
 function handleWishToSpeakAfterMicDropped(payload, context) {
     const { name } = payload;
     const { users, pointerMap, io, log, evaluateSync } = context;
@@ -24,9 +23,10 @@ function handleWishToSpeakAfterMicDropped(payload, context) {
         users.set(socketId, user);
     }
     log(`✋ ${name} wishes to pick up the mic (post-drop)`);
-    (0, socketHandler_1.setLiveSpeaker)("syncPauseMode");
+    // setIsSyncPauseMode(true);
     // ✅ 2. Refresh UI for all users
     for (const [socketId, user] of users.entries()) {
+        log(`📦 Preparing panel for ${user.name} → ${user.state}`);
         const config = (0, panelConfigService_1.getPanelConfigFor)(user.name);
         io.to(socketId).emit("receive:panelConfig", config);
     }

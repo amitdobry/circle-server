@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.testPanelListenerState8 = exports.testPanelListenerState7 = exports.testPanelListenerState6 = exports.testPanelListenerState5 = exports.testPanelListenerState4 = exports.testPanelListenerState3 = exports.testPanelListenerState2 = exports.testPanelListenerState1 = void 0;
+exports.testPanelListenerState10 = exports.testPanelListenerState9 = exports.testPanelListenerState8 = exports.testPanelListenerState7 = exports.testPanelListenerState6 = exports.testPanelListenerState5 = exports.testPanelListenerState4 = exports.testPanelListenerState3 = exports.testPanelListenerState2 = exports.testPanelListenerState1 = void 0;
 // State 1: Default (no active group)
 exports.testPanelListenerState1 = [
     {
@@ -332,8 +332,8 @@ exports.testPanelListenerState7 = [
                 buttonClass: "px-6 py-3 rounded-full text-base font-semibold border bg-emerald-500 text-white border-emerald-600 shadow hover:bg-emerald-600 hover:scale-105 hover:shadow-lg transition-all duration-200",
                 button: {
                     label: "👂 Concent",
-                    type: "mic",
-                    control: "point",
+                    type: "listenerControl", // same routing as mic control
+                    group: "mic",
                     actionType: "concentNewSpeakerFromMicDropped",
                     targetUser: "PLACEHOLDER", // 🛠️ will be replaced in code
                 },
@@ -344,8 +344,9 @@ exports.testPanelListenerState7 = [
                 buttonClass: "px-6 py-3 rounded-full text-base font-semibold border bg-gray-100 text-gray-600 border-gray-300 shadow hover:bg-gray-200 hover:scale-105 hover:shadow-md transition-all duration-200",
                 button: {
                     label: "⏳ Not Yet",
-                    type: "listenerAction",
+                    type: "listenerControl",
                     control: "declineRequest",
+                    group: "mic",
                     actionType: "declineRequestAfterMicDropped",
                 },
             },
@@ -366,6 +367,42 @@ exports.testPanelListenerState8 = [
                 size: "md",
                 align: "center",
                 textClass: "text-gray-600 text-center font-medium",
+            },
+        ],
+    },
+];
+exports.testPanelListenerState9 = [
+    {
+        id: "speaker-mic-drop-waiting",
+        layout: "column",
+        panelType: "speakerPanel",
+        label: "Mic Dropped",
+        blocks: [
+            {
+                id: "mic-drop-waiting-text",
+                type: "text",
+                content: "⏳ Waiting for others ...",
+                size: "md",
+                align: "center",
+                textClass: "text-center text-gray-600 font-medium",
+            },
+        ],
+    },
+];
+exports.testPanelListenerState10 = [
+    {
+        id: "Concent-mic-drop-pickup",
+        layout: "column",
+        panelType: "speakerPanel",
+        label: "Mic Dropped",
+        blocks: [
+            {
+                id: "mic-drop-waiting-text",
+                type: "text",
+                content: "⏳ Concent *** to pick up the mic Waiting for others ...",
+                size: "md",
+                align: "center",
+                textClass: "text-center text-gray-600 font-medium",
             },
         ],
     },

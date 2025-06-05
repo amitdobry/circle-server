@@ -1,39 +1,31 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleDropTheMic = handleDropTheMic;
+exports.handleDeclineToSpeakAfterMicDropped = handleDeclineToSpeakAfterMicDropped;
 const panelConfigService_1 = require("../../panelConfigService");
-const socketHandler_1 = require("../../socketHandler");
-function handleDropTheMic(payload, context) {
+function handleDeclineToSpeakAfterMicDropped(payload, context) {
     const { name } = payload;
     const { users, pointerMap, io, log, evaluateSync } = context;
     if (!name) {
         log("🚨 Missing name in handleBreakSync payload.");
         return;
     }
-    // ✅ Now update all states:
     for (const [socketId, user] of users.entries()) {
         if (user.name === name) {
-            pointerMap.set(name, null);
-            io.emit("update-pointing", { from: name, to: null });
-            user.state = "hasDroppedTheMic";
-        }
-        else {
             pointerMap.set(user.name, null);
             io.emit("update-pointing", { from: user.name, to: null });
-            user.state = "micIsDropped";
+            user.state = "doesNotWantToPickUpTheMic";
+        }
+        else {
+            // pointerMap.set(user.name, null);
+            // io.emit("update-pointing", { from: user.name, to: null });
+            // user.state = "regular"; // optional
         }
         users.set(socketId, user);
     }
-    log(`👄 ${name} dropped the mic (breakSync)`);
+    log(`✋ ${name} does not whish to pick up the mic (post-drop)`);
     //   io.emit("mic-dropped", { name });
-    // setLiveSpeaker(null);
-    (0, socketHandler_1.setIsSyncPauseMode)(true);
     for (const [socketId, user] of users.entries()) {
         const config = (0, panelConfigService_1.getPanelConfigFor)(user.name);
-        // console.log(
-        //   "[Server] Sending config panel from handleWishToSpeak config:",
-        //   JSON.stringify(config, null, 2)
-        // );
         io.to(socketId).emit("receive:panelConfig", config);
     }
     evaluateSync();

@@ -12,4 +12,6 @@ exports.listenerCatalog = {
     "state-6": new ListenerPanelState_1.ListenerPanelState("state-6", "mic was dropped", listenerConfigs_1.testPanelListenerState6), // 🆕 Added here
     "state-7": new ListenerPanelState_1.ListenerPanelState("state-7", "Someone wants to pick up the mic", listenerConfigs_1.testPanelListenerState7), // 🆕 Added here
     "state-8": new ListenerPanelState_1.ListenerPanelState("state-8", "You’re asking to speak — waiting for group sync", listenerConfigs_1.testPanelListenerState8),
+    "state-9": new ListenerPanelState_1.ListenerPanelState("state-9", "You declined picking up the mic — waiting for group sync", listenerConfigs_1.testPanelListenerState9),
+    "state-10": new ListenerPanelState_1.ListenerPanelState("state-10", "You concent candidate to up the mic — waiting for group sync", listenerConfigs_1.testPanelListenerState10),
 };

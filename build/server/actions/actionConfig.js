@@ -55,6 +55,11 @@ exports.config = [
     {
         actionType: "declineRequestAfterMicDropped",
         type: "mic",
-        handler: "handleDeclineToSpeak",
+        handler: "handleDeclineToSpeakAfterMicDropped",
+    },
+    {
+        actionType: "concentNewSpeakerFromMicDropped",
+        type: "mic",
+        handler: "handleConcentNewSpeakerFromMicDropped",
     },
 ];

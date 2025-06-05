@@ -32,6 +32,12 @@ export function buildListenerSyncPanel(ctx: PanelContext) {
     case "wantsToPickUpTheMic":
       stateKey = "state-8";
       break;
+    case "doesNotWantToPickUpTheMic":
+      stateKey = "state-9";
+      break;
+    case "waitingForOthersAfterMicDropAndConcentNewSpeaker":
+      stateKey = "state-10";
+      break;
   }
 
   // ——————————————————————————————————————
@@ -39,6 +45,10 @@ export function buildListenerSyncPanel(ctx: PanelContext) {
   // ——————————————————————————————————————
 
   const panel = listenerCatalog[stateKey];
+  console.log(
+    "[Server] Sending attention panel config:",
+    JSON.stringify(stateKey, null, 2)
+  );
   const config = panel.getConfig();
 
   // ——————————————————————————————————————
@@ -125,6 +135,22 @@ export function buildListenerSyncPanel(ctx: PanelContext) {
         block.blocks.forEach((b) => {
           if (b.id === "speaker-candidate-waiting-text") {
             b.content = `⏳ You’ve requested to speak. Waiting for the group to sync with you...`;
+          }
+        });
+      }
+    });
+  }
+
+  if (stateKey === "state-10") {
+    const candidate = Array.from(ctx.allUsers.values()).find(
+      (u) => u.state === "wantsToPickUpTheMic"
+    );
+    const name = candidate?.name || "Someone";
+    config.forEach((block) => {
+      if (block.id === "Concent-mic-drop-pickup") {
+        block.blocks.forEach((b) => {
+          if (b.id === "speaker-candidate-waiting-text") {
+            b.content = `⏳ You’ve gave concent for ${name} to speak. Waiting for the group to sync with you...`;
           }
         });
       }

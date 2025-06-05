@@ -35,7 +35,15 @@ const pointerMap = new Map<string, string>(); // from -> to
 let liveSpeaker: string | null = null;
 let currentLogInput: string = ""; // optional state if needed later
 
-// Export getter functions
+let isSyncPauseMode = false;
+
+export function getIsSyncPauseMode() {
+  return isSyncPauseMode;
+}
+
+export function setIsSyncPauseMode(value: boolean) {
+  isSyncPauseMode = value;
+}
 
 export function getPointerMap() {
   return pointerMap;
@@ -50,7 +58,7 @@ export function setLiveSpeaker(name: string | null) {
 }
 
 export function getUsers() {
-  return new Map(users); // cloned copy
+  return users;
 }
 
 export function setupSocketHandlers(io: Server) {
@@ -235,10 +243,10 @@ export function setupSocketHandlers(io: Server) {
       console.log(`🛠️ Building panel config for ${userName}`);
 
       const config = getPanelConfigFor(userName);
-      console.log(
-        "[Server] Sending attention panel config:",
-        JSON.stringify(config, null, 2)
-      );
+      // console.log(
+      //   "[Server] Sending attention panel config:",
+      //   JSON.stringify(config, null, 2)
+      // );
       socket.emit("receive:panelConfig", config);
     });
 
@@ -298,10 +306,11 @@ export function setupSocketHandlers(io: Server) {
 
       for (const candidate of candidates) {
         const everyoneElse = candidates.filter(
-          (n) => n.name !== candidate.name
+          (u) => u.name !== candidate.name
         );
+
         const allPointing = everyoneElse.every(
-          (n) => pointerMap.get(n.name) === candidate.name
+          (u) => pointerMap.get(u.name) === candidate.name
         );
         const selfPointing = pointerMap.get(candidate.name) === candidate.name;
 
@@ -312,20 +321,34 @@ export function setupSocketHandlers(io: Server) {
       }
 
       for (const [socketId, user] of users.entries()) {
-        user.state = user.name === newLiveSpeaker ? "speaking" : "regular";
-        users.set(socketId, user);
+        if (user.name === newLiveSpeaker) {
+          user.state = "speaking";
+          users.set(socketId, user);
+        }
       }
 
       if (newLiveSpeaker !== liveSpeaker) {
         liveSpeaker = newLiveSpeaker;
+
         if (liveSpeaker) {
           logToConsole(`🎤 All attention on ${liveSpeaker}. Going LIVE.`);
+          // 💡 Reset concent-mode users to regular listeners
+          for (const [socketId, user] of users.entries()) {
+            if (user.name !== liveSpeaker) {
+              user.state = "regular";
+              users.set(socketId, user);
+            }
+          }
+          setIsSyncPauseMode(false);
           io.emit("live-speaker", { name: liveSpeaker });
-
           io.emit("logBar:update", {
             text: `${liveSpeaker}: `,
             userName: liveSpeaker,
           });
+          for (const [socketId, user] of users.entries()) {
+            const config = getPanelConfigFor(user.name);
+            io.to(socketId).emit("receive:panelConfig", config);
+          }
         } else {
           logToConsole("🔇 No speaker in sync. Clearing Live tag.");
           io.emit("live-speaker-cleared");

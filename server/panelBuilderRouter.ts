@@ -8,7 +8,7 @@ export function panelBuilderRouter(ctx: PanelContext): PanelConfig {
   if (!ctx.userIsParticipant) {
     return buildAttentionPanel(ctx); //this is just for now
   }
-  if (ctx.liveSpeaker) {
+  if (ctx.liveSpeaker || ctx.isSyncPauseMode) {
     if (ctx.isUserSpeaker) {
       return buildSpeakerPanel(ctx);
     } else {

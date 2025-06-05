@@ -1,6 +1,12 @@
 import { PanelConfig } from "./types/blockTypes";
-import { getUsers, getPointerMap, getLiveSpeaker } from "./socketHandler";
+import {
+  getUsers,
+  getPointerMap,
+  getLiveSpeaker,
+  getIsSyncPauseMode,
+} from "./socketHandler";
 import { panelBuilderRouter } from "./panelBuilderRouter";
+import { log } from "console";
 
 type UserState =
   | "regular"
@@ -12,7 +18,9 @@ type UserState =
   | "micIsDropped"
   | "hasDroppedTheMic"
   | "appendingConcentToPickUpTheMic"
-  | "wantsToPickUpTheMic";
+  | "wantsToPickUpTheMic"
+  | "doesNotWantToPickUpTheMic"
+  | "waitingForOthersAfterMicDropAndConcentNewSpeaker";
 
 export type UserInfo = {
   name: string;
@@ -26,6 +34,7 @@ export type PanelContext = {
   userIsParticipant: boolean;
   liveSpeaker: string | null;
   isUserSpeaker: boolean;
+  isSyncPauseMode: boolean;
   totalParticipants: number;
   // wasInterruptedBy: string;
   participantNames: string[];
@@ -39,6 +48,7 @@ export function collectPanelContext(userName: string): PanelContext {
   const userIsParticipant = participantList.includes(userName);
   const currentLiveSpeaker = getLiveSpeaker();
   const currentPointerMap = getPointerMap();
+  const isSyncPauseMode = getIsSyncPauseMode();
 
   return {
     userName,
@@ -46,6 +56,7 @@ export function collectPanelContext(userName: string): PanelContext {
     // wasInterruptedBy: interruptingUser,
     liveSpeaker: currentLiveSpeaker,
     isUserSpeaker: currentLiveSpeaker === userName,
+    isSyncPauseMode: isSyncPauseMode,
     totalParticipants: participantList.length,
     participantNames: participantList,
     pointerMap: currentPointerMap,
@@ -55,5 +66,16 @@ export function collectPanelContext(userName: string): PanelContext {
 
 export function getPanelConfigFor(userName: string): PanelConfig {
   const context = collectPanelContext(userName);
+  const user = Array.from(context.allUsers.values()).find(
+    (u) => u.name === userName
+  );
+
+  if (user) {
+    console.log(
+      `📦 Preparing panel at panelConfigService for ${user.name} → ${user.state}`
+    );
+  } else {
+    console.warn(`⚠️ No user found in context for ${userName}`);
+  }
   return panelBuilderRouter(context);
 }

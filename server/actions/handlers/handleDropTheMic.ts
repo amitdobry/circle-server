@@ -1,4 +1,5 @@
 import { getPanelConfigFor } from "../../panelConfigService";
+import { setIsSyncPauseMode, setLiveSpeaker } from "../../socketHandler";
 import { ActionPayload, ActionContext } from "../routeAction";
 
 export function handleDropTheMic(
@@ -29,15 +30,17 @@ export function handleDropTheMic(
 
   log(`👄 ${name} dropped the mic (breakSync)`);
   //   io.emit("mic-dropped", { name });
+  // setLiveSpeaker(null);
+  setIsSyncPauseMode(true);
 
   for (const [socketId, user] of users.entries()) {
     const config = getPanelConfigFor(user.name);
-    console.log(
-      "[Server] Sending config panel from handleWishToSpeak config:",
-      JSON.stringify(config, null, 2)
-    );
+    // console.log(
+    //   "[Server] Sending config panel from handleWishToSpeak config:",
+    //   JSON.stringify(config, null, 2)
+    // );
     io.to(socketId).emit("receive:panelConfig", config);
   }
 
-  //   evaluateSync();
+  evaluateSync();
 }

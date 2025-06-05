@@ -10,12 +10,14 @@ function collectPanelContext(userName) {
     const userIsParticipant = participantList.includes(userName);
     const currentLiveSpeaker = (0, socketHandler_1.getLiveSpeaker)();
     const currentPointerMap = (0, socketHandler_1.getPointerMap)();
+    const isSyncPauseMode = (0, socketHandler_1.getIsSyncPauseMode)();
     return {
         userName,
         userIsParticipant,
         // wasInterruptedBy: interruptingUser,
         liveSpeaker: currentLiveSpeaker,
         isUserSpeaker: currentLiveSpeaker === userName,
+        isSyncPauseMode: isSyncPauseMode,
         totalParticipants: participantList.length,
         participantNames: participantList,
         pointerMap: currentPointerMap,
@@ -24,5 +26,12 @@ function collectPanelContext(userName) {
 }
 function getPanelConfigFor(userName) {
     const context = collectPanelContext(userName);
+    const user = Array.from(context.allUsers.values()).find((u) => u.name === userName);
+    if (user) {
+        console.log(`📦 Preparing panel at panelConfigService for ${user.name} → ${user.state}`);
+    }
+    else {
+        console.warn(`⚠️ No user found in context for ${userName}`);
+    }
     return (0, panelBuilderRouter_1.panelBuilderRouter)(context);
 }

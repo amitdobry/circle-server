@@ -13,21 +13,20 @@ export function handleDeclineToSpeakAfterMicDropped(
     return;
   }
 
-  // ✅ Now update all states:
   for (const [socketId, user] of users.entries()) {
-    pointerMap.set(user.name, user.name === name ? name : null);
-    io.emit("update-pointing", {
-      from: user.name,
-      to: user.name === name ? name : null,
-    });
-    user.state =
-      user.name === name
-        ? "wantsToPickUpTheMic"
-        : "appendingConcentToPickUpTheMic";
+    if (user.name === name) {
+      pointerMap.set(user.name, null);
+      io.emit("update-pointing", { from: user.name, to: null });
+      user.state = "doesNotWantToPickUpTheMic";
+    } else {
+      // pointerMap.set(user.name, null);
+      // io.emit("update-pointing", { from: user.name, to: null });
+      // user.state = "regular"; // optional
+    }
     users.set(socketId, user);
   }
 
-  log(`✋ ${name} wishes to pick up the mic (post-drop)`);
+  log(`✋ ${name} does not whish to pick up the mic (post-drop)`);
 
   //   io.emit("mic-dropped", { name });
 

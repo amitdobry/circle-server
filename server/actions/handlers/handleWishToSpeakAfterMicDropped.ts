@@ -1,5 +1,5 @@
 import { getPanelConfigFor } from "../../panelConfigService";
-import { setLiveSpeaker } from "../../socketHandler";
+// import { setIsSyncPauseMode, setLiveSpeaker } from "../../socketHandler";
 import { ActionPayload, ActionContext } from "../routeAction";
 
 export function handleWishToSpeakAfterMicDropped(
@@ -32,10 +32,11 @@ export function handleWishToSpeakAfterMicDropped(
 
   log(`✋ ${name} wishes to pick up the mic (post-drop)`);
 
-  setLiveSpeaker("syncPauseMode");
+  // setIsSyncPauseMode(true);
 
   // ✅ 2. Refresh UI for all users
   for (const [socketId, user] of users.entries()) {
+    log(`📦 Preparing panel for ${user.name} → ${user.state}`);
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);
   }

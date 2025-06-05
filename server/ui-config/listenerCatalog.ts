@@ -7,6 +7,8 @@ import {
   testPanelListenerState6,
   testPanelListenerState7,
   testPanelListenerState8,
+  testPanelListenerState9,
+  testPanelListenerState10,
 } from "./listenerConfigs";
 import { ListenerPanelState } from "./ListenerPanelState";
 
@@ -50,5 +52,15 @@ export const listenerCatalog = {
     "state-8",
     "You’re asking to speak — waiting for group sync",
     testPanelListenerState8
+  ),
+  "state-9": new ListenerPanelState(
+    "state-9",
+    "You declined picking up the mic — waiting for group sync",
+    testPanelListenerState9
+  ),
+  "state-10": new ListenerPanelState(
+    "state-10",
+    "You concent candidate to up the mic — waiting for group sync",
+    testPanelListenerState10
   ),
 };

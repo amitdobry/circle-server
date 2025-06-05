@@ -356,8 +356,8 @@ export const testPanelListenerState7: PanelConfig = [
           "px-6 py-3 rounded-full text-base font-semibold border bg-emerald-500 text-white border-emerald-600 shadow hover:bg-emerald-600 hover:scale-105 hover:shadow-lg transition-all duration-200",
         button: {
           label: "👂 Concent",
-          type: "mic",
-          control: "point",
+          type: "listenerControl", // same routing as mic control
+          group: "mic",
           actionType: "concentNewSpeakerFromMicDropped",
           targetUser: "PLACEHOLDER", // 🛠️ will be replaced in code
         },
@@ -369,8 +369,9 @@ export const testPanelListenerState7: PanelConfig = [
           "px-6 py-3 rounded-full text-base font-semibold border bg-gray-100 text-gray-600 border-gray-300 shadow hover:bg-gray-200 hover:scale-105 hover:shadow-md transition-all duration-200",
         button: {
           label: "⏳ Not Yet",
-          type: "listenerAction",
+          type: "listenerControl",
           control: "declineRequest",
+          group: "mic",
           actionType: "declineRequestAfterMicDropped",
         },
       },
@@ -392,6 +393,44 @@ export const testPanelListenerState8: PanelConfig = [
         size: "md",
         align: "center",
         textClass: "text-gray-600 text-center font-medium",
+      },
+    ],
+  },
+];
+
+export const testPanelListenerState9: PanelConfig = [
+  {
+    id: "speaker-mic-drop-waiting",
+    layout: "column",
+    panelType: "speakerPanel",
+    label: "Mic Dropped",
+    blocks: [
+      {
+        id: "mic-drop-waiting-text",
+        type: "text",
+        content: "⏳ Waiting for others ...",
+        size: "md",
+        align: "center",
+        textClass: "text-center text-gray-600 font-medium",
+      },
+    ],
+  },
+];
+
+export const testPanelListenerState10: PanelConfig = [
+  {
+    id: "Concent-mic-drop-pickup",
+    layout: "column",
+    panelType: "speakerPanel",
+    label: "Mic Dropped",
+    blocks: [
+      {
+        id: "mic-drop-waiting-text",
+        type: "text",
+        content: "⏳ Concent *** to pick up the mic Waiting for others ...",
+        size: "md",
+        align: "center",
+        textClass: "text-center text-gray-600 font-medium",
       },
     ],
   },

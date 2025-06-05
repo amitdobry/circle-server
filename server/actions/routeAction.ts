@@ -22,7 +22,9 @@ type UserState =
   | "hasDroppedTheMic"
   | "micIsDropped"
   | "wantsToPickUpTheMic"
-  | "appendingConcentToPickUpTheMic";
+  | "appendingConcentToPickUpTheMic"
+  | "doesNotWantToPickUpTheMic"
+  | "waitingForOthersAfterMicDropAndConcentNewSpeaker";
 
 type ActionContext = {
   io: Server;
