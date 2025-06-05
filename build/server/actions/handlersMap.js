@@ -12,7 +12,7 @@ const handleUnSelectBrain_1 = require("./handlers/handleUnSelectBrain");
 const handleDropTheMic_1 = require("./handlers/handleDropTheMic");
 const handleWishToSpeakAfterMicDropped_1 = require("./handlers/handleWishToSpeakAfterMicDropped");
 const handleDeclineToSpeakAfterMicDropped_1 = require("./handlers/handleDeclineToSpeakAfterMicDropped");
-const handleConcentNewSpeakerFromMicDropped_1 = require("./handlers/handleConcentNewSpeakerFromMicDropped");
+const handleconcentNewSpeakerFromMicDropped_1 = require("./handlers/handleconcentNewSpeakerFromMicDropped");
 exports.handlersMap = {
     handleSyncedGesture: handleSyncedGesture_1.handleSyncedGesture,
     handleBreakSync: handleBreakSync_1.handleBreakSync,
@@ -25,5 +25,5 @@ exports.handlersMap = {
     handleDropTheMic: handleDropTheMic_1.handleDropTheMic,
     handleWishToSpeakAfterMicDropped: handleWishToSpeakAfterMicDropped_1.handleWishToSpeakAfterMicDropped,
     handleDeclineToSpeakAfterMicDropped: handleDeclineToSpeakAfterMicDropped_1.handleDeclineToSpeakAfterMicDropped,
-    handleConcentNewSpeakerFromMicDropped: handleConcentNewSpeakerFromMicDropped_1.handleConcentNewSpeakerFromMicDropped,
+    handleConcentNewSpeakerFromMicDropped: handleconcentNewSpeakerFromMicDropped_1.handleConcentNewSpeakerFromMicDropped,
 };
