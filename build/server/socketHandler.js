@@ -190,6 +190,7 @@ function setupSocketHandlers(io) {
             users.delete(socket.id);
             pointerMap.delete(user.name);
             (0, avatarManager_1.releaseAvatarByName)(user.name);
+            setIsSyncPauseMode(false);
             for (const [from, to] of pointerMap.entries()) {
                 if (to === user.name)
                     pointerMap.delete(from);

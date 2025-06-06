@@ -262,7 +262,7 @@ export function setupSocketHandlers(io: Server) {
       users.delete(socket.id);
       pointerMap.delete(user.name);
       releaseAvatarByName(user.name);
-
+      setIsSyncPauseMode(false);
       for (const [from, to] of pointerMap.entries()) {
         if (to === user.name) pointerMap.delete(from);
       }
