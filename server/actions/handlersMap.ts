@@ -8,9 +8,14 @@ import { ActionContext, ActionPayload } from "./routeAction";
 import { handleSelectBrain } from "./handlers/handleSelectBrain";
 import { handleUnSelectBrain } from "./handlers/handleUnSelectBrain";
 import { handleDropTheMic } from "./handlers/handleDropTheMic";
+import { handlePassTheMic } from "./handlers/handlePassTheMic";
 import { handleWishToSpeakAfterMicDropped } from "./handlers/handleWishToSpeakAfterMicDropped";
 import { handleDeclineToSpeakAfterMicDropped } from "./handlers/handleDeclineToSpeakAfterMicDropped";
 import { handleConcentNewSpeakerFromMicDropped } from "./handlers/handleconcentNewSpeakerFromMicDropped";
+import { handleDeclineNewCandidateRequestAfterMicDropped } from "./handlers/handleDeclineNewCandidateRequestAfterMicDropped";
+import { handleOpenChooseASpeakerFromPassTheMic } from "./handlers/handleOpenChooseASpeakerFromPassTheMic";
+import { handleOfferMicToUserFromPassTheMic } from "./handlers/handleOfferMicToUserFromPassTheMic";
+import { handleAcceptMicOfferFromPassTheMic } from "./handlers/handleAcceptMicOfferFromPassTheMic";
 
 export const handlersMap: Record<
   string,
@@ -25,7 +30,12 @@ export const handlersMap: Record<
   handleSelectBrain,
   handleUnSelectBrain,
   handleDropTheMic,
+  handlePassTheMic,
   handleWishToSpeakAfterMicDropped,
   handleDeclineToSpeakAfterMicDropped,
   handleConcentNewSpeakerFromMicDropped,
+  handleDeclineNewCandidateRequestAfterMicDropped,
+  handleOpenChooseASpeakerFromPassTheMic,
+  handleOfferMicToUserFromPassTheMic,
+  handleAcceptMicOfferFromPassTheMic,
 };

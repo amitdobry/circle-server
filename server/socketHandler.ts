@@ -130,32 +130,35 @@ export function setupSocketHandlers(io: Server) {
       sendCurrentLiveSpeaker(socket);
     });
 
-    socket.on("clientEmits", ({ name, type, subType, actionType }) => {
-      const user = users.get(socket.id);
+    socket.on(
+      "clientEmits",
+      ({ name, type, subType, actionType, targetUser }) => {
+        const user = users.get(socket.id);
 
-      if (!user) {
-        console.warn(`🛑 Rejected clientEmits — unknown socket ${socket.id}`);
-        return;
-      }
-
-      if (!["ear", "brain", "mouth", "mic"].includes(type)) {
-        console.warn(`🌀 Invalid ListenerEmit type: ${type}`);
-        return;
-      }
-
-      routeAction(
-        { name, type, subType, actionType },
-        {
-          io,
-          log: logToConsole,
-          pointerMap,
-          evaluateSync,
-          gestureCatalog,
-          socketId: socket.id,
-          users,
+        if (!user) {
+          console.warn(`🛑 Rejected clientEmits — unknown socket ${socket.id}`);
+          return;
         }
-      );
-    });
+
+        if (!["ear", "brain", "mouth", "mic"].includes(type)) {
+          console.warn(`🌀 Invalid ListenerEmit type: ${type}`);
+          return;
+        }
+
+        routeAction(
+          { name, type, subType, actionType, targetUser },
+          {
+            io,
+            log: logToConsole,
+            pointerMap,
+            evaluateSync,
+            gestureCatalog,
+            socketId: socket.id,
+            users,
+          }
+        );
+      }
+    );
 
     socket.on("leave", ({ name }) => {
       logToConsole(`👋 ${name} left manually`);

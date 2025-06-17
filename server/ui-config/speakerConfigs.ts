@@ -73,8 +73,8 @@ export const speakerPanelLive: PanelConfig =
             label: "Pass the Mic",
             icon: "🔄",
             type: "speakerControl",
-            control: "passMic",
-            actionType: "passMic",
+            control: "startPassMic",
+            actionType: "startPassMic",
             group: "mic",
           },
         },
@@ -125,6 +125,62 @@ export const panelSpeakerStateMicDropped: PanelConfig = [
         size: "md",
         align: "center",
         textClass: "text-center text-gray-600 font-medium",
+      },
+    ],
+  },
+];
+export const panelSpeakerStateStartPassingMic: PanelConfig = [
+  {
+    id: "pass-mic-header",
+    layout: "column",
+    panelType: "speakerPanel",
+    label: "Pass the Mic",
+    panelStyle: "flex flex-col items-center justify-center",
+    blocks: [
+      {
+        id: "pass-mic-instruction-text",
+        type: "text",
+        content: "Who do you want to invite to speak next?",
+        size: "lg",
+        align: "center",
+        textClass: "text-center text-gray-700 font-semibold mb-4",
+      },
+    ],
+  },
+  {
+    id: "pass-mic-button-panel",
+    layout: "row",
+    panelType: "speakerPanel",
+    label: "Mic Passing Options",
+    panelStyle: "flex flex-row justify-center gap-4 flex-wrap",
+    blocks: [
+      {
+        id: "pass-to-circle-btn",
+        type: "button",
+        buttonClass:
+          "px-5 py-3 rounded-full text-sm font-semibold border transition-all duration-200 bg-green-500 text-white border-green-600 hover:bg-green-600 hover:shadow-md hover:scale-105",
+        button: {
+          label: "Offer Mic to the Circle",
+          icon: "🌀",
+          actionType: "dropTheMic",
+          group: "mic",
+          type: "speakerControl",
+          control: "dropTheMic",
+        },
+      },
+      {
+        id: "pass-to-specific-btn",
+        type: "button",
+        buttonClass:
+          "px-5 py-3 rounded-full text-sm font-semibold border transition-all duration-200 bg-blue-500 text-white border-blue-600 hover:bg-blue-600 hover:shadow-md hover:scale-105",
+        button: {
+          label: "Choose a Speaker",
+          icon: "🎯",
+          type: "speakerControl",
+          actionType: "openChooseASpeakerFromPassTheMic",
+          control: "openChooseASpeakerFromPassTheMic",
+          group: "mic",
+        },
       },
     ],
   },

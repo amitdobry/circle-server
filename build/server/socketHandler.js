@@ -89,7 +89,7 @@ function setupSocketHandlers(io) {
             sendInitialPointerMap(socket);
             sendCurrentLiveSpeaker(socket);
         });
-        socket.on("clientEmits", ({ name, type, subType, actionType }) => {
+        socket.on("clientEmits", ({ name, type, subType, actionType, targetUser }) => {
             const user = users.get(socket.id);
             if (!user) {
                 console.warn(`🛑 Rejected clientEmits — unknown socket ${socket.id}`);
@@ -99,7 +99,7 @@ function setupSocketHandlers(io) {
                 console.warn(`🌀 Invalid ListenerEmit type: ${type}`);
                 return;
             }
-            (0, routeAction_1.routeAction)({ name, type, subType, actionType }, {
+            (0, routeAction_1.routeAction)({ name, type, subType, actionType, targetUser }, {
                 io,
                 log: logToConsole,
                 pointerMap,

@@ -10,6 +10,7 @@ type ActionPayload = {
   actionType?: string;
   from?: string;
   to?: string;
+  targetUser?: string; // ✅ Add this line
   // more fields in future...
 };
 type UserState =
@@ -21,6 +22,16 @@ type UserState =
   | "hasClickedBrain"
   | "hasDroppedTheMic"
   | "micIsDropped"
+  | "isPassingTheMic"
+  | "micPassInProcess"
+  | "isChoosingUserToPassMic"
+  | "micOfferReceivedFromPassTheMic"
+  | "awaitingUserMicOfferResolutionFromPassTheMic"
+  | "micOfferReceivedFromPassTheMic"
+  | "hasOfferedMicToUserFromPassTheMic"
+  | "awaitingUserMicOfferResolutionFromPassTheMic"
+  | "offerMicToUserFromPassTheMic"
+  | "acceptMicOfferFromPassTheMic"
   | "wantsToPickUpTheMic"
   | "appendingConcentToPickUpTheMic"
   | "doesNotWantToPickUpTheMic"

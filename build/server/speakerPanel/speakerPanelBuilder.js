@@ -9,6 +9,9 @@ function buildSpeakerPanel(ctx) {
     if (currentUser?.state === "hasDroppedTheMic") {
         stateId = "state-waiting-for-drop-the-mic";
     }
+    else if (currentUser?.state === "isPassingTheMic") {
+        stateId = "state-start-passing-mic";
+    }
     else if (interrupter) {
         stateId = "state-waiting";
     }

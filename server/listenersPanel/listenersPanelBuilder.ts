@@ -1,4 +1,5 @@
 import { PanelContext } from "../panelConfigService";
+import { PanelBlock } from "../types/blockTypes";
 import { listenerCatalog } from "../ui-config/listenerCatalog";
 
 export function buildListenerSyncPanel(ctx: PanelContext) {
@@ -37,6 +38,24 @@ export function buildListenerSyncPanel(ctx: PanelContext) {
       break;
     case "waitingForOthersAfterMicDropAndConcentNewSpeaker":
       stateKey = "state-10";
+      break;
+    case "hasDroppedTheMic":
+      stateKey = "state-11";
+      break;
+    case "micPassInProcess":
+      stateKey = "state-12";
+      break;
+    case "isChoosingUserToPassMic":
+      stateKey = "state-13";
+      break;
+    case "micOfferReceivedFromPassTheMic":
+      stateKey = "state-14";
+      break;
+    case "hasOfferedMicToUserFromPassTheMic":
+      stateKey = "state-15";
+      break;
+    case "awaitingUserMicOfferResolutionFromPassTheMic":
+      stateKey = "state-16";
       break;
   }
 
@@ -151,6 +170,89 @@ export function buildListenerSyncPanel(ctx: PanelContext) {
         block.blocks.forEach((b) => {
           if (b.id === "speaker-candidate-waiting-text") {
             b.content = `⏳ You’ve gave concent for ${name} to speak. Waiting for the group to sync with you...`;
+          }
+        });
+      }
+    });
+  }
+
+  // 👤 Dynamic participant buttons (state-13)
+  if (stateKey === "state-13") {
+    const currentUserName = ctx.userName;
+    const otherUsers = Array.from(ctx.allUsers.values())
+      .filter((u) => u.name !== currentUserName)
+      .map<PanelBlock>((user, index) => ({
+        id: `choose-${user.name.toLowerCase()}-btn`,
+        type: "button",
+        buttonClass:
+          "px-5 py-3 rounded-full text-sm font-semibold border transition-all duration-200 bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200 hover:shadow-md hover:scale-105",
+        button: {
+          label: user.name,
+          type: "listenerControl",
+          actionType: "offerMicToUserFromPassTheMic",
+          targetUser: user.name,
+          group: "mic",
+        },
+      }));
+
+    config.forEach((block) => {
+      if (block.id === "choose-user-button-panel") {
+        block.blocks = otherUsers;
+      }
+    });
+  }
+
+  // 🗣️ Mic offer received — inject speaker name into prompt
+  if (stateKey === "state-14") {
+    const speaker = Array.from(ctx.allUsers.values()).find(
+      (u) => u.state === "hasOfferedMicToUserFromPassTheMic"
+    );
+    const speakerName = speaker?.name || "Someone";
+
+    config.forEach((block) => {
+      if (block.id === "mic-offer-received") {
+        block.blocks.forEach((b) => {
+          if (b.id === "mic-offer-text") {
+            b.content = `🎤 ${speakerName} wants to pass you the mic. Will you speak?`;
+          }
+        });
+      }
+    });
+  }
+
+  if (stateKey === "state-15") {
+    const targetUser = Array.from(ctx.allUsers.values()).find(
+      (u) => u.state === "micOfferReceivedFromPassTheMic"
+    );
+    const targetName = targetUser?.name || "someone";
+
+    config.forEach((block) => {
+      if (block.id === "waiting-for-mic-acceptance") {
+        block.blocks.forEach((b) => {
+          if (b.id === "waiting-text") {
+            b.content = `⏳ Waiting for ${targetName} to decide whether to accept the mic...`;
+          }
+        });
+      }
+    });
+  }
+
+  if (stateKey === "state-16") {
+    const speaker = Array.from(ctx.allUsers.values()).find(
+      (u) => u.state === "hasOfferedMicToUserFromPassTheMic"
+    );
+    const target = Array.from(ctx.allUsers.values()).find(
+      (u) => u.state === "micOfferReceivedFromPassTheMic"
+    );
+
+    const speakerName = speaker?.name || "someone";
+    const targetName = target?.name || "someone";
+
+    config.forEach((block) => {
+      if (block.id === "others-await-offer-result") {
+        block.blocks.forEach((b) => {
+          if (b.id === "watching-offer-text") {
+            b.content = `🎤 ${speakerName} has offered the mic to ${targetName}, who is deciding whether to speak.`;
           }
         });
       }

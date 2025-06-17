@@ -372,7 +372,7 @@ export const testPanelListenerState7: PanelConfig = [
           type: "listenerControl",
           control: "declineRequest",
           group: "mic",
-          actionType: "declineRequestAfterMicDropped",
+          actionType: "declineNewCandidateRequestAfterMicDropped",
         },
       },
     ],
@@ -431,6 +431,214 @@ export const testPanelListenerState10: PanelConfig = [
         size: "md",
         align: "center",
         textClass: "text-center text-gray-600 font-medium",
+      },
+    ],
+  },
+];
+export const testPanelListenerState11: PanelConfig = [
+  {
+    id: "post-speaker-mic-drop-waiting",
+    layout: "column",
+    panelType: "speakerPanel",
+    label: "Mic Dropped",
+    blocks: [
+      {
+        id: "mic-drop-waiting-text",
+        type: "text",
+        content: "🎤 You dropped the mic. Waiting for the group to respond...",
+        size: "md",
+        align: "center",
+        textClass: "text-center text-gray-600 font-medium",
+      },
+    ],
+  },
+];
+
+export const testPanelListenerState12: PanelConfig = [
+  {
+    id: "mic-pass-pending-panel",
+    layout: "column",
+    panelType: "statusPanel",
+    panelStyle: "flex flex-col items-center justify-center px-4 py-6",
+    label: "Awaiting Mic Transition",
+    blocks: [
+      {
+        id: "mic-pass-waiting-text",
+        type: "text",
+        content: "🎤 The speaker is preparing to pass the mic...",
+        size: "lg",
+        align: "center",
+        textClass: "text-gray-700 text-base font-semibold text-center",
+      },
+      {
+        id: "mic-pass-subtext",
+        type: "text",
+        content: "Please stay tuned — a new voice may emerge soon.",
+        size: "sm",
+        align: "center",
+        textClass: "text-gray-500 text-sm mt-2 text-center",
+      },
+    ],
+  },
+];
+
+export const testPanelListenerState13: PanelConfig = [
+  {
+    id: "choose-user-header",
+    layout: "column",
+    panelType: "speakerPanel",
+    label: "Choose a Speaker",
+    panelStyle: "flex flex-col items-center justify-center",
+    blocks: [
+      {
+        id: "choose-user-instruction-text",
+        type: "text",
+        content: "Choose someone to pass the mic to:",
+        size: "lg",
+        align: "center",
+        textClass: "text-center text-gray-700 font-semibold mb-4",
+      },
+    ],
+  },
+  {
+    id: "choose-user-button-panel",
+    layout: "row",
+    panelType: "speakerPanel",
+    label: "Participants",
+    panelStyle: "flex flex-row justify-center gap-4 flex-wrap",
+    blocks: [
+      {
+        id: "choose-amit-btn",
+        type: "button",
+        buttonClass:
+          "px-5 py-3 rounded-full text-sm font-semibold border transition-all duration-200 bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200 hover:shadow-md hover:scale-105",
+        button: {
+          label: "Amit",
+          type: "mic",
+          actionType: "offerMicToUserFromPassTheMic",
+          targetUser: "Amit",
+        },
+      },
+      {
+        id: "choose-oren-btn",
+        type: "button",
+        buttonClass:
+          "px-5 py-3 rounded-full text-sm font-semibold border transition-all duration-200 bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200 hover:shadow-md hover:scale-105",
+        button: {
+          label: "Oren",
+          type: "mic",
+          actionType: "offerMicToUserFromPassTheMic",
+          targetUser: "Oren",
+        },
+      },
+      {
+        id: "choose-leeron-btn",
+        type: "button",
+        buttonClass:
+          "px-5 py-3 rounded-full text-sm font-semibold border transition-all duration-200 bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200 hover:shadow-md hover:scale-105",
+        button: {
+          label: "Leeron",
+          type: "mic",
+          actionType: "offerMicToUserFromPassTheMic",
+          targetUser: "Leeron",
+        },
+      },
+    ],
+  },
+];
+
+export const panelListenerMicOfferReceived: PanelConfig = [
+  {
+    id: "mic-offer-received",
+    layout: "column",
+    panelType: "listenerSyncPanel",
+    label: "Mic Offer",
+    panelStyle: "flex flex-col items-center justify-center gap-4",
+    blocks: [
+      {
+        id: "mic-offer-text",
+        type: "text",
+        content: "🎤 [SpeakerName] wants to pass you the mic. Will you speak?",
+        size: "lg",
+        align: "center",
+        textClass: "text-center text-gray-700 font-semibold",
+      },
+    ],
+  },
+  {
+    id: "mic-offer-buttons",
+    layout: "row",
+    panelType: "listenerSyncPanel",
+    label: "Mic Offer Response",
+    panelStyle: "flex flex-row justify-center gap-4",
+    blocks: [
+      {
+        id: "mic-accept-btn",
+        type: "button",
+        buttonClass:
+          "px-6 py-3 rounded-full bg-emerald-500 text-white font-semibold hover:bg-emerald-600 hover:scale-105 transition-all",
+        button: {
+          label: "Yes, I’ll speak",
+          type: "listenerControl",
+          control: "acceptRequest",
+          group: "mic",
+          actionType: "acceptMicOfferFromPassTheMic",
+        },
+      },
+      {
+        id: "mic-decline-btn",
+        type: "button",
+        buttonClass:
+          "px-6 py-3 rounded-full bg-gray-300 text-gray-800 font-semibold hover:bg-gray-400 hover:scale-105 transition-all",
+        button: {
+          label: "No, not now",
+          type: "listenerControl",
+          control: "declineRequest",
+          group: "mic",
+          actionType: "declineNewCandidateRequestAfterMicDropped",
+        },
+      },
+    ],
+  },
+];
+
+export const panelSpeakerWaitingForMicAcceptance: PanelConfig = [
+  {
+    id: "waiting-for-mic-acceptance",
+    layout: "column",
+    panelType: "speakerPanel",
+    label: "Waiting for Response",
+    panelStyle: "flex flex-col items-center justify-center gap-4",
+    blocks: [
+      {
+        id: "waiting-text",
+        type: "text",
+        content:
+          "⏳ Waiting for [TargetName] to decide whether to accept the mic...",
+        size: "md",
+        align: "center",
+        textClass: "text-center text-gray-600 font-medium",
+      },
+    ],
+  },
+];
+
+export const panelListenersWatchingMicOffer: PanelConfig = [
+  {
+    id: "others-await-offer-result",
+    layout: "column",
+    panelType: "statusPanel",
+    label: "Mic is Being Offered",
+    panelStyle: "flex flex-col items-center justify-center gap-4",
+    blocks: [
+      {
+        id: "watching-offer-text",
+        type: "text",
+        content:
+          "🎤 [TargetName] has been offered the mic and is deciding whether to speak.",
+        size: "md",
+        align: "center",
+        textClass: "text-center text-gray-500 font-medium",
       },
     ],
   },

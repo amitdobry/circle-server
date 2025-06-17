@@ -45,6 +45,11 @@ export const config = [
     handler: "handleDropTheMic",
   },
   {
+    actionType: "startPassMic",
+    type: "mic",
+    handler: "handlePassTheMic",
+  },
+  {
     actionType: "wishToSpeakAfterMicDropped",
     type: "mic",
     handler: "handleWishToSpeakAfterMicDropped",
@@ -55,8 +60,28 @@ export const config = [
     handler: "handleDeclineToSpeakAfterMicDropped",
   },
   {
+    actionType: "declineNewCandidateRequestAfterMicDropped",
+    type: "mic",
+    handler: "handleDeclineNewCandidateRequestAfterMicDropped",
+  },
+  {
     actionType: "concentNewSpeakerFromMicDropped",
     type: "mic",
     handler: "handleConcentNewSpeakerFromMicDropped",
+  },
+  {
+    actionType: "openChooseASpeakerFromPassTheMic",
+    type: "mic",
+    handler: "handleOpenChooseASpeakerFromPassTheMic",
+  },
+  {
+    actionType: "offerMicToUserFromPassTheMic",
+    type: "mic",
+    handler: "handleOfferMicToUserFromPassTheMic",
+  },
+  {
+    actionType: "acceptMicOfferFromPassTheMic",
+    type: "mic",
+    handler: "handleAcceptMicOfferFromPassTheMic",
   },
 ];

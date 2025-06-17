@@ -41,18 +41,6 @@ function buildAttentionPanel(ctx) {
     };
     // Hide button (client can wire it to toggle visibility)
     const hideAttention = attentionCatalog_1.attentionCatalog["hide-panel"];
-    // const hideButton: AttentionButtonBlock = {
-    //   id: "hide-panel",
-    //   type: "button",
-    //   panelType: "attentionPanel",
-    //   button: {
-    //     label: hideAttention.label,
-    //     attentionCode: hideAttention.code,
-    //     color: hideAttention.color,
-    //     tailwind: hideAttention.tailwind,
-    //     actionType: hideAttention.actionType,
-    //   },
-    // };
     return [
         {
             id: "attention-glow",
