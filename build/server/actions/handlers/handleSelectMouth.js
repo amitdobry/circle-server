@@ -5,15 +5,15 @@ const avatarManager_1 = require("../../avatarManager"); // adjust path if needed
 const panelConfigService_1 = require("../../panelConfigService");
 function handleSelectMouth(payload, context) {
     const { name: mouthClickerName } = payload;
-    const { users, io, log, evaluateSync } = context;
+    const { users, io, logAction, logSystem, evaluateSync } = context;
     if (!mouthClickerName) {
-        log("🚨 Missing 'name' in selectMouth payload.");
+        logSystem("🚨 Missing 'name' in selectMouth payload.");
         return;
     }
     const avatarId = Array.from(users.values()).find((u) => u.name === mouthClickerName)
         ?.avatarId || "";
     const emoji = avatarManager_1.emojiLookup[avatarId] || "";
-    log(`✋ ${emoji} ${mouthClickerName} clicked mouth — requesting to interrupt`);
+    logAction(`✋ ${emoji} ${mouthClickerName} clicked mouth — requesting to interrupt`);
     // ✅ Find the speaker FIRST (before changing any states)
     const speakerEntry = Array.from(users.entries()).find(([, user]) => user.state === "speaking");
     // ✅ Now update all states:

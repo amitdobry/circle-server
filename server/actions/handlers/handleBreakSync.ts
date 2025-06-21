@@ -5,16 +5,16 @@ export function handleBreakSync(
   context: ActionContext
 ) {
   const { name } = payload;
-  const { pointerMap, io, log, evaluateSync } = context;
+  const { pointerMap, io, logAction, logSystem, evaluateSync } = context;
 
   if (!name) {
-    log("🚨 Missing name in handleBreakSync payload.");
+    logSystem("🚨 Missing name in handleBreakSync payload.");
     return;
   }
 
   pointerMap.set(name, name);
   io.emit("update-pointing", { from: name, to: name });
-  log(`👄 ${name} requests the mic (breakSync)`);
+  logAction(`👄 ${name} requests the mic (breakSync)`);
 
   evaluateSync();
 }

@@ -6,10 +6,10 @@ export function handlePauseForThought(
   context: ActionContext
 ) {
   const { name, type, subType } = payload;
-  const { gestureCatalog, io, log } = context;
+  const { gestureCatalog, io, logAction, logSystem } = context;
 
   if (!name || !type || !subType) {
-    log("🚨 Missing data in handlePauseForThought payload.");
+    logSystem("🚨 Missing data in handlePauseForThought payload.");
     return;
   }
 
@@ -20,11 +20,11 @@ export function handlePauseForThought(
   const gesture = group[subType];
 
   if (!gesture) {
-    log(`🚫 Unknown gesture for pause: ${type}:${subType}`);
+    logSystem(`🚫 Unknown gesture for pause: ${type}:${subType}`);
     return;
   }
 
-  log(`🧠 ${name} requested silence: "${gesture.label}"`);
+  logAction(`🧠 ${name} requested silence: "${gesture.label}"`);
 
   io.emit("PauseForThought", {
     by: name,

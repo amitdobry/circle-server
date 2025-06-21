@@ -4,12 +4,12 @@ exports.handleUnselectMouth = handleUnselectMouth;
 const panelConfigService_1 = require("../../panelConfigService");
 function handleUnselectMouth(payload, context) {
     const { name } = payload;
-    const { users, io, log } = context;
+    const { users, io, logSystem, logAction } = context;
     if (!name) {
-        log("🚨 Missing name in unselect payload");
+        logSystem("🚨 Missing name in unselect payload");
         return;
     }
-    log(`↩️ ${name} unselected mouth gesture`);
+    logAction(`↩️ ${name} unselected mouth gesture`);
     // Reset all listeners to "regular"
     for (const [socketId, user] of users.entries()) {
         if (user.name === name || user.state === "waiting") {

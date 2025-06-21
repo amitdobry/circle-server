@@ -5,12 +5,12 @@ const panelConfigService_1 = require("../../panelConfigService");
 const socketHandler_1 = require("../../socketHandler");
 function handleOfferMicToUserFromPassTheMic(payload, context) {
     const { name, targetUser } = payload;
-    const { users, pointerMap, io, log, evaluateSync } = context;
+    const { users, pointerMap, io, logSystem, logAction, evaluateSync } = context;
     if (!name || !targetUser) {
-        log("🚨 Missing name or targetUser in mic pass handler");
+        logSystem("🚨 Missing name or targetUser in mic pass handler");
         return;
     }
-    log(`🎤 ${name} offered the mic to ${targetUser}`);
+    logAction(`🎤 ${name} offered the mic to ${targetUser}`);
     // Then use users map to update states accordingly
     for (const [socketId, user] of users.entries()) {
         if (user.name === name) {

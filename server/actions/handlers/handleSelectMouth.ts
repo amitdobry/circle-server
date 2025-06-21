@@ -7,10 +7,10 @@ export function handleSelectMouth(
   context: ActionContext
 ) {
   const { name: mouthClickerName } = payload;
-  const { users, io, log, evaluateSync } = context;
+  const { users, io, logAction, logSystem, evaluateSync } = context;
 
   if (!mouthClickerName) {
-    log("🚨 Missing 'name' in selectMouth payload.");
+    logSystem("🚨 Missing 'name' in selectMouth payload.");
     return;
   }
 
@@ -19,7 +19,7 @@ export function handleSelectMouth(
       ?.avatarId || "";
   const emoji = emojiLookup[avatarId] || "";
 
-  log(
+  logAction(
     `✋ ${emoji} ${mouthClickerName} clicked mouth — requesting to interrupt`
   );
 

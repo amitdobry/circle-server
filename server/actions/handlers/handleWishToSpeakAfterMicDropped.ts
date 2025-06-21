@@ -7,10 +7,10 @@ export function handleWishToSpeakAfterMicDropped(
   context: ActionContext
 ) {
   const { name } = payload;
-  const { users, pointerMap, io, log, evaluateSync } = context;
+  const { users, pointerMap, io, logSystem, logAction, evaluateSync } = context;
 
   if (!name) {
-    log("🚨 Missing name in handleBreakSync payload.");
+    logSystem("🚨 Missing name in handleBreakSync payload.");
     return;
   }
   // ✅ 1. Set pointing and assign states
@@ -30,13 +30,13 @@ export function handleWishToSpeakAfterMicDropped(
     users.set(socketId, user);
   }
 
-  log(`✋ ${name} wishes to pick up the mic (post-drop)`);
+  logAction(`✋ ${name} wishes to pick up the mic (post-drop)`);
 
   // setIsSyncPauseMode(true);
 
   // ✅ 2. Refresh UI for all users
   for (const [socketId, user] of users.entries()) {
-    log(`📦 Preparing panel for ${user.name} → ${user.state}`);
+    logSystem(`📦 Preparing panel for ${user.name} → ${user.state}`);
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);
   }

@@ -4,12 +4,12 @@ exports.handleAcceptMicOfferFromPassTheMic = handleAcceptMicOfferFromPassTheMic;
 const panelConfigService_1 = require("../../panelConfigService");
 function handleAcceptMicOfferFromPassTheMic(payload, context) {
     const { name } = payload;
-    const { users, io, log, evaluateSync, pointerMap } = context;
+    const { users, io, logAction, logSystem, evaluateSync, pointerMap } = context;
     if (!name) {
-        log("🚨 Missing name in acceptMicOffer handler.");
+        logSystem("🚨 Missing name in acceptMicOffer handler.");
         return;
     }
-    log(`🙋 ${name} accepted the mic — starting group consent process.`);
+    logSystem(`🙋 ${name} accepted the mic — starting group consent process.`);
     let postSpeakerName = undefined;
     // Step 1: Assign states
     for (const [socketId, user] of users.entries()) {

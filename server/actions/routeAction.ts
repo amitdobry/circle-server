@@ -39,7 +39,8 @@ type UserState =
 
 type ActionContext = {
   io: Server;
-  log: (msg: string) => void;
+  logSystem: (msg: string) => void;
+  logAction: (msg: string) => void;
   pointerMap: Map<string, string | null>;
   evaluateSync: () => void;
   gestureCatalog: typeof gestureCatalog;

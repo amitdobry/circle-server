@@ -5,9 +5,9 @@ const panelConfigService_1 = require("../../panelConfigService");
 const socketHandler_1 = require("../../socketHandler");
 function handlePassTheMic(payload, context) {
     const { name } = payload;
-    const { users, pointerMap, io, log, evaluateSync } = context;
+    const { users, pointerMap, io, logSystem, logAction, evaluateSync } = context;
     if (!name) {
-        log("🚨 Missing name in handleBreakSync payload.");
+        logSystem("🚨 Missing name in handleBreakSync payload.");
         return;
     }
     // ✅ Now update all states:
@@ -24,7 +24,7 @@ function handlePassTheMic(payload, context) {
         }
         users.set(socketId, user);
     }
-    log(`👄 ${name} is going to pass the mic (breakSync)`);
+    logAction(`👄 ${name} is going to pass the mic (breakSync)`);
     //   io.emit("mic-dropped", { name });
     // setLiveSpeaker(null);
     (0, socketHandler_1.setIsSyncPauseMode)(true);

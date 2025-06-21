@@ -7,10 +7,10 @@ export function handleDropTheMic(
   context: ActionContext
 ) {
   const { name } = payload;
-  const { users, pointerMap, io, log, evaluateSync } = context;
+  const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
 
   if (!name) {
-    log("🚨 Missing name in handleBreakSync payload.");
+    logSystem("🚨 Missing name in handleBreakSync payload.");
     return;
   }
 
@@ -28,14 +28,14 @@ export function handleDropTheMic(
     users.set(socketId, user);
   }
 
-  log(`👄 ${name} dropped the mic (breakSync)`);
+  logAction(`👄 ${name} dropped the mic (breakSync)`);
   //   io.emit("mic-dropped", { name });
   // setLiveSpeaker(null);
   setIsSyncPauseMode(true);
 
   for (const [socketId, user] of users.entries()) {
     const config = getPanelConfigFor(user.name);
-    // console.log(
+    // console.logAction(
     //   "[Server] Sending config panel from handleWishToSpeak config:",
     //   JSON.stringify(config, null, 2)
     // );

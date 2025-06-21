@@ -7,10 +7,10 @@ export function handlePassTheMic(
   context: ActionContext
 ) {
   const { name } = payload;
-  const { users, pointerMap, io, log, evaluateSync } = context;
+  const { users, pointerMap, io, logSystem, logAction, evaluateSync } = context;
 
   if (!name) {
-    log("🚨 Missing name in handleBreakSync payload.");
+    logSystem("🚨 Missing name in handleBreakSync payload.");
     return;
   }
 
@@ -28,7 +28,7 @@ export function handlePassTheMic(
     users.set(socketId, user);
   }
 
-  log(`👄 ${name} is going to pass the mic (breakSync)`);
+  logAction(`👄 ${name} is going to pass the mic (breakSync)`);
   //   io.emit("mic-dropped", { name });
   // setLiveSpeaker(null);
   setIsSyncPauseMode(true);

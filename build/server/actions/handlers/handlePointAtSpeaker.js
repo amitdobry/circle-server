@@ -4,9 +4,9 @@ exports.handlePointAtSpeaker = handlePointAtSpeaker;
 const avatarManager_1 = require("../../avatarManager"); // adjust path if needed
 function handlePointAtSpeaker(payload, context) {
     const { from, to } = payload;
-    const { pointerMap, users, io, log, evaluateSync } = context;
+    const { pointerMap, users, io, logAction, logSystem, evaluateSync } = context;
     if (!from || !to) {
-        log("🚨 Missing 'from' or 'to' in pointAtSpeaker payload.");
+        logSystem("🚨 Missing 'from' or 'to' in pointAtSpeaker payload.");
         return;
     }
     pointerMap.set(from, to);
@@ -14,10 +14,10 @@ function handlePointAtSpeaker(payload, context) {
     const avatarId = Array.from(users.values()).find((u) => u.name === from)?.avatarId || "";
     const emoji = avatarManager_1.emojiLookup[avatarId] || "";
     if (from === to) {
-        log(`✋ ${emoji} ${from} wishes to speak`);
+        logAction(`✋ ${emoji} ${from} wishes to speak`);
     }
     else {
-        log(`🔁 ${emoji} ${from} ➡️ ${to}`);
+        logAction(`🔁 ${emoji} ${from} ➡️ ${to}`);
     }
     evaluateSync();
 }

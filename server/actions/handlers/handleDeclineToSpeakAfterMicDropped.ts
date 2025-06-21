@@ -7,10 +7,10 @@ export function handleDeclineToSpeakAfterMicDropped(
   context: ActionContext
 ) {
   const { name } = payload;
-  const { users, pointerMap, io, log, evaluateSync } = context;
+  const { users, pointerMap, io, logSystem, logAction, evaluateSync } = context;
 
   if (!name) {
-    log("🚨 Missing name in handleBreakSync payload.");
+    logSystem("🚨 Missing name in handleBreakSync payload.");
     return;
   }
 
@@ -34,11 +34,13 @@ export function handleDeclineToSpeakAfterMicDropped(
     users.set(socketId, user);
   }
 
-  log(`✋ ${name} does not whish to pick up the mic (post-drop)`);
+  logAction(`✋ ${name} does not whish to pick up the mic (post-drop)`);
 
   // 🔍 Check if ALL listeners declined
   if (declinedCount === totalEligibleUsers && totalEligibleUsers > 0) {
-    log(`📢 No one stepped up to take the mic — returning to attention phase`);
+    logAction(
+      `📢 No one stepped up to take the mic — returning to attention phase`
+    );
     setIsSyncPauseMode(false);
 
     // Optional: reset state and emit new panels

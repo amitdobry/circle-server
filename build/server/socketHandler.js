@@ -43,7 +43,7 @@ function setupSocketHandlers(io) {
             const avatar = users.get(socket.id)?.avatarId;
             console.log(`[Server] 🔔 'joined-table' received from socket ${socket.id}, name: ${name}`);
             const emoji = avatarManager_1.emojiLookup[avatar || ""] || "";
-            logToConsole(`🪑 ${emoji} ${name} has fully entered the table`);
+            emitSystemLog(`🪑 ${emoji} ${name} has fully entered the table`);
             sendCurrentUserListTo(socket); // send only to this socket
         });
         function sendCurrentUserListTo(socket) {
@@ -82,7 +82,7 @@ function setupSocketHandlers(io) {
                 interruptedBy: "",
             });
             const emoji = avatarManager_1.emojiLookup[avatarId] || "";
-            logToConsole(`👤 ${emoji} ${name} joined as ${avatarId}`);
+            emitSystemLog(`👤 ${emoji} ${name} joined as ${avatarId}`);
             socket.emit("join-approved", { name, avatarId });
             broadcastUserList();
             broadcastAvatarState();
@@ -101,7 +101,8 @@ function setupSocketHandlers(io) {
             }
             (0, routeAction_1.routeAction)({ name, type, subType, actionType, targetUser }, {
                 io,
-                log: logToConsole,
+                logSystem: emitSystemLog,
+                logAction: emitActionLog,
                 pointerMap,
                 evaluateSync,
                 gestureCatalog: gestureCatalog_1.gestureCatalog,
@@ -110,12 +111,12 @@ function setupSocketHandlers(io) {
             });
         });
         socket.on("leave", ({ name }) => {
-            logToConsole(`👋 ${name} left manually`);
+            emitSystemLog(`👋 ${name} left manually`);
             cleanupUser(socket);
         });
         socket.on("disconnect", () => {
             const user = users.get(socket.id);
-            logToConsole(`❌ ${user?.name || "Unknown"} disconnected`);
+            emitSystemLog(`❌ ${user?.name || "Unknown"} disconnected`);
             cleanupUser(socket);
         });
         socket.on("pointing", ({ from, to }) => {
@@ -128,7 +129,8 @@ function setupSocketHandlers(io) {
                 to,
             }, {
                 io,
-                log: logToConsole,
+                logSystem: emitSystemLog,
+                logAction: emitActionLog,
                 pointerMap,
                 evaluateSync,
                 gestureCatalog: gestureCatalog_1.gestureCatalog,
@@ -218,9 +220,23 @@ function setupSocketHandlers(io) {
                 socket.emit("live-speaker", { name: liveSpeaker });
             }
         }
-        function logToConsole(msg) {
-            io.emit("log-event", msg); // 🔥 everyone gets it
-            console.log(msg);
+        // function logToConsole(msg: string) {
+        //   io.emit("log-event", msg); // 🔥 everyone gets it
+        //   // io.emit("log-")
+        //   console.log(msg);
+        // }
+        function emitSystemLog(text) {
+            io.emit("system-log", text);
+            console.log("[SYSTEM]", text);
+        }
+        function emitActionLog(text) {
+            io.emit("action-log", text); // ✅ renamed
+            console.log("[ACTION]", text);
+        }
+        function emitTextLog(entry) {
+            const payload = { ...entry, timestamp: Date.now() };
+            io.emit("textlog:entry", payload);
+            console.log("[TEXT]", payload);
         }
         function evaluateSync() {
             const candidates = Array.from(users.values());
@@ -243,7 +259,7 @@ function setupSocketHandlers(io) {
             if (newLiveSpeaker !== liveSpeaker) {
                 liveSpeaker = newLiveSpeaker;
                 if (liveSpeaker) {
-                    logToConsole(`🎤 All attention on ${liveSpeaker}. Going LIVE.`);
+                    emitActionLog(`🎤 All attention on ${liveSpeaker}. Going LIVE.`);
                     // 💡 Reset concent-mode users to regular listeners
                     for (const [socketId, user] of users.entries()) {
                         if (user.name !== liveSpeaker) {
@@ -263,7 +279,7 @@ function setupSocketHandlers(io) {
                     }
                 }
                 else {
-                    logToConsole("🔇 No speaker in sync. Clearing Live tag.");
+                    emitActionLog("🔇 No speaker in sync. Clearing Live tag.");
                     io.emit("live-speaker-cleared");
                 }
             }

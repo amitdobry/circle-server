@@ -3,6 +3,7 @@ import {
   speakerPanelLive,
   speakerPanelWaiting,
   panelSpeakerStateMicDropped,
+  panelSpeakerStateStartPassingMic,
 } from "./speakerConfigs";
 
 export const speakerCatalog = {
@@ -20,5 +21,10 @@ export const speakerCatalog = {
     "state-waiting-for-drop-the-mic",
     "Speaker dropped the mic and is waiting",
     panelSpeakerStateMicDropped
+  ),
+  "state-start-passing-mic": new SpeakerPanelState(
+    "state-start-passing-mic",
+    "Speaker began process passing the mic",
+    panelSpeakerStateStartPassingMic
   ),
 };

@@ -5,9 +5,9 @@ const panelConfigService_1 = require("../../panelConfigService");
 const socketHandler_1 = require("../../socketHandler");
 function handleDeclineNewCandidateRequestAfterMicDropped(payload, context) {
     const { name } = payload;
-    const { users, pointerMap, io, log, evaluateSync } = context;
+    const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
     if (!name) {
-        log("🚨 Missing name in handleBreakSync payload.");
+        logSystem("🚨 Missing name in handleBreakSync payload.");
         return;
     }
     let MicPickerProspect = "";
@@ -21,7 +21,7 @@ function handleDeclineNewCandidateRequestAfterMicDropped(payload, context) {
         }
         users.set(socketId, user);
     }
-    log(`✋ ${name} declined ${MicPickerProspect} to pick up the mic, shifting back to attention selector`);
+    logAction(`✋ ${name} declined ${MicPickerProspect} to pick up the mic, shifting back to attention selector`);
     // 🔍 Check if ALL listeners declined
     (0, socketHandler_1.setIsSyncPauseMode)(false);
     // Optional: reset state and emit new panels

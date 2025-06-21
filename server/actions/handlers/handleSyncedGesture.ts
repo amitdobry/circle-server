@@ -6,7 +6,7 @@ export function handleSyncedGesture(
   context: ActionContext
 ) {
   const { name, type, subType } = payload;
-  const { gestureCatalog, log } = context;
+  const { gestureCatalog, logAction } = context;
 
   const group = gestureCatalog[type as keyof typeof gestureCatalog] as Record<
     string,
@@ -19,7 +19,7 @@ export function handleSyncedGesture(
   const label = gesture.label;
   const emoji = gesture.emoji;
 
-  log(`🎧 ${emoji} ${name} says: "${label}"`);
+  logAction(`🎧 ${emoji} ${name} says: "${label}"`);
   // context.io.emit("TextBoxUpdate", gesture.getBroadcastPayload(name));
   gesture.triggerEffect?.();
 }

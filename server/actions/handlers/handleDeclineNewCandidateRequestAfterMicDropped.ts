@@ -7,10 +7,10 @@ export function handleDeclineNewCandidateRequestAfterMicDropped(
   context: ActionContext
 ) {
   const { name } = payload;
-  const { users, pointerMap, io, log, evaluateSync } = context;
+  const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
 
   if (!name) {
-    log("🚨 Missing name in handleBreakSync payload.");
+    logSystem("🚨 Missing name in handleBreakSync payload.");
     return;
   }
 
@@ -27,7 +27,7 @@ export function handleDeclineNewCandidateRequestAfterMicDropped(
     users.set(socketId, user);
   }
 
-  log(
+  logAction(
     `✋ ${name} declined ${MicPickerProspect} to pick up the mic, shifting back to attention selector`
   );
 

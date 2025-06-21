@@ -4,12 +4,12 @@ exports.handleOpenChooseASpeakerFromPassTheMic = handleOpenChooseASpeakerFromPas
 const panelConfigService_1 = require("../../panelConfigService");
 function handleOpenChooseASpeakerFromPassTheMic(payload, context) {
     const { name } = payload;
-    const { users, io, log, evaluateSync } = context;
+    const { users, io, logSystem, logAction, evaluateSync } = context;
     if (!name) {
-        log("🚨 Missing name in handleOpenChooseASpeakerFromPassTheMic payload.");
+        logSystem("🚨 Missing name in handleOpenChooseASpeakerFromPassTheMic payload.");
         return;
     }
-    log(`🎯 ${name} is choosing a user to pass the mic to.`);
+    logAction(`🎯 ${name} is choosing a user to pass the mic to.`);
     for (const [socketId, user] of users.entries()) {
         if (user.name === name) {
             user.state = "isChoosingUserToPassMic";

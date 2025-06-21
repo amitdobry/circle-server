@@ -6,10 +6,12 @@ export function handleConcentNewSpeakerFromMicDropped(
   context: ActionContext
 ) {
   const { name } = payload;
-  const { users, pointerMap, io, log, evaluateSync } = context;
+  const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
 
   if (!name) {
-    log("🚨 Missing name in handleConcentNewSpeakerFromMicDropped payload.");
+    logSystem(
+      "🚨 Missing name in handleConcentNewSpeakerFromMicDropped payload."
+    );
     return;
   }
 
@@ -18,7 +20,7 @@ export function handleConcentNewSpeakerFromMicDropped(
 
   // 🧠 Find responder socket ID and the first "wantsToPickUpTheMic" user
   for (const [socketId, user] of users.entries()) {
-    log(`🔍 SCAN [${socketId}] ${user.name} → state: ${user.state}`);
+    logSystem(`🔍 SCAN [${socketId}] ${user.name} → state: ${user.state}`);
     if (user.name === name) {
       socketIdOfResponder = socketId;
     }
@@ -28,7 +30,7 @@ export function handleConcentNewSpeakerFromMicDropped(
   }
 
   if (!speakerCandidate || !socketIdOfResponder) {
-    log("🚨 Could not find speakerCandidate or responder.");
+    logSystem("🚨 Could not find speakerCandidate or responder.");
     return;
   }
 
@@ -42,11 +44,13 @@ export function handleConcentNewSpeakerFromMicDropped(
     users.set(socketIdOfResponder, responder);
   }
 
-  log(`👂 ${name} gave consent for ${speakerCandidate} to pick up the mic`);
+  logAction(
+    `👂 ${name} gave consent for ${speakerCandidate} to pick up the mic`
+  );
 
   // 🔁 Refresh panels for everyone
   for (const [socketId, user] of users.entries()) {
-    log(`📦 Preparing panel for ${user.name} → ${user.state}`);
+    logAction(`📦 Preparing panel for ${user.name} → ${user.state}`);
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);
   }

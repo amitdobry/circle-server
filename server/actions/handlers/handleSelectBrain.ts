@@ -7,10 +7,10 @@ export function handleSelectBrain(
   context: ActionContext
 ) {
   const { name: brainClickerName } = payload;
-  const { users, io, log, evaluateSync } = context;
+  const { users, io, logSystem, logAction, evaluateSync } = context;
 
   if (!brainClickerName) {
-    log("🚨 Missing 'name' in selectMouth payload.");
+    logSystem("🚨 Missing 'name' in selectMouth payload.");
     return;
   }
 
@@ -19,7 +19,7 @@ export function handleSelectBrain(
       ?.avatarId || "";
   const emoji = emojiLookup[avatarId] || "";
 
-  log(
+  logAction(
     `✋ ${emoji} ${brainClickerName} clicked brain — requesting to interrupt`
   );
 

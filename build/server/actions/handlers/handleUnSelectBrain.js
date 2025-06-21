@@ -4,12 +4,12 @@ exports.handleUnSelectBrain = handleUnSelectBrain;
 const panelConfigService_1 = require("../../panelConfigService");
 function handleUnSelectBrain(payload, context) {
     const { name } = payload;
-    const { users, io, log } = context;
+    const { users, io, logSystem, logAction } = context;
     if (!name) {
-        log("🚨 Missing name in unselect payload");
+        logSystem("🚨 Missing name in unselect payload");
         return;
     }
-    log(`↩️ ${name} unselected Brain gesture`);
+    logAction(`↩️ ${name} unselected Brain gesture`);
     // Reset all listeners to "regular"
     for (const [socketId, user] of users.entries()) {
         if (user.name === name || user.state === "waiting") {
