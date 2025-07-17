@@ -1,3 +1,6 @@
+import { Server } from "socket.io";
+import { GliffMessage, createGliffLog } from "../gliffLogService";
+
 export class Gesture {
   code: string;
   label: string;
@@ -35,7 +38,17 @@ export class Gesture {
     };
   }
 
-  triggerEffect() {
+  triggerEffect(io: Server, userName = "") {
+    const message: GliffMessage = {
+      userName,
+      message: {
+        messageType: "gesture",
+        content: this.label,
+        emoji: this.emoji,
+        timestamp: Date.now(),
+      },
+    };
+    createGliffLog(message, io);
     console.log(`🎆 Trigger effect: ${this.label}`);
   }
 

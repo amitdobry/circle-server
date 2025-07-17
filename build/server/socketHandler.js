@@ -13,6 +13,7 @@ const gestureCatalog_1 = require("./ui-config/gestureCatalog");
 const gesture_service_1 = require("./ui-config/gesture.service");
 const routeAction_1 = require("./actions/routeAction"); // adjust path if needed
 const panelConfigService_1 = require("./panelConfigService"); // or wherever you store them
+const gliffLogService_1 = require("./gliffLogService");
 const users = new Map(); // socketId -> { name, avatarId }
 const pointerMap = new Map(); // from -> to
 let liveSpeaker = null;
@@ -149,10 +150,14 @@ function setupSocketHandlers(io) {
                 return;
             }
             console.log(`📡 logBar:update from ${user.name}:`, text);
-            io.emit("logBar:update", {
-                text,
+            (0, gliffLogService_1.createGliffLog)({
                 userName,
-            });
+                message: {
+                    messageType: "textInput",
+                    content: text,
+                    timestamp: Date.now(),
+                },
+            }, io);
         });
         // Optional P2P (currently dormant)
         socket.on("peer-signal", ({ to, from, signal }) => {

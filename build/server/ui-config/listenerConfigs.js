@@ -68,9 +68,29 @@ exports.testPanelListenerState1 = [
 ];
 // State 2: Ear group active
 exports.testPanelListenerState2 = [
-    ...exports.testPanelListenerState1,
     {
-        id: "listener-ear-semi",
+        id: "listener-main-buttons",
+        layout: "row",
+        panelType: "listenerSyncPanel",
+        label: "main gesture buttons",
+        blocks: [
+            {
+                id: "think-btn",
+                type: "button",
+                buttonClass: "px-6 py-3 rounded-full text-base font-semibold border bg-gray-100 text-gray-700 border-gray-300 hover:bg-sky-400 hover:text-white hover:border-sky-500 transition",
+                buttonClassSelected: "px-6 py-3 rounded-full text-base font-semibold border bg-sky-400 text-white border-sky-500 hover:bg-gray-100 hover:text-gray-700 hover:border-gray-300 shadow-sm transition-colors duration-150",
+                button: {
+                    label: "Stop Reflecting",
+                    type: "gesture", // universal listener button type
+                    actionType: "unSelectEar", // open if closed, close if open
+                    group: "ear", // which group this belongs to
+                    control: "gesturePicking", // semantic meaning
+                },
+            },
+        ],
+    },
+    {
+        id: "ear-sub-gesture-buttons",
         layout: "row",
         panelType: "listenerSyncPanel",
         panelStyle: "flex flex-wrap gap-2 justify-center mt-2",
@@ -91,7 +111,7 @@ exports.testPanelListenerState2 = [
                 type: "button",
                 buttonClass: "px-4 py-2 rounded-full text-sm font-medium bg-orange-100 hover:bg-orange-200 text-orange-700",
                 button: {
-                    label: "😕 I'm confused",
+                    label: "😕 I'm confusedd",
                     type: "semiListenerAction",
                     actionType: "confused",
                 },
@@ -123,7 +143,7 @@ exports.testPanelListenerState3 = [
                 buttonClass: "px-6 py-3 rounded-full text-base font-semibold border bg-gray-100 text-gray-700 border-gray-300 hover:bg-sky-400 hover:text-white hover:border-sky-500 transition",
                 buttonClassSelected: "px-6 py-3 rounded-full text-base font-semibold border bg-sky-400 text-white border-sky-500 hover:bg-gray-100 hover:text-gray-700 hover:border-gray-300 shadow-sm transition-colors duration-150",
                 button: {
-                    label: "🧠 Think",
+                    label: "🧠 Stop Thinking",
                     type: "gesture", // universal listener button type
                     actionType: "unSelectBrain", // open if closed, close if open
                     group: "brain", // which group this belongs to

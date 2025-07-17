@@ -6,6 +6,7 @@ import { handlersMap } from "./handlersMap"; // we'll set this up
 type ActionPayload = {
   name?: string;
   type?: string;
+  code?: string;
   subType?: string;
   actionType?: string;
   from?: string;
@@ -18,6 +19,7 @@ type UserState =
   | "speaking"
   | "thinking"
   | "waiting"
+  | "hasClickedEar"
   | "hasClickedMouth"
   | "hasClickedBrain"
   | "hasDroppedTheMic"

@@ -21,5 +21,5 @@ export function handleSyncedGesture(
 
   logAction(`🎧 ${emoji} ${name} says: "${label}"`);
   // context.io.emit("TextBoxUpdate", gesture.getBroadcastPayload(name));
-  gesture.triggerEffect?.(io, name);
+  gesture.triggerEffect?.(io);
 }

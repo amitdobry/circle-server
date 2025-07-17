@@ -35,6 +35,16 @@ export const config = [
     handler: "handleSelectBrain",
   },
   {
+    actionType: "selectEar",
+    type: "ear",
+    handler: "handleSelectEar",
+  },
+  {
+    actionType: "unSelectEar",
+    type: "ear",
+    handler: "handleUnSelectEar",
+  },
+  {
     actionType: "unSelectBrain",
     type: "brain",
     handler: "handleUnSelectBrain",

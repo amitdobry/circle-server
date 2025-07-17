@@ -1,6 +1,7 @@
 import { PanelContext } from "../panelConfigService";
 import { PanelBlock } from "../types/blockTypes";
 import { listenerCatalog } from "../ui-config/listenerCatalog";
+import { getAllGestureButtons } from "../ui-config/gesture.service";
 
 export function buildListenerSyncPanel(ctx: PanelContext) {
   const currentUser = Array.from(ctx.allUsers.values()).find(
@@ -20,6 +21,9 @@ export function buildListenerSyncPanel(ctx: PanelContext) {
       break;
     case "hasClickedBrain":
       stateKey = "state-3";
+      break;
+    case "hasClickedEar":
+      stateKey = "state-2";
       break;
     case "waiting":
       stateKey = "state-5";
@@ -85,6 +89,35 @@ export function buildListenerSyncPanel(ctx: PanelContext) {
       });
     }
   });
+
+  // 🎯 Dynamic gesture sub-buttons (Ear group only)
+  if (stateKey === "state-2") {
+    const earGestures = getAllGestureButtons().ear;
+
+    const gesturePanelBlocks: PanelBlock[] = earGestures.map(
+      (gesture, idx) => ({
+        id: `ear-${gesture.subType}-${idx}`,
+        type: "button",
+        buttonClass: gesture.tailwind,
+        content: gesture.label, // optional
+        button: {
+          label: gesture.label,
+          type: "semiListenerAction", // or "listenerAction"
+          actionType: gesture.actionType ?? "selectEar",
+          group: "ear",
+          icon: gesture.emoji,
+          code: gesture.subType,
+          control: gesture,
+          targetUser: undefined,
+        },
+      })
+    );
+    config.forEach((block) => {
+      if (block.id === "ear-sub-gesture-buttons") {
+        block.blocks = gesturePanelBlocks;
+      }
+    });
+  }
 
   // 🧠 Interrupter injection (state-5)
   if (stateKey === "state-5") {

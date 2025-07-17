@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildListenerSyncPanel = buildListenerSyncPanel;
 const listenerCatalog_1 = require("../ui-config/listenerCatalog");
+const gesture_service_1 = require("../ui-config/gesture.service");
 function buildListenerSyncPanel(ctx) {
     const currentUser = Array.from(ctx.allUsers.values()).find((u) => u.name === ctx.userName);
     let stateKey = "state-1";
@@ -11,6 +12,9 @@ function buildListenerSyncPanel(ctx) {
             break;
         case "hasClickedBrain":
             stateKey = "state-3";
+            break;
+        case "hasClickedEar":
+            stateKey = "state-2";
             break;
         case "waiting":
             stateKey = "state-5";
@@ -69,6 +73,31 @@ function buildListenerSyncPanel(ctx) {
             });
         }
     });
+    // 🎯 Dynamic gesture sub-buttons (Ear group only)
+    if (stateKey === "state-2") {
+        const earGestures = (0, gesture_service_1.getAllGestureButtons)().ear;
+        const gesturePanelBlocks = earGestures.map((gesture, idx) => ({
+            id: `ear-${gesture.subType}-${idx}`,
+            type: "button",
+            buttonClass: gesture.tailwind,
+            content: gesture.label, // optional
+            button: {
+                label: gesture.label,
+                type: "semiListenerAction", // or "listenerAction"
+                actionType: gesture.actionType ?? "selectEar",
+                group: "ear",
+                icon: gesture.emoji,
+                code: gesture.subType,
+                control: gesture,
+                targetUser: undefined,
+            },
+        }));
+        config.forEach((block) => {
+            if (block.id === "ear-sub-gesture-buttons") {
+                block.blocks = gesturePanelBlocks;
+            }
+        });
+    }
     // 🧠 Interrupter injection (state-5)
     if (stateKey === "state-5") {
         const interrupter = Array.from(ctx.allUsers.values()).find((u) => u.state === "hasClickedMouth" || u.state === "hasClickedBrain");

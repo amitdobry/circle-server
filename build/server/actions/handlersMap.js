@@ -8,6 +8,7 @@ const handlePointAtSpeaker_1 = require("./handlers/handlePointAtSpeaker");
 const handleSelectMouth_1 = require("./handlers/handleSelectMouth");
 const handleUnSelectMouth_1 = require("./handlers/handleUnSelectMouth");
 const handleSelectBrain_1 = require("./handlers/handleSelectBrain");
+const handleSelectEar_1 = require("./handlers/handleSelectEar");
 const handleUnSelectBrain_1 = require("./handlers/handleUnSelectBrain");
 const handleDropTheMic_1 = require("./handlers/handleDropTheMic");
 const handlePassTheMic_1 = require("./handlers/handlePassTheMic");
@@ -18,6 +19,7 @@ const handleDeclineNewCandidateRequestAfterMicDropped_1 = require("./handlers/ha
 const handleOpenChooseASpeakerFromPassTheMic_1 = require("./handlers/handleOpenChooseASpeakerFromPassTheMic");
 const handleOfferMicToUserFromPassTheMic_1 = require("./handlers/handleOfferMicToUserFromPassTheMic");
 const handleAcceptMicOfferFromPassTheMic_1 = require("./handlers/handleAcceptMicOfferFromPassTheMic");
+const handleUnSelectEar_1 = require("./handlers/handleUnSelectEar");
 exports.handlersMap = {
     handleSyncedGesture: handleSyncedGesture_1.handleSyncedGesture,
     handleBreakSync: handleBreakSync_1.handleBreakSync,
@@ -27,6 +29,8 @@ exports.handlersMap = {
     handleUnselectMouth: handleUnSelectMouth_1.handleUnselectMouth,
     handleSelectBrain: handleSelectBrain_1.handleSelectBrain,
     handleUnSelectBrain: handleUnSelectBrain_1.handleUnSelectBrain,
+    handleSelectEar: handleSelectEar_1.handleSelectEar,
+    handleUnSelectEar: handleUnSelectEar_1.handleUnSelectEar,
     handleDropTheMic: handleDropTheMic_1.handleDropTheMic,
     handlePassTheMic: handlePassTheMic_1.handlePassTheMic,
     handleWishToSpeakAfterMicDropped: handleWishToSpeakAfterMicDropped_1.handleWishToSpeakAfterMicDropped,

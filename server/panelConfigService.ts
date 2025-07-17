@@ -15,6 +15,7 @@ type UserState =
   | "waiting"
   | "hasClickedMouth"
   | "hasClickedBrain"
+  | "hasClickedEar"
   | "micIsDropped"
   | "hasDroppedTheMic"
   | "isPassingTheMic"

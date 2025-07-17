@@ -19,7 +19,7 @@ export type PanelBlock =
   | TextBlock
   | SpacerBlock
   | AttentionButtonBlock
-  // | GestureButtonConfig
+  | GestureButtonConfig
   | ListenerButtonBlock;
 
 export type EmojiBlock = {
@@ -75,15 +75,15 @@ export type GestureButtonBlock = {
 };
 
 export type GestureButtonConfig = {
-  label: string;
-  attentionCode: string;
-  color: string;
-  tailwind: string;
-  actionType: string;
-  targetUser?: string;
-  group?: string;
-  icon?: string;
-  state?: string;
+  id: string;
+  content: string;
+  label: string; // e.g. "I'm confused"
+  actionType: string; // "pickGesture"
+  gestureCode: string; // "002" etc
+  group: "ear" | "brain" | "mouth";
+  icon: string; // e.g. "🤔"
+  control: "gesturePicking"; // used in emit
+  type: string;
 };
 
 export type AttentionButtonBlock = {

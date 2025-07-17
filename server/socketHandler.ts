@@ -11,6 +11,7 @@ import { gestureCatalog } from "./ui-config/gestureCatalog";
 import { getAllGestureButtons } from "./ui-config/gesture.service";
 import { routeAction } from "./actions/routeAction"; // adjust path if needed
 import { getPanelConfigFor } from "./panelConfigService"; // or wherever you store them
+import { createGliffLog } from "./gliffLogService";
 
 type GestureCatalogType = typeof gestureCatalog;
 type ListenerType = keyof GestureCatalogType; // "ear" | "brain" | "mouth"
@@ -216,10 +217,17 @@ export function setupSocketHandlers(io: Server) {
 
         console.log(`📡 logBar:update from ${user.name}:`, text);
 
-        io.emit("logBar:update", {
-          text,
-          userName,
-        });
+        createGliffLog(
+          {
+            userName,
+            message: {
+              messageType: "textInput",
+              content: text,
+              timestamp: Date.now(),
+            },
+          },
+          io
+        );
       }
     );
 

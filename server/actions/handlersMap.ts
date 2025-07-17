@@ -6,6 +6,7 @@ import { handleSelectMouth } from "./handlers/handleSelectMouth";
 import { handleUnselectMouth } from "./handlers/handleUnSelectMouth";
 import { ActionContext, ActionPayload } from "./routeAction";
 import { handleSelectBrain } from "./handlers/handleSelectBrain";
+import { handleSelectEar } from "./handlers/handleSelectEar";
 import { handleUnSelectBrain } from "./handlers/handleUnSelectBrain";
 import { handleDropTheMic } from "./handlers/handleDropTheMic";
 import { handlePassTheMic } from "./handlers/handlePassTheMic";
@@ -16,6 +17,7 @@ import { handleDeclineNewCandidateRequestAfterMicDropped } from "./handlers/hand
 import { handleOpenChooseASpeakerFromPassTheMic } from "./handlers/handleOpenChooseASpeakerFromPassTheMic";
 import { handleOfferMicToUserFromPassTheMic } from "./handlers/handleOfferMicToUserFromPassTheMic";
 import { handleAcceptMicOfferFromPassTheMic } from "./handlers/handleAcceptMicOfferFromPassTheMic";
+import { handleUnSelectEar } from "./handlers/handleUnSelectEar";
 
 export const handlersMap: Record<
   string,
@@ -29,6 +31,8 @@ export const handlersMap: Record<
   handleUnselectMouth,
   handleSelectBrain,
   handleUnSelectBrain,
+  handleSelectEar,
+  handleUnSelectEar,
   handleDropTheMic,
   handlePassTheMic,
   handleWishToSpeakAfterMicDropped,
