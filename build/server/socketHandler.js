@@ -17,6 +17,9 @@ const panelConfigService_1 = require("./panelConfigService"); // or wherever you
 const gliffLogService_1 = require("./gliffLogService");
 const users = new Map(); // socketId -> { name, avatarId }
 const sessionStartTime = new Date();
+// Panel request tracking
+const panelRequestCount = new Map(); // userName -> count
+const lastPanelRequest = new Map(); // userName -> timestamp
 // Session utilities
 function getSimpleSessionStats() {
     const currentTime = new Date();
@@ -135,8 +138,8 @@ function setupSocketHandlers(io) {
                 lastActivity: joinTime,
             });
             const emoji = avatarManager_1.emojiLookup[avatarId] || "";
-            console.log(formatSessionLog(`✅ ${emoji} ${name} joined as ${avatarId}`, "JOIN"));
-            emitSystemLog(`👤 ${emoji} ${name} joined as ${avatarId}`);
+            console.log(formatSessionLog(`✅ ${emoji} ${name} joined table as ${avatarId}`, "JOIN"));
+            emitSystemLog(`👤 ${emoji} ${name} joined table as ${avatarId}`);
             socket.emit("join-approved", { name, avatarId });
             broadcastUserList();
             broadcastAvatarState();
@@ -251,12 +254,16 @@ function setupSocketHandlers(io) {
                 console.warn("⚠️ No userName provided in request:panelConfig");
                 return;
             }
-            console.log(`🛠️ Building panel config for ${userName}`);
+            // Track panel request frequency
+            const now = Date.now();
+            const currentCount = (panelRequestCount.get(userName) || 0) + 1;
+            const lastRequest = lastPanelRequest.get(userName) || 0;
+            const timeSinceLastRequest = now - lastRequest;
+            panelRequestCount.set(userName, currentCount);
+            lastPanelRequest.set(userName, now);
+            console.log(formatSessionLog(`🛠️ [PANEL-DEBUG] Building panel config for ${userName} (socket: ${socket.id}) | Request #${currentCount} | ${timeSinceLastRequest}ms since last`, "INFO"));
             const config = (0, panelConfigService_1.getPanelConfigFor)(userName);
-            // console.log(
-            //   "[Server] Sending attention panel config:",
-            //   JSON.stringify(config, null, 2)
-            // );
+            console.log(formatSessionLog(`🛠️ [PANEL-DEBUG] Sending panel config to ${userName} (socket: ${socket.id})`, "INFO"));
             socket.emit("receive:panelConfig", config);
         });
         // Request: list of avatars
@@ -352,7 +359,9 @@ function setupSocketHandlers(io) {
                         userName: liveSpeaker,
                     });
                     for (const [socketId, user] of users.entries()) {
+                        console.log(formatSessionLog(`🛠️ [PANEL-DEBUG-SYNC] Building panel config for ${user.name} (socket: ${socketId}) during speaker sync`, "INFO"));
                         const config = (0, panelConfigService_1.getPanelConfigFor)(user.name);
+                        console.log(formatSessionLog(`🛠️ [PANEL-DEBUG-SYNC] Sending panel config to ${user.name} (socket: ${socketId}) during speaker sync`, "INFO"));
                         io.to(socketId).emit("receive:panelConfig", config);
                     }
                 }

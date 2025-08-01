@@ -12,6 +12,8 @@ import { getAllGestureButtons } from "./ui-config/gesture.service";
 import { routeAction } from "./actions/routeAction"; // adjust path if needed
 import { getPanelConfigFor } from "./panelConfigService"; // or wherever you store them
 import { createGliffLog } from "./gliffLogService";
+// Import session logic from BL layer
+import { formatSessionLog as blFormatSessionLog } from "./BL/sessionLogic";
 
 type GestureCatalogType = typeof gestureCatalog;
 type ListenerType = keyof GestureCatalogType; // "ear" | "brain" | "mouth"
@@ -34,6 +36,9 @@ type UserInfo = {
 
 const users = new Map<string, UserInfo>(); // socketId -> { name, avatarId }
 const sessionStartTime = new Date();
+// Panel request tracking
+const panelRequestCount = new Map<string, number>(); // userName -> count
+const lastPanelRequest = new Map<string, number>(); // userName -> timestamp
 
 // Session utilities
 function getSimpleSessionStats() {
@@ -214,9 +219,12 @@ export function setupSocketHandlers(io: Server) {
 
       const emoji = emojiLookup[avatarId] || "";
       console.log(
-        formatSessionLog(`✅ ${emoji} ${name} joined as ${avatarId}`, "JOIN")
+        formatSessionLog(
+          `✅ ${emoji} ${name} joined table as ${avatarId}`,
+          "JOIN"
+        )
       );
-      emitSystemLog(`👤 ${emoji} ${name} joined as ${avatarId}`);
+      emitSystemLog(`👤 ${emoji} ${name} joined table as ${avatarId}`);
 
       socket.emit("join-approved", { name, avatarId });
 
@@ -398,13 +406,29 @@ export function setupSocketHandlers(io: Server) {
         return;
       }
 
-      console.log(`🛠️ Building panel config for ${userName}`);
+      // Track panel request frequency
+      const now = Date.now();
+      const currentCount = (panelRequestCount.get(userName) || 0) + 1;
+      const lastRequest = lastPanelRequest.get(userName) || 0;
+      const timeSinceLastRequest = now - lastRequest;
+
+      panelRequestCount.set(userName, currentCount);
+      lastPanelRequest.set(userName, now);
+
+      console.log(
+        formatSessionLog(
+          `🛠️ [PANEL-DEBUG] Building panel config for ${userName} (socket: ${socket.id}) | Request #${currentCount} | ${timeSinceLastRequest}ms since last`,
+          "INFO"
+        )
+      );
 
       const config = getPanelConfigFor(userName);
-      // console.log(
-      //   "[Server] Sending attention panel config:",
-      //   JSON.stringify(config, null, 2)
-      // );
+      console.log(
+        formatSessionLog(
+          `🛠️ [PANEL-DEBUG] Sending panel config to ${userName} (socket: ${socket.id})`,
+          "INFO"
+        )
+      );
       socket.emit("receive:panelConfig", config);
     });
 
@@ -521,7 +545,19 @@ export function setupSocketHandlers(io: Server) {
             userName: liveSpeaker,
           });
           for (const [socketId, user] of users.entries()) {
+            console.log(
+              formatSessionLog(
+                `🛠️ [PANEL-DEBUG-SYNC] Building panel config for ${user.name} (socket: ${socketId}) during speaker sync`,
+                "INFO"
+              )
+            );
             const config = getPanelConfigFor(user.name);
+            console.log(
+              formatSessionLog(
+                `🛠️ [PANEL-DEBUG-SYNC] Sending panel config to ${user.name} (socket: ${socketId}) during speaker sync`,
+                "INFO"
+              )
+            );
             io.to(socketId).emit("receive:panelConfig", config);
           }
         } else {
