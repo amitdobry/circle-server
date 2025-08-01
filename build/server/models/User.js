@@ -44,47 +44,47 @@ const userSchema = new mongoose_1.Schema({
         type: String,
         required: true,
         trim: true,
-        maxlength: 50
+        maxlength: 50,
     },
     email: {
         type: String,
         required: true,
         unique: true,
         lowercase: true,
-        trim: true
+        trim: true,
     },
     password: {
         type: String,
         minlength: 6,
-        // Not required for Google OAuth users
+        // Not required for Google OAuth users or guest users
         required: function () {
-            return !this.googleId;
-        }
+            return !this.googleId && !this.email.includes("@guest.soulcircle.com");
+        },
     },
     googleId: {
         type: String,
         unique: true,
-        sparse: true // Allows multiple null values
+        sparse: true, // Allows multiple null values
     },
     avatar: {
         type: String,
-        default: null
+        default: null,
     },
     createdAt: {
         type: Date,
-        default: Date.now
+        default: Date.now,
     },
     lastLogin: {
         type: Date,
-        default: Date.now
-    }
+        default: Date.now,
+    },
 });
 // Index for faster queries
 userSchema.index({ email: 1 });
 userSchema.index({ googleId: 1 });
 // Hash password before saving
-userSchema.pre('save', async function (next) {
-    if (!this.isModified('password') || !this.password)
+userSchema.pre("save", async function (next) {
+    if (!this.isModified("password") || !this.password)
         return next();
     try {
         const salt = await bcryptjs_1.default.genSalt(12);
@@ -108,4 +108,4 @@ userSchema.methods.toJSON = function () {
     delete userObject.__v;
     return userObject;
 };
-exports.User = mongoose_1.default.model('User', userSchema);
+exports.User = mongoose_1.default.model("User", userSchema);

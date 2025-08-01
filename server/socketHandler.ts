@@ -28,9 +28,52 @@ type UserInfo = {
   avatarId: string;
   state: UserState;
   interruptedBy: string;
+  joinedAt: Date;
+  lastActivity: Date;
 };
 
 const users = new Map<string, UserInfo>(); // socketId -> { name, avatarId }
+const sessionStartTime = new Date();
+
+// Session utilities
+function getSimpleSessionStats() {
+  const currentTime = new Date();
+  const sessionDuration = Math.floor(
+    (currentTime.getTime() - sessionStartTime.getTime()) / 1000
+  );
+  const userCount = users.size;
+  const activeUsers = Array.from(users.values())
+    .map((u) => u.name)
+    .join(", ");
+
+  return {
+    userCount,
+    activeUsers,
+    sessionDuration,
+    sessionStartTime: sessionStartTime.toISOString(),
+  };
+}
+
+function formatSessionLog(
+  message: string,
+  type: "INFO" | "JOIN" | "LEAVE" | "ERROR" = "INFO"
+) {
+  const stats = getSimpleSessionStats();
+  const timestamp = new Date().toISOString();
+
+  return `[${timestamp}] [${type}] ${message} | Users: ${stats.userCount} (${
+    stats.activeUsers || "none"
+  }) | Session: ${Math.floor(stats.sessionDuration / 60)}m${
+    stats.sessionDuration % 60
+  }s`;
+}
+
+function updateUserActivity(socketId: string) {
+  const user = users.get(socketId);
+  if (user) {
+    user.lastActivity = new Date();
+  }
+}
 
 const pointerMap = new Map<string, string>(); // from -> to
 let liveSpeaker: string | null = null;
@@ -50,6 +93,32 @@ export function getPointerMap() {
   return pointerMap;
 }
 
+export function getSessionStats() {
+  const currentTime = new Date();
+  const sessionDuration = Math.floor(
+    (currentTime.getTime() - sessionStartTime.getTime()) / 1000
+  );
+  const userCount = users.size;
+  const activeUsers = Array.from(users.values()).map((u) => ({
+    name: u.name,
+    avatarId: u.avatarId,
+    state: u.state,
+    joinedAt: u.joinedAt,
+    lastActivity: u.lastActivity,
+    sessionDuration: Math.floor(
+      (currentTime.getTime() - u.joinedAt.getTime()) / 1000
+    ),
+  }));
+
+  return {
+    userCount,
+    activeUsers,
+    sessionDuration,
+    sessionStartTime: sessionStartTime.toISOString(),
+    currentTime: currentTime.toISOString(),
+  };
+}
+
 export function getLiveSpeaker() {
   return liveSpeaker;
 }
@@ -64,7 +133,9 @@ export function getUsers() {
 
 export function setupSocketHandlers(io: Server) {
   io.on("connection", (socket: Socket) => {
-    console.log(`🪪 New connection: ${socket.id}`);
+    console.log(
+      formatSessionLog(`🪪 New socket connection: ${socket.id}`, "INFO")
+    );
 
     socket.on("joined-table", ({ name }) => {
       const avatar = users.get(socket.id)?.avatarId;
@@ -82,9 +153,17 @@ export function setupSocketHandlers(io: Server) {
     }
 
     socket.on("request-join", ({ name, avatarId }) => {
-      console.log(`📨 Request to join: ${name} as ${avatarId}`);
+      console.log(
+        formatSessionLog(
+          `📨 Join request: ${name} as ${avatarId} (${socket.id})`,
+          "INFO"
+        )
+      );
 
       if (!name || name.length > 30) {
+        console.log(
+          formatSessionLog(`🚫 Join rejected: Invalid name "${name}"`, "ERROR")
+        );
         socket.emit("join-rejected", { reason: "Invalid name." });
         return;
       }
@@ -95,7 +174,12 @@ export function setupSocketHandlers(io: Server) {
       );
 
       if (nameAlreadyTaken) {
-        console.warn(`⚠️ Name "${name}" already taken`);
+        console.log(
+          formatSessionLog(
+            `🚫 Join rejected: Name "${name}" already taken`,
+            "ERROR"
+          )
+        );
         socket.emit("join-rejected", {
           reason: "Name already taken. Please choose another.",
         });
@@ -105,7 +189,12 @@ export function setupSocketHandlers(io: Server) {
       // 🔥 Try to claim the avatar
       const claimed = claimAvatar(avatarId, name);
       if (!claimed) {
-        console.warn(`⚠️ Avatar ${avatarId} already taken`);
+        console.log(
+          formatSessionLog(
+            `🚫 Join rejected: Avatar ${avatarId} already taken`,
+            "ERROR"
+          )
+        );
         socket.emit("join-rejected", {
           reason: "Avatar already taken. Please choose another.",
         });
@@ -113,14 +202,20 @@ export function setupSocketHandlers(io: Server) {
       }
 
       // ✅ All good: Save user and broadcast
+      const joinTime = new Date();
       users.set(socket.id, {
         name,
         avatarId,
         state: "regular",
         interruptedBy: "",
+        joinedAt: joinTime,
+        lastActivity: joinTime,
       });
 
       const emoji = emojiLookup[avatarId] || "";
+      console.log(
+        formatSessionLog(`✅ ${emoji} ${name} joined as ${avatarId}`, "JOIN")
+      );
       emitSystemLog(`👤 ${emoji} ${name} joined as ${avatarId}`);
 
       socket.emit("join-approved", { name, avatarId });
@@ -140,6 +235,8 @@ export function setupSocketHandlers(io: Server) {
           console.warn(`🛑 Rejected clientEmits — unknown socket ${socket.id}`);
           return;
         }
+
+        updateUserActivity(socket.id);
 
         if (!["ear", "brain", "mouth", "mic"].includes(type)) {
           console.warn(`🌀 Invalid ListenerEmit type: ${type}`);
@@ -163,17 +260,63 @@ export function setupSocketHandlers(io: Server) {
     );
 
     socket.on("leave", ({ name }) => {
-      emitSystemLog(`👋 ${name} left manually`);
+      const user = users.get(socket.id);
+      if (user) {
+        const sessionDuration = Math.floor(
+          (new Date().getTime() - user.joinedAt.getTime()) / 1000
+        );
+        console.log(
+          formatSessionLog(
+            `👋 ${name} left manually (was in session ${Math.floor(
+              sessionDuration / 60
+            )}m${sessionDuration % 60}s)`,
+            "LEAVE"
+          )
+        );
+        emitSystemLog(`👋 ${name} left manually`);
+      } else {
+        console.log(
+          formatSessionLog(
+            `👋 ${name} left manually (no session data)`,
+            "LEAVE"
+          )
+        );
+        emitSystemLog(`👋 ${name} left manually`);
+      }
       cleanupUser(socket);
     });
 
     socket.on("disconnect", () => {
       const user = users.get(socket.id);
-      emitSystemLog(`❌ ${user?.name || "Unknown"} disconnected`);
+      if (user) {
+        const sessionDuration = Math.floor(
+          (new Date().getTime() - user.joinedAt.getTime()) / 1000
+        );
+        console.log(
+          formatSessionLog(
+            `❌ ${
+              user.name
+            } disconnected unexpectedly (was in session ${Math.floor(
+              sessionDuration / 60
+            )}m${sessionDuration % 60}s)`,
+            "LEAVE"
+          )
+        );
+        emitSystemLog(`❌ ${user.name} disconnected`);
+      } else {
+        console.log(
+          formatSessionLog(
+            `❌ Unknown socket ${socket.id} disconnected (no user data)`,
+            "ERROR"
+          )
+        );
+        emitSystemLog(`❌ Unknown disconnected`);
+      }
       cleanupUser(socket);
     });
 
     socket.on("pointing", ({ from, to }) => {
+      updateUserActivity(socket.id);
       console.log("[Client] Emitting pointing to:", from, to);
       routeAction(
         {
@@ -207,6 +350,8 @@ export function setupSocketHandlers(io: Server) {
           );
           return;
         }
+
+        updateUserActivity(socket.id);
 
         if (user.name !== liveSpeaker) {
           console.log(

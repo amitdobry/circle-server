@@ -7,8 +7,13 @@ import {
   getProfile,
   updateProfile,
   logout,
+  guestAuth,
 } from "../controllers/authController";
-import { authenticateToken, AuthRequest } from "../middleware/auth";
+import {
+  authenticateToken,
+  optionalAuth,
+  AuthRequest,
+} from "../middleware/auth";
 import { IUser } from "../models/User";
 
 const router = express.Router();
@@ -16,10 +21,11 @@ const router = express.Router();
 // Local Authentication Routes
 router.post("/register", register as any);
 router.post("/login", login as any);
+router.post("/guest", guestAuth as any);
 router.post("/logout", logout as any);
 
 // Protected Routes
-router.get("/profile", authenticateToken as any, getProfile as any);
+router.get("/profile", optionalAuth as any, getProfile as any);
 router.put("/profile", authenticateToken as any, updateProfile as any);
 
 // Google OAuth Routes (only if configured)

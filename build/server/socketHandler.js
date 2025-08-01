@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getIsSyncPauseMode = getIsSyncPauseMode;
 exports.setIsSyncPauseMode = setIsSyncPauseMode;
 exports.getPointerMap = getPointerMap;
+exports.getSessionStats = getSessionStats;
 exports.getLiveSpeaker = getLiveSpeaker;
 exports.setLiveSpeaker = setLiveSpeaker;
 exports.getUsers = getUsers;
@@ -15,6 +16,33 @@ const routeAction_1 = require("./actions/routeAction"); // adjust path if needed
 const panelConfigService_1 = require("./panelConfigService"); // or wherever you store them
 const gliffLogService_1 = require("./gliffLogService");
 const users = new Map(); // socketId -> { name, avatarId }
+const sessionStartTime = new Date();
+// Session utilities
+function getSimpleSessionStats() {
+    const currentTime = new Date();
+    const sessionDuration = Math.floor((currentTime.getTime() - sessionStartTime.getTime()) / 1000);
+    const userCount = users.size;
+    const activeUsers = Array.from(users.values())
+        .map((u) => u.name)
+        .join(", ");
+    return {
+        userCount,
+        activeUsers,
+        sessionDuration,
+        sessionStartTime: sessionStartTime.toISOString(),
+    };
+}
+function formatSessionLog(message, type = "INFO") {
+    const stats = getSimpleSessionStats();
+    const timestamp = new Date().toISOString();
+    return `[${timestamp}] [${type}] ${message} | Users: ${stats.userCount} (${stats.activeUsers || "none"}) | Session: ${Math.floor(stats.sessionDuration / 60)}m${stats.sessionDuration % 60}s`;
+}
+function updateUserActivity(socketId) {
+    const user = users.get(socketId);
+    if (user) {
+        user.lastActivity = new Date();
+    }
+}
 const pointerMap = new Map(); // from -> to
 let liveSpeaker = null;
 let currentLogInput = ""; // optional state if needed later
@@ -28,6 +56,26 @@ function setIsSyncPauseMode(value) {
 function getPointerMap() {
     return pointerMap;
 }
+function getSessionStats() {
+    const currentTime = new Date();
+    const sessionDuration = Math.floor((currentTime.getTime() - sessionStartTime.getTime()) / 1000);
+    const userCount = users.size;
+    const activeUsers = Array.from(users.values()).map((u) => ({
+        name: u.name,
+        avatarId: u.avatarId,
+        state: u.state,
+        joinedAt: u.joinedAt,
+        lastActivity: u.lastActivity,
+        sessionDuration: Math.floor((currentTime.getTime() - u.joinedAt.getTime()) / 1000),
+    }));
+    return {
+        userCount,
+        activeUsers,
+        sessionDuration,
+        sessionStartTime: sessionStartTime.toISOString(),
+        currentTime: currentTime.toISOString(),
+    };
+}
 function getLiveSpeaker() {
     return liveSpeaker;
 }
@@ -39,7 +87,7 @@ function getUsers() {
 }
 function setupSocketHandlers(io) {
     io.on("connection", (socket) => {
-        console.log(`🪪 New connection: ${socket.id}`);
+        console.log(formatSessionLog(`🪪 New socket connection: ${socket.id}`, "INFO"));
         socket.on("joined-table", ({ name }) => {
             const avatar = users.get(socket.id)?.avatarId;
             console.log(`[Server] 🔔 'joined-table' received from socket ${socket.id}, name: ${name}`);
@@ -52,15 +100,16 @@ function setupSocketHandlers(io) {
             socket.emit("user-list", list);
         }
         socket.on("request-join", ({ name, avatarId }) => {
-            console.log(`📨 Request to join: ${name} as ${avatarId}`);
+            console.log(formatSessionLog(`📨 Join request: ${name} as ${avatarId} (${socket.id})`, "INFO"));
             if (!name || name.length > 30) {
+                console.log(formatSessionLog(`🚫 Join rejected: Invalid name "${name}"`, "ERROR"));
                 socket.emit("join-rejected", { reason: "Invalid name." });
                 return;
             }
             // 🔥 Check for duplicate name
             const nameAlreadyTaken = Array.from(users.values()).some((user) => user.name.toLowerCase() === name.toLowerCase());
             if (nameAlreadyTaken) {
-                console.warn(`⚠️ Name "${name}" already taken`);
+                console.log(formatSessionLog(`🚫 Join rejected: Name "${name}" already taken`, "ERROR"));
                 socket.emit("join-rejected", {
                     reason: "Name already taken. Please choose another.",
                 });
@@ -69,20 +118,24 @@ function setupSocketHandlers(io) {
             // 🔥 Try to claim the avatar
             const claimed = (0, avatarManager_1.claimAvatar)(avatarId, name);
             if (!claimed) {
-                console.warn(`⚠️ Avatar ${avatarId} already taken`);
+                console.log(formatSessionLog(`🚫 Join rejected: Avatar ${avatarId} already taken`, "ERROR"));
                 socket.emit("join-rejected", {
                     reason: "Avatar already taken. Please choose another.",
                 });
                 return;
             }
             // ✅ All good: Save user and broadcast
+            const joinTime = new Date();
             users.set(socket.id, {
                 name,
                 avatarId,
                 state: "regular",
                 interruptedBy: "",
+                joinedAt: joinTime,
+                lastActivity: joinTime,
             });
             const emoji = avatarManager_1.emojiLookup[avatarId] || "";
+            console.log(formatSessionLog(`✅ ${emoji} ${name} joined as ${avatarId}`, "JOIN"));
             emitSystemLog(`👤 ${emoji} ${name} joined as ${avatarId}`);
             socket.emit("join-approved", { name, avatarId });
             broadcastUserList();
@@ -96,6 +149,7 @@ function setupSocketHandlers(io) {
                 console.warn(`🛑 Rejected clientEmits — unknown socket ${socket.id}`);
                 return;
             }
+            updateUserActivity(socket.id);
             if (!["ear", "brain", "mouth", "mic"].includes(type)) {
                 console.warn(`🌀 Invalid ListenerEmit type: ${type}`);
                 return;
@@ -112,15 +166,33 @@ function setupSocketHandlers(io) {
             });
         });
         socket.on("leave", ({ name }) => {
-            emitSystemLog(`👋 ${name} left manually`);
+            const user = users.get(socket.id);
+            if (user) {
+                const sessionDuration = Math.floor((new Date().getTime() - user.joinedAt.getTime()) / 1000);
+                console.log(formatSessionLog(`👋 ${name} left manually (was in session ${Math.floor(sessionDuration / 60)}m${sessionDuration % 60}s)`, "LEAVE"));
+                emitSystemLog(`👋 ${name} left manually`);
+            }
+            else {
+                console.log(formatSessionLog(`👋 ${name} left manually (no session data)`, "LEAVE"));
+                emitSystemLog(`👋 ${name} left manually`);
+            }
             cleanupUser(socket);
         });
         socket.on("disconnect", () => {
             const user = users.get(socket.id);
-            emitSystemLog(`❌ ${user?.name || "Unknown"} disconnected`);
+            if (user) {
+                const sessionDuration = Math.floor((new Date().getTime() - user.joinedAt.getTime()) / 1000);
+                console.log(formatSessionLog(`❌ ${user.name} disconnected unexpectedly (was in session ${Math.floor(sessionDuration / 60)}m${sessionDuration % 60}s)`, "LEAVE"));
+                emitSystemLog(`❌ ${user.name} disconnected`);
+            }
+            else {
+                console.log(formatSessionLog(`❌ Unknown socket ${socket.id} disconnected (no user data)`, "ERROR"));
+                emitSystemLog(`❌ Unknown disconnected`);
+            }
             cleanupUser(socket);
         });
         socket.on("pointing", ({ from, to }) => {
+            updateUserActivity(socket.id);
             console.log("[Client] Emitting pointing to:", from, to);
             (0, routeAction_1.routeAction)({
                 from,
@@ -145,6 +217,7 @@ function setupSocketHandlers(io) {
                 console.log(`🚫 Rejected logBar:update — unknown user (${socket.id})`);
                 return;
             }
+            updateUserActivity(socket.id);
             if (user.name !== liveSpeaker) {
                 console.log(`🚫 Rejected logBar:update — ${user.name} is not live (liveSpeaker=${liveSpeaker})`);
                 return;

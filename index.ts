@@ -14,7 +14,7 @@ import { Server } from "socket.io";
 import cors from "cors";
 import session from "express-session";
 import passport from "passport";
-import { setupSocketHandlers } from "./server/socketHandler";
+import { setupSocketHandlers, getSessionStats } from "./server/socketHandler";
 import { connectDB } from "./server/config/database";
 import { configurePassport } from "./server/config/passport";
 import authRoutes from "./server/routes/authRoutes";
@@ -85,9 +85,21 @@ app.get("/isAlive", (_req, res) => {
   `);
 });
 
+// 📊 Session status route
+app.get("/api/session/status", (_req, res) => {
+  const stats = getSessionStats();
+  res.json({
+    status: "active",
+    buildTime,
+    ...stats,
+  });
+});
+
 setupSocketHandlers(io);
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`🌐 SoulCircle server running on http://localhost:${PORT}`);
+  console.log(`📊 Session started at: ${new Date().toISOString()}`);
+  console.log(`📈 Session status: http://localhost:${PORT}/api/session/status`);
 });

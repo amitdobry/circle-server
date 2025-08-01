@@ -121,12 +121,21 @@ export const getProfile = async (
 ): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: "Not authenticated" });
+      // User is not authenticated - they are a guest
+      res.status(200).json({
+        user: null,
+        isGuest: true,
+      });
       return;
     }
 
+    // Return user profile with name and avatarId for navigation logic
+    const userProfile = req.user.toJSON();
     res.json({
-      user: req.user.toJSON(),
+      user: userProfile,
+      isGuest: false,
+      name: userProfile.name,
+      avatarId: userProfile.avatar,
     });
   } catch (error) {
     console.error("Get profile error:", error);
@@ -166,6 +175,53 @@ export const updateProfile = async (
     console.error("Update profile error:", error);
     res.status(500).json({
       message: "Internal server error during profile update",
+    });
+  }
+};
+
+// Guest authentication - for users who want to join without full registration
+export const guestAuth = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, avatarId } = req.body;
+
+    // Validate required fields
+    if (!name || !avatarId) {
+      res.status(400).json({
+        message: "Name and avatarId are required for guest authentication",
+      });
+      return;
+    }
+
+    // Create guest user with a unique email
+    const guestEmail = `guest_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}@guest.soulcircle.com`;
+
+    const user = new User({
+      name: name.trim(),
+      email: guestEmail,
+      avatar: avatarId,
+      // No password for guest users
+    });
+
+    await user.save();
+
+    // Generate token
+    const token = generateToken((user._id as string).toString());
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    res.status(200).json({
+      userId: (user._id as string).toString(),
+      token,
+      user: user.toJSON(),
+    });
+  } catch (error) {
+    console.error("Guest authentication error:", error);
+    res.status(500).json({
+      message: "Internal server error during guest authentication",
     });
   }
 };

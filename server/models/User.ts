@@ -29,9 +29,9 @@ const userSchema = new Schema<IUser>({
   password: {
     type: String,
     minlength: 6,
-    // Not required for Google OAuth users
+    // Not required for Google OAuth users or guest users
     required: function (this: IUser) {
-      return !this.googleId;
+      return !this.googleId && !this.email.includes("@guest.soulcircle.com");
     },
   },
   googleId: {

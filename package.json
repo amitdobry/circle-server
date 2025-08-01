@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "ts-node index.ts",
-    "dev": "nodemon --exec ts-node index.ts"
+    "dev": "nodemon --exec ts-node index.ts",
+    "build": "tsc",
+    "test": "npm run build && mocha test/**/*.spec.js",
+    "test:watch": "npm run build && mocha test/**/*.spec.js --watch"
   },
   "keywords": [],
   "author": "",
@@ -29,7 +32,12 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
+    "@types/mocha": "^10.0.10",
+    "@types/supertest": "^2.0.16",
+    "chai": "^4.5.0",
+    "mocha": "^10.8.2",
     "nodemon": "^3.1.9",
+    "supertest": "^6.3.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }
