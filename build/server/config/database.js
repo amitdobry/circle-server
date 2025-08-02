@@ -7,10 +7,23 @@ exports.connectDB = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const connectDB = async () => {
     try {
-        const mongoURI = process.env.MONGODB_URI || "mongodb://localhost:27017/soulcircle";
+        // Use production URI if NODE_ENV is production, otherwise use development URI
+        const mongoURI = process.env.NODE_ENV === 'production'
+            ? process.env.MONGODB_URI_PROD
+            : process.env.MONGODB_URI || "mongodb://localhost:27017/soulcircle";
+        if (!mongoURI) {
+            throw new Error('MongoDB URI not found in environment variables');
+        }
+        console.log(`🔗 Connecting to MongoDB (${process.env.NODE_ENV || 'development'} mode)...`);
         const conn = await mongoose_1.default.connect(mongoURI, {
-        // These options are no longer needed in newer versions of mongoose
-        // but keeping them for compatibility
+            // Production-specific options
+            ...(process.env.NODE_ENV === 'production' && {
+                retryWrites: true,
+                retryReads: true,
+                maxPoolSize: 10,
+                serverSelectionTimeoutMS: 5000,
+                socketTimeoutMS: 45000,
+            })
         });
         console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
         // Handle connection events
