@@ -55,8 +55,28 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       token,
       user: user.toJSON(),
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Registration error:", error);
+    
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+      res.status(400).json({
+        message: "Validation failed",
+        errors: validationErrors,
+      });
+      return;
+    }
+    
+    // Handle duplicate key error (email already exists)
+    if (error.code === 11000) {
+      res.status(409).json({
+        message: "User with this email already exists",
+      });
+      return;
+    }
+    
+    // Handle other errors
     res.status(500).json({
       message: "Internal server error during registration",
     });
