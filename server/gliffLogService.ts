@@ -67,3 +67,10 @@ export function createGliffLog(entry: GliffMessage, io: Server) {
   io.emit("gliffLog:update", gliffMemory);
   return enriched;
 }
+
+// Function to clear the gliff log (e.g., when session ends)
+export function clearGliffLog(io: Server) {
+  console.log("🧹 Clearing gliff log - session ended");
+  gliffMemory.length = 0; // Clear the array
+  io.emit("gliffLog:update", gliffMemory); // Notify all clients
+}

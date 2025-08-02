@@ -80,6 +80,11 @@ function addTableUser(socketId) {
 function removeUser(socketId) {
     users.delete(socketId);
     tableUsers.delete(socketId);
+    // Reset table session timing when last user leaves
+    if (tableUsers.size === 0) {
+        tableSessionStart = null;
+        firstTableUserJoinTime = null;
+    }
 }
 function getUser(socketId) {
     return users.get(socketId);

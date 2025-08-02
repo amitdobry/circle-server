@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createGliffLog = createGliffLog;
+exports.clearGliffLog = clearGliffLog;
 const gliffMemory = [];
 const MAX_MEMORY_SIZE = 20;
 function createGliffLog(entry, io) {
@@ -45,4 +46,10 @@ function createGliffLog(entry, io) {
     console.log("🧾 gliffMemory snapshot:\n" + JSON.stringify(gliffMemory, null, 2));
     io.emit("gliffLog:update", gliffMemory);
     return enriched;
+}
+// Function to clear the gliff log (e.g., when session ends)
+function clearGliffLog(io) {
+    console.log("🧹 Clearing gliff log - session ended");
+    gliffMemory.length = 0; // Clear the array
+    io.emit("gliffLog:update", gliffMemory); // Notify all clients
 }

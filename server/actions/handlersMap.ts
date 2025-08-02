@@ -12,7 +12,7 @@ import { handleDropTheMic } from "./handlers/handleDropTheMic";
 import { handlePassTheMic } from "./handlers/handlePassTheMic";
 import { handleWishToSpeakAfterMicDropped } from "./handlers/handleWishToSpeakAfterMicDropped";
 import { handleDeclineToSpeakAfterMicDropped } from "./handlers/handleDeclineToSpeakAfterMicDropped";
-import { handleConcentrateNewSpeakerFromMicDropped } from "./handlers/handleConcentrateNewSpeakerFromMicDropped";
+import { handleConcentNewSpeakerFromMicDropped } from "./handlers/handleConcentNewSpeakerFromMicDroppedState";
 import { handleDeclineNewCandidateRequestAfterMicDropped } from "./handlers/handleDeclineNewCandidateRequestAfterMicDropped";
 import { handleOpenChooseASpeakerFromPassTheMic } from "./handlers/handleOpenChooseASpeakerFromPassTheMic";
 import { handleOfferMicToUserFromPassTheMic } from "./handlers/handleOfferMicToUserFromPassTheMic";
@@ -37,7 +37,7 @@ export const handlersMap: Record<
   handlePassTheMic,
   handleWishToSpeakAfterMicDropped,
   handleDeclineToSpeakAfterMicDropped,
-  handleConcentrateNewSpeakerFromMicDropped,
+  handleConcentNewSpeakerFromMicDropped,
   handleDeclineNewCandidateRequestAfterMicDropped,
   handleOpenChooseASpeakerFromPassTheMic,
   handleOfferMicToUserFromPassTheMic,

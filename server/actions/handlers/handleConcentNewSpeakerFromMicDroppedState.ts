@@ -1,7 +1,7 @@
 import { getPanelConfigFor } from "../../panelConfigService";
 import { ActionPayload, ActionContext } from "../routeAction";
 
-export function handleConcentrateNewSpeakerFromMicDropped(
+export function handleConcentNewSpeakerFromMicDropped(
   payload: ActionPayload,
   context: ActionContext
 ) {

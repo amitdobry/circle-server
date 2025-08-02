@@ -107,6 +107,12 @@ export function addTableUser(socketId: string) {
 export function removeUser(socketId: string) {
   users.delete(socketId);
   tableUsers.delete(socketId);
+
+  // Reset table session timing when last user leaves
+  if (tableUsers.size === 0) {
+    tableSessionStart = null;
+    firstTableUserJoinTime = null;
+  }
 }
 
 export function getUser(socketId: string): UserInfo | undefined {

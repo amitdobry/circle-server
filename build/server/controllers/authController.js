@@ -54,7 +54,7 @@ const register = async (req, res) => {
     catch (error) {
         console.error("Registration error:", error);
         // Handle Mongoose validation errors
-        if (error.name === 'ValidationError') {
+        if (error.name === "ValidationError") {
             const validationErrors = Object.values(error.errors).map((err) => err.message);
             res.status(400).json({
                 message: "Validation failed",

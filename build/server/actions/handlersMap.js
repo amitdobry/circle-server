@@ -14,7 +14,7 @@ const handleDropTheMic_1 = require("./handlers/handleDropTheMic");
 const handlePassTheMic_1 = require("./handlers/handlePassTheMic");
 const handleWishToSpeakAfterMicDropped_1 = require("./handlers/handleWishToSpeakAfterMicDropped");
 const handleDeclineToSpeakAfterMicDropped_1 = require("./handlers/handleDeclineToSpeakAfterMicDropped");
-const handleConcentrateNewSpeakerFromMicDropped_1 = require("./handlers/handleConcentrateNewSpeakerFromMicDropped");
+const handleConcentNewSpeakerFromMicDroppedState_1 = require("./handlers/handleConcentNewSpeakerFromMicDroppedState");
 const handleDeclineNewCandidateRequestAfterMicDropped_1 = require("./handlers/handleDeclineNewCandidateRequestAfterMicDropped");
 const handleOpenChooseASpeakerFromPassTheMic_1 = require("./handlers/handleOpenChooseASpeakerFromPassTheMic");
 const handleOfferMicToUserFromPassTheMic_1 = require("./handlers/handleOfferMicToUserFromPassTheMic");
@@ -35,7 +35,7 @@ exports.handlersMap = {
     handlePassTheMic: handlePassTheMic_1.handlePassTheMic,
     handleWishToSpeakAfterMicDropped: handleWishToSpeakAfterMicDropped_1.handleWishToSpeakAfterMicDropped,
     handleDeclineToSpeakAfterMicDropped: handleDeclineToSpeakAfterMicDropped_1.handleDeclineToSpeakAfterMicDropped,
-    handleConcentrateNewSpeakerFromMicDropped: handleConcentrateNewSpeakerFromMicDropped_1.handleConcentrateNewSpeakerFromMicDropped,
+    handleConcentNewSpeakerFromMicDropped: handleConcentNewSpeakerFromMicDroppedState_1.handleConcentNewSpeakerFromMicDropped,
     handleDeclineNewCandidateRequestAfterMicDropped: handleDeclineNewCandidateRequestAfterMicDropped_1.handleDeclineNewCandidateRequestAfterMicDropped,
     handleOpenChooseASpeakerFromPassTheMic: handleOpenChooseASpeakerFromPassTheMic_1.handleOpenChooseASpeakerFromPassTheMic,
     handleOfferMicToUserFromPassTheMic: handleOfferMicToUserFromPassTheMic_1.handleOfferMicToUserFromPassTheMic,
