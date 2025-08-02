@@ -2,11 +2,16 @@
   "name": "soulcircle-server",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "build/index.js",
+  "engines": {
+    "node": "18.x",
+    "npm": "9.x"
+  },
   "scripts": {
-    "start": "ts-node index.ts",
+    "start": "node build/index.js",
     "dev": "nodemon --exec ts-node index.ts",
     "build": "tsc",
+    "heroku-postbuild": "npm run build",
     "test": "npm run build && mocha test/**/*.spec.js",
     "test:watch": "npm run build && mocha test/**/*.spec.js --watch"
   },
@@ -14,11 +19,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@types/bcryptjs": "^3.0.0",
-    "@types/express-session": "^1.18.2",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/passport": "^1.0.17",
-    "@types/passport-google-oauth20": "^2.0.16",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
@@ -31,8 +31,13 @@
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
     "@types/express": "^5.0.1",
+    "@types/express-session": "^1.18.2",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/mocha": "^10.0.10",
+    "@types/passport": "^1.0.17",
+    "@types/passport-google-oauth20": "^2.0.16",
     "@types/supertest": "^2.0.16",
     "chai": "^4.5.0",
     "mocha": "^10.8.2",
