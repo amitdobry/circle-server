@@ -404,18 +404,18 @@ function setupSocketHandlers(io) {
                 });
             }
         });
-        socket.on("clientEmits", ({ name, type, subType, actionType, targetUser }) => {
+        socket.on("clientEmits", ({ name, type, subType, actionType, targetUser, flavor }) => {
             const user = users.get(socket.id);
             if (!user) {
                 console.warn(`🛑 Rejected clientEmits — unknown socket ${socket.id}`);
                 return;
             }
             updateUserActivity(socket.id);
-            if (!["ear", "brain", "mouth", "mic"].includes(type)) {
+            if (!["ear", "brain", "mouth", "mic", "blue"].includes(type)) {
                 console.warn(`🌀 Invalid ListenerEmit type: ${type}`);
                 return;
             }
-            (0, routeAction_1.routeAction)({ name, type, subType, actionType, targetUser }, {
+            (0, routeAction_1.routeAction)({ name, type, subType, actionType, targetUser, flavor }, {
                 io,
                 logSystem: emitSystemLog,
                 logAction: emitActionLog,

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.panelListenersWatchingMicOffer = exports.panelSpeakerWaitingForMicAcceptance = exports.panelListenerMicOfferReceived = exports.testPanelListenerState13 = exports.testPanelListenerState12 = exports.testPanelListenerState11 = exports.testPanelListenerState10 = exports.testPanelListenerState9 = exports.testPanelListenerState8 = exports.testPanelListenerState7 = exports.testPanelListenerState6 = exports.testPanelListenerState5 = exports.testPanelListenerState4 = exports.testPanelListenerState3 = exports.testPanelListenerState2 = exports.testPanelListenerState1 = void 0;
+exports.testPanelListenerState18 = exports.testPanelListenerState17 = exports.panelListenersWatchingMicOffer = exports.panelSpeakerWaitingForMicAcceptance = exports.panelListenerMicOfferReceived = exports.testPanelListenerState13 = exports.testPanelListenerState12 = exports.testPanelListenerState11 = exports.testPanelListenerState10 = exports.testPanelListenerState9 = exports.testPanelListenerState8 = exports.testPanelListenerState7 = exports.testPanelListenerState6 = exports.testPanelListenerState5 = exports.testPanelListenerState4 = exports.testPanelListenerState3 = exports.testPanelListenerState2 = exports.testPanelListenerState1 = void 0;
 // State 1: Default (no active group)
 exports.testPanelListenerState1 = [
     {
@@ -126,6 +126,18 @@ exports.testPanelListenerState2 = [
                     actionType: "notFeelingIt",
                 },
             },
+            {
+                id: "ear-blue-love-to-hear",
+                type: "button",
+                buttonClass: "px-4 py-2 rounded-full text-sm font-medium bg-blue-100 hover:bg-blue-200 text-blue-700",
+                button: {
+                    label: "🙋 I’d love to hear…",
+                    type: "listenerControl",
+                    group: "blue",
+                    actionType: "blueSelectStart",
+                    flavor: "loveToHear",
+                },
+            },
         ],
     },
 ];
@@ -187,6 +199,52 @@ exports.testPanelListenerState3 = [
                     label: "⏳ Need a moment",
                     type: "semiListenerAction",
                     actionType: "needMoment",
+                },
+            },
+            {
+                id: "brain-btn-4",
+                type: "button",
+                buttonClass: "px-4 py-2 rounded-full text-sm font-medium bg-emerald-100 hover:bg-emerald-200 text-emerald-700",
+                button: {
+                    label: "🤝 Connect This Thought",
+                    type: "semiListenerAction",
+                    actionType: "connectThought",
+                },
+            },
+            {
+                id: "brain-blue-spread-fire",
+                type: "button",
+                buttonClass: "px-4 py-2 rounded-full text-sm font-medium bg-blue-100 hover:bg-blue-200 text-blue-700",
+                button: {
+                    label: "🔥 Spread the fire",
+                    type: "listenerControl",
+                    group: "blue",
+                    actionType: "blueSelectStart",
+                    flavor: "spreadFire",
+                },
+            },
+            {
+                id: "brain-blue-hear-voices",
+                type: "button",
+                buttonClass: "px-4 py-2 rounded-full text-sm font-medium bg-sky-100 hover:bg-sky-200 text-sky-700",
+                button: {
+                    label: "🎶 Hear more voices",
+                    type: "listenerControl",
+                    group: "blue",
+                    actionType: "blueSelectStart",
+                    flavor: "hearMoreVoices",
+                },
+            },
+            {
+                id: "brain-blue-pass-flame",
+                type: "button",
+                buttonClass: "px-4 py-2 rounded-full text-sm font-medium bg-indigo-100 hover:bg-indigo-200 text-indigo-700",
+                button: {
+                    label: "🕯️ Pass the flame",
+                    type: "listenerControl",
+                    group: "blue",
+                    actionType: "blueSelectStart",
+                    flavor: "passFlame",
                 },
             },
         ],
@@ -251,6 +309,18 @@ exports.testPanelListenerState4 = [
                     label: "❌ Disagree",
                     type: "semiListenerAction",
                     actionType: "disagree",
+                },
+            },
+            {
+                id: "mouth-blue-give-mic",
+                type: "button",
+                buttonClass: "px-4 py-2 rounded-full text-sm font-medium bg-blue-100 hover:bg-blue-200 text-blue-700",
+                button: {
+                    label: "🎤 Give the mic…",
+                    type: "listenerControl",
+                    group: "blue",
+                    actionType: "blueSelectStart",
+                    flavor: "giveMic",
                 },
             },
         ],
@@ -621,5 +691,52 @@ exports.panelListenersWatchingMicOffer = [
                 textClass: "text-center text-gray-500 font-medium",
             },
         ],
+    },
+];
+exports.testPanelListenerState17 = [
+    {
+        id: "listener-waiting-panel",
+        layout: "column",
+        panelType: "listenerSyncPanel",
+        label: "Blue Select In Progress",
+        blocks: [
+            {
+                id: "listener-waiting-text",
+                type: "text",
+                content: "🟦 Someone is choosing who to offer the mic to…",
+                size: "md",
+                align: "center",
+                textClass: "text-center text-sm text-gray-500",
+            },
+        ],
+    },
+];
+// State 18: Initiator picks a listener (dynamic buttons injected)
+exports.testPanelListenerState18 = [
+    {
+        id: "choose-user-header",
+        layout: "column",
+        panelType: "listenerSyncPanel",
+        label: "Choose a Listener",
+        panelStyle: "flex flex-col items-center justify-center",
+        blocks: [
+            {
+                id: "choose-user-instruction-text",
+                type: "text",
+                content: "Choose someone to offer the mic to:",
+                size: "lg",
+                align: "center",
+                textClass: "text-center text-gray-700 font-semibold mb-4",
+            },
+        ],
+    },
+    {
+        id: "choose-user-button-panel",
+        layout: "row",
+        panelType: "listenerSyncPanel",
+        label: "Participants",
+        panelStyle: "flex flex-row justify-center gap-4 flex-wrap",
+        // ⬇️ actual buttons are injected dynamically in buildListenerSyncPanel
+        blocks: [],
     },
 ];

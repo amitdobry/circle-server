@@ -26,6 +26,15 @@ export const gestureCatalog = {
       "px-4 py-2 rounded-full text-sm bg-rose-100 text-rose-700 border border-rose-300 transition-all duration-200 hover:brightness-110 hover:shadow-md hover:scale-105",
       "syncedGesture"
     ),
+    "004": new Gesture(
+      "004",
+      "I’d love to hear…",
+      "🙋",
+      "blue",
+      "px-4 py-2 rounded-full text-sm bg-blue-100 text-blue-700 border border-blue-300 transition-all duration-200 hover:brightness-110 hover:shadow-md hover:scale-105",
+      "blueSelectStart",
+      "loveToHear"
+    ),
   },
   brain: {
     "101": new Gesture(
@@ -52,6 +61,33 @@ export const gestureCatalog = {
       "px-4 py-2 rounded-full text-sm bg-indigo-100 text-indigo-700 border border-indigo-300 transition-all duration-200 hover:brightness-110 hover:shadow-md hover:scale-105",
       "breakSync"
     ),
+    "104": new Gesture(
+      "104",
+      "Spread the fire",
+      "🔥",
+      "blue",
+      "px-4 py-2 rounded-full text-sm bg-blue-100 text-blue-700 border border-blue-300 transition-all duration-200 hover:brightness-110 hover:shadow-md hover:scale-105",
+      "blueSelectStart",
+      "spreadFire"
+    ),
+    "105": new Gesture(
+      "105",
+      "Hear more voices",
+      "🎶",
+      "sky",
+      "px-4 py-2 rounded-full text-sm bg-sky-100 text-sky-700 border border-sky-300 transition-all duration-200 hover:brightness-110 hover:shadow-md hover:scale-105",
+      "blueSelectStart",
+      "hearMoreVoices"
+    ),
+    "106": new Gesture(
+      "106",
+      "Pass the flame",
+      "🕯️",
+      "indigo",
+      "px-4 py-2 rounded-full text-sm bg-indigo-100 text-indigo-700 border border-indigo-300 transition-all duration-200 hover:brightness-110 hover:shadow-md hover:scale-105",
+      "blueSelectStart",
+      "passFlame"
+    ),
   },
   mouth: {
     "201": new Gesture(
@@ -77,6 +113,15 @@ export const gestureCatalog = {
       "rose",
       "px-4 py-2 rounded-full text-sm bg-rose-200 text-rose-700 border border-rose-300 transition-all duration-200 hover:brightness-110 hover:shadow-md hover:scale-105",
       "breakSync"
+    ),
+    "204": new Gesture(
+      "204",
+      "Give the mic…",
+      "🎤",
+      "blue",
+      "px-4 py-2 rounded-full text-sm bg-blue-100 text-blue-700 border border-blue-300 transition-all duration-200 hover:brightness-110 hover:shadow-md hover:scale-105",
+      "blueSelectStart",
+      "giveMic"
     ),
   },
 };

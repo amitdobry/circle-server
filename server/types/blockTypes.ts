@@ -108,4 +108,5 @@ export type AttentionButtonConfig = {
   control?: string; // ✅ Add this line
   icon?: string;
   state?: string;
+  flavor?: string; // Optional flavor for special buttons
 };

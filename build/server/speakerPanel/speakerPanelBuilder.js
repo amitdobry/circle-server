@@ -15,17 +15,31 @@ function buildSpeakerPanel(ctx) {
     else if (interrupter) {
         stateId = "state-waiting";
     }
+    else if (currentUser?.state === "postSpeakerWaitingOnBlue") {
+        stateId = "state-waiting";
+    }
     const panel = speakerCatalog_1.speakerCatalog[stateId];
     const config = panel.getConfig();
     if (stateId === "state-waiting" && interrupter) {
         const interrupterName = interrupter.name;
-        config.forEach((block) => {
-            block.blocks.forEach((b) => {
-                if (b.id === "thinking-wait-text") {
-                    b.content = `Please wait while ${interrupterName} is thinking...`;
-                }
+        if (currentUser?.state === "postSpeakerWaitingOnBlue") {
+            config.forEach((block) => {
+                block.blocks.forEach((b) => {
+                    if (b.id === "thinking-wait-text") {
+                        b.content = `Please wait while ${interrupterName} is deciding to offer the mic to someone...`;
+                    }
+                });
             });
-        });
+        }
+        else {
+            config.forEach((block) => {
+                block.blocks.forEach((b) => {
+                    if (b.id === "thinking-wait-text") {
+                        b.content = `Please wait while ${interrupterName} is thinking...`;
+                    }
+                });
+            });
+        }
     }
     return config;
 }

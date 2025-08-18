@@ -94,4 +94,13 @@ export const config = [
     type: "mic",
     handler: "handleAcceptMicOfferFromPassTheMic",
   },
+  {
+    actionType: "disagree",
+    handler: "handleDisagree",
+  },
+  {
+    actionType: "blueSelectStart",
+    type: "blue", // 👈 you can keep "blue" as its own family
+    handler: "handleBlueSelectStart",
+  },
 ];

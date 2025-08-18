@@ -8,6 +8,7 @@ export class Gesture {
   color: string;
   tailwind: string;
   actionType: string | undefined;
+  flavor?: string; // Optional flavor for special gestures
 
   constructor(
     code: string,
@@ -15,7 +16,8 @@ export class Gesture {
     emoji: string,
     color: string,
     tailwind: string,
-    actionType: string
+    actionType: string,
+    flavor?: string
   ) {
     this.code = code;
     this.label = label;
@@ -23,6 +25,7 @@ export class Gesture {
     this.color = color;
     this.tailwind = tailwind; // 💥 New!
     this.actionType = actionType;
+    this.flavor = flavor;
   }
 
   getBroadcastPayload(from: string) {
@@ -35,6 +38,7 @@ export class Gesture {
       color: this.color,
       tailwind: this.tailwind,
       actionType: this.actionType,
+      flavor: this.flavor, // Include flavor if it exists
     };
   }
 
@@ -52,7 +56,7 @@ export class Gesture {
     console.log(`🎆 Trigger effect: ${this.label}`);
   }
 
-  getUIButtonConfig(type: "ear" | "brain" | "mouth") {
+  getUIButtonConfig(type: "ear" | "brain" | "mouth" | "mic" | "blue") {
     return {
       type,
       subType: this.code,
@@ -61,6 +65,7 @@ export class Gesture {
       color: this.color,
       tailwind: this.tailwind,
       actionType: this.actionType,
+      flavor: this.flavor,
     };
   }
 }

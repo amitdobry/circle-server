@@ -542,7 +542,7 @@ export function setupSocketHandlers(io: Server) {
 
     socket.on(
       "clientEmits",
-      ({ name, type, subType, actionType, targetUser }) => {
+      ({ name, type, subType, actionType, targetUser, flavor }) => {
         const user = users.get(socket.id);
 
         if (!user) {
@@ -552,13 +552,13 @@ export function setupSocketHandlers(io: Server) {
 
         updateUserActivity(socket.id);
 
-        if (!["ear", "brain", "mouth", "mic"].includes(type)) {
+        if (!["ear", "brain", "mouth", "mic", "blue"].includes(type)) {
           console.warn(`🌀 Invalid ListenerEmit type: ${type}`);
           return;
         }
 
         routeAction(
-          { name, type, subType, actionType, targetUser },
+          { name, type, subType, actionType, targetUser, flavor },
           {
             io,
             logSystem: emitSystemLog,

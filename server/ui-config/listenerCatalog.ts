@@ -15,6 +15,8 @@ import {
   panelListenerMicOfferReceived,
   panelSpeakerWaitingForMicAcceptance,
   panelListenersWatchingMicOffer,
+  testPanelListenerState17,
+  testPanelListenerState18,
 } from "./listenerConfigs";
 import { ListenerPanelState } from "./ListenerPanelState";
 
@@ -98,5 +100,15 @@ export const listenerCatalog = {
     "panelListenerMicOfferReceived",
     "Waiting for the invited user to accept the mic...",
     panelListenersWatchingMicOffer
+  ),
+  "state-17": new ListenerPanelState(
+    "state-17",
+    "Waiting on picker of blue speaker",
+    testPanelListenerState17
+  ),
+  "state-18": new ListenerPanelState(
+    "state-18",
+    "Picking blue speaker",
+    testPanelListenerState18
   ),
 };

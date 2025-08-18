@@ -61,6 +61,12 @@ export function buildListenerSyncPanel(ctx: PanelContext) {
     case "awaitingUserMicOfferResolutionFromPassTheMic":
       stateKey = "state-16";
       break;
+    case "waitingOnPickerOfBlueSpeaker":
+      stateKey = "state-17"; // <-- NEW
+      break;
+    case "isPickingBlueSpeaker":
+      stateKey = "state-18"; // <-- NEW
+      break;
   }
 
   // ——————————————————————————————————————
@@ -288,6 +294,60 @@ export function buildListenerSyncPanel(ctx: PanelContext) {
             b.content = `🎤 ${speakerName} has offered the mic to ${targetName}, who is deciding whether to speak.`;
           }
         });
+      }
+    });
+  }
+
+  // state-17: show who is picking
+  if (stateKey === "state-17") {
+    const picker = Array.from(ctx.allUsers.values()).find(
+      (u) => u.state === "isPickingBlueSpeaker"
+    );
+    const byName = picker?.name ?? "Someone";
+
+    config.forEach((block) => {
+      if (block.id === "listener-waiting-panel") {
+        block.blocks.forEach((b) => {
+          if (b.id === "listener-waiting-text") {
+            b.content = `🟦 ${byName} is choosing who to offer the mic to…`;
+          }
+        });
+      }
+    });
+  }
+
+  // state-18: initiator picker (Blue)
+  if (stateKey === "state-18") {
+    const currentUserName = ctx.userName;
+
+    // find current speaker by ctx.liveSpeaker (or by user.state === "speaking")
+    const currentSpeakerName =
+      ctx.liveSpeaker ||
+      Array.from(ctx.allUsers.values()).find((u) => u.state === "speaking")
+        ?.name ||
+      "";
+
+    const candidates = Array.from(ctx.allUsers.values())
+      .filter(
+        (u) => u.name !== currentUserName && u.name !== currentSpeakerName
+      )
+      .map<PanelBlock>((user) => ({
+        id: `choose-${user.name.toLowerCase()}-btn`,
+        type: "button",
+        buttonClass:
+          "px-5 py-3 rounded-full text-sm font-semibold border transition-all duration-200 bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200 hover:shadow-md hover:scale-105",
+        button: {
+          label: user.name,
+          type: "listenerControl",
+          group: "mic",
+          actionType: "offerMicToUserFromPassTheMic",
+          targetUser: user.name,
+        },
+      }));
+
+    config.forEach((block) => {
+      if (block.id === "choose-user-button-panel") {
+        block.blocks = candidates;
       }
     });
   }

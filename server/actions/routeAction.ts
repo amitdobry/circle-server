@@ -12,6 +12,7 @@ type ActionPayload = {
   from?: string;
   to?: string;
   targetUser?: string; // ✅ Add this line
+  flavor?: string; // ✅ Add this line
   // more fields in future...
 };
 type UserState =
@@ -37,7 +38,10 @@ type UserState =
   | "wantsToPickUpTheMic"
   | "appendingConcentToPickUpTheMic"
   | "doesNotWantToPickUpTheMic"
-  | "waitingForOthersAfterMicDropAndConcentNewSpeaker";
+  | "waitingForOthersAfterMicDropAndConcentNewSpeaker"
+  | "waitingOnPickerOfBlueSpeaker"
+  | "isPickingBlueSpeaker"
+  | "postSpeakerWaitingOnBlue";
 
 type ActionContext = {
   io: Server;

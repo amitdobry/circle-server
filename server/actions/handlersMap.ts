@@ -18,6 +18,8 @@ import { handleOpenChooseASpeakerFromPassTheMic } from "./handlers/handleOpenCho
 import { handleOfferMicToUserFromPassTheMic } from "./handlers/handleOfferMicToUserFromPassTheMic";
 import { handleAcceptMicOfferFromPassTheMic } from "./handlers/handleAcceptMicOfferFromPassTheMic";
 import { handleUnSelectEar } from "./handlers/handleUnSelectEar";
+import { handleDisagree } from "./handlers/handleDisagree";
+import { handleBlueSelectStart } from "./handlers/handleBlueSelectStart";
 
 export const handlersMap: Record<
   string,
@@ -42,4 +44,7 @@ export const handlersMap: Record<
   handleOpenChooseASpeakerFromPassTheMic,
   handleOfferMicToUserFromPassTheMic,
   handleAcceptMicOfferFromPassTheMic,
+  handleDisagree,
+  // 🌊 New Blue handler
+  handleBlueSelectStart,
 };

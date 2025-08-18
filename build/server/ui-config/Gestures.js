@@ -3,13 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Gesture = void 0;
 const gliffLogService_1 = require("../gliffLogService");
 class Gesture {
-    constructor(code, label, emoji, color, tailwind, actionType) {
+    constructor(code, label, emoji, color, tailwind, actionType, flavor) {
         this.code = code;
         this.label = label;
         this.emoji = emoji;
         this.color = color;
         this.tailwind = tailwind; // 💥 New!
         this.actionType = actionType;
+        this.flavor = flavor;
     }
     getBroadcastPayload(from) {
         return {
@@ -21,6 +22,7 @@ class Gesture {
             color: this.color,
             tailwind: this.tailwind,
             actionType: this.actionType,
+            flavor: this.flavor, // Include flavor if it exists
         };
     }
     triggerEffect(io, userName = "") {
@@ -45,6 +47,7 @@ class Gesture {
             color: this.color,
             tailwind: this.tailwind,
             actionType: this.actionType,
+            flavor: this.flavor,
         };
     }
 }
