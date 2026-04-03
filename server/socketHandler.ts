@@ -20,6 +20,17 @@ import {
   addTableUser as addTableUserToBL,
 } from "./BL/sessionLogic";
 
+// ✨ ENGINE V2: Shadow Mode Integration
+import {
+  shadowDispatch,
+  enableShadowMode,
+} from "./engine-v2/shadow/shadowDispatcher";
+import {
+  mapLegacyToV2Action,
+  extractUserId,
+  extractRoomId,
+} from "./engine-v2/shadow/actionMapper";
+
 type GestureCatalogType = typeof gestureCatalog;
 type ListenerType = keyof GestureCatalogType; // "ear" | "brain" | "mouth"
 type SubGestureCode<T extends ListenerType> = keyof GestureCatalogType[T];
@@ -69,7 +80,7 @@ function getSimpleSessionStats() {
 
 function formatSessionLog(
   message: string,
-  type: "INFO" | "JOIN" | "LEAVE" | "ERROR" = "INFO"
+  type: "INFO" | "JOIN" | "LEAVE" | "ERROR" = "INFO",
 ) {
   const stats = getSimpleSessionStats();
   const timestamp = new Date().toISOString();
@@ -193,7 +204,7 @@ export function globalBroadcastAvatarState(io: Server) {
 function startSessionWithDuration(io: Server, durationMinutes: number = 60) {
   if (sessionActive) {
     console.log(
-      `⚠️ Attempted to start session but one is already active (ID: ${sessionId})`
+      `⚠️ Attempted to start session but one is already active (ID: ${sessionId})`,
     );
     return;
   }
@@ -206,13 +217,16 @@ function startSessionWithDuration(io: Server, durationMinutes: number = 60) {
     .substr(2, 9)}`;
 
   console.log(
-    `🚀 Session started (ID: ${sessionId}) - ${durationMinutes} minute timer begins`
+    `🚀 Session started (ID: ${sessionId}) - ${durationMinutes} minute timer begins`,
   );
 
   // Set timer for specified duration
-  sessionTimer = setTimeout(() => {
-    endSession(io);
-  }, durationMinutes * 60 * 1000); // Convert minutes to milliseconds
+  sessionTimer = setTimeout(
+    () => {
+      endSession(io);
+    },
+    durationMinutes * 60 * 1000,
+  ); // Convert minutes to milliseconds
 
   // Start broadcasting timer updates every second
   startTimerBroadcast(io);
@@ -305,7 +319,7 @@ function startTimerBroadcast(io: Server) {
 
     const currentTime = new Date();
     const elapsedSeconds = Math.floor(
-      (currentTime.getTime() - sessionStartTime.getTime()) / 1000
+      (currentTime.getTime() - sessionStartTime.getTime()) / 1000,
     );
     const totalSeconds = sessionDurationMinutes * 60; // Use stored duration in seconds
     const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
@@ -331,15 +345,23 @@ function startTimerBroadcast(io: Server) {
 }
 
 export function setupSocketHandlers(io: Server) {
+  // ✨ ENGINE V2: Enable Shadow Mode if environment variable is set
+  if (process.env.ENGINE_V2_SHADOW === "true") {
+    enableShadowMode();
+    console.log(
+      "[Server] ✨ Engine V2 shadow mode ENABLED - V2 running as passive observer",
+    );
+  }
+
   io.on("connection", (socket: Socket) => {
     console.log(
-      formatSessionLog(`🪪 New socket connection: ${socket.id}`, "INFO")
+      formatSessionLog(`🪪 New socket connection: ${socket.id}`, "INFO"),
     );
 
     socket.on("joined-table", ({ name }) => {
       const avatar = users.get(socket.id)?.avatarId;
       console.log(
-        `[Server] 🔔 'joined-table' received from socket ${socket.id}, name: ${name}`
+        `[Server] 🔔 'joined-table' received from socket ${socket.id}, name: ${name}`,
       );
       const emoji = emojiLookup[avatar || ""] || "";
       emitSystemLog(`🪑 ${emoji} ${name} has fully entered the table`);
@@ -355,13 +377,13 @@ export function setupSocketHandlers(io: Server) {
       console.log(
         formatSessionLog(
           `📨 Join request: ${name} as ${avatarId} (${socket.id})`,
-          "INFO"
-        )
+          "INFO",
+        ),
       );
 
       if (!name || name.length > 30) {
         console.log(
-          formatSessionLog(`🚫 Join rejected: Invalid name "${name}"`, "ERROR")
+          formatSessionLog(`🚫 Join rejected: Invalid name "${name}"`, "ERROR"),
         );
         socket.emit("join-rejected", { reason: "Invalid name." });
         return;
@@ -369,15 +391,15 @@ export function setupSocketHandlers(io: Server) {
 
       // 🔥 Check for duplicate name
       const nameAlreadyTaken = Array.from(users.values()).some(
-        (user) => user.name.toLowerCase() === name.toLowerCase()
+        (user) => user.name.toLowerCase() === name.toLowerCase(),
       );
 
       if (nameAlreadyTaken) {
         console.log(
           formatSessionLog(
             `🚫 Join rejected: Name "${name}" already taken`,
-            "ERROR"
-          )
+            "ERROR",
+          ),
         );
         socket.emit("join-rejected", {
           reason: "Name already taken. Please choose another.",
@@ -391,8 +413,8 @@ export function setupSocketHandlers(io: Server) {
         console.log(
           formatSessionLog(
             `🚫 Join rejected: Avatar ${avatarId} already taken`,
-            "ERROR"
-          )
+            "ERROR",
+          ),
         );
         socket.emit("join-rejected", {
           reason: "Avatar already taken. Please choose another.",
@@ -426,8 +448,8 @@ export function setupSocketHandlers(io: Server) {
       console.log(
         formatSessionLog(
           `✅ ${emoji} ${name} joined table as ${avatarId}`,
-          "JOIN"
-        )
+          "JOIN",
+        ),
       );
       emitSystemLog(`👤 ${emoji} ${name} joined table as ${avatarId}`);
 
@@ -441,10 +463,10 @@ export function setupSocketHandlers(io: Server) {
 
         console.log(`🔍 Session check for ${name} (after delay):`);
         console.log(
-          `  - isFirstUser: ${isFirstUser} (users.size: ${users.size})`
+          `  - isFirstUser: ${isFirstUser} (users.size: ${users.size})`,
         );
         console.log(
-          `  - noActiveSession: ${noActiveSession} (sessionActive: ${sessionActive})`
+          `  - noActiveSession: ${noActiveSession} (sessionActive: ${sessionActive})`,
         );
         console.log(`  - sessionId: ${sessionId || "none"}`);
         console.log(`  - socket.connected: ${socket.connected}`);
@@ -462,7 +484,7 @@ export function setupSocketHandlers(io: Server) {
           });
 
           console.log(
-            `📤 Session picker sent to ${name} (socket: ${socket.id})`
+            `📤 Session picker sent to ${name} (socket: ${socket.id})`,
           );
 
           // Also emit to all sockets as a fallback
@@ -475,11 +497,11 @@ export function setupSocketHandlers(io: Server) {
           console.log(`🚫 Session picker NOT shown for ${name}:`);
           if (!isFirstUser)
             console.log(
-              `  - Reason: Not first user (${users.size} users total)`
+              `  - Reason: Not first user (${users.size} users total)`,
             );
           if (!noActiveSession)
             console.log(
-              `  - Reason: Session already active (ID: ${sessionId})`
+              `  - Reason: Session already active (ID: ${sessionId})`,
             );
 
           // Emit debug info
@@ -497,6 +519,21 @@ export function setupSocketHandlers(io: Server) {
       broadcastAvatarState();
       sendInitialPointerMap(socket);
       sendCurrentLiveSpeaker(socket);
+
+      // ✨ ENGINE V2: Shadow dispatch
+      try {
+        const roomId = extractRoomId(socket, { name, avatarId });
+        const userId = socket.id; // Use socketId consistently
+        const action = mapLegacyToV2Action("request-join", {
+          name,
+          avatarId,
+          socketId: socket.id,
+        });
+        shadowDispatch(roomId, userId, action);
+      } catch (error) {
+        // Swallow errors, don't break V1
+        console.error("[V2 Shadow] Failed on request-join:", error);
+      }
     });
 
     // Handle session start request from first user
@@ -519,7 +556,7 @@ export function setupSocketHandlers(io: Server) {
         }
 
         console.log(
-          `🎯 ${user.name} started ${durationMinutes}-minute session`
+          `🎯 ${user.name} started ${durationMinutes}-minute session`,
         );
         startSessionWithDuration(io, durationMinutes);
 
@@ -529,6 +566,19 @@ export function setupSocketHandlers(io: Server) {
           startedBy: user.name,
           message: `${user.name} started a ${durationMinutes}-minute session`,
         });
+
+        // ✨ ENGINE V2: Shadow dispatch
+        try {
+          const roomId = extractRoomId(socket, { durationMinutes });
+          const userId = socket.id; // Use socketId consistently
+          const action = mapLegacyToV2Action("start-session", {
+            durationMinutes,
+          });
+          shadowDispatch(roomId, userId, action);
+        } catch (error) {
+          // Swallow errors, don't break V1
+          console.error("[V2 Shadow] Failed on start-session:", error);
+        }
       } else if (sessionActive) {
         socket.emit("session-start-rejected", {
           reason: "Session already active",
@@ -568,32 +618,32 @@ export function setupSocketHandlers(io: Server) {
             gestureCatalog,
             socketId: socket.id,
             users,
-          }
+          },
         );
-      }
+      },
     );
 
     socket.on("leave", ({ name }) => {
       const user = users.get(socket.id);
       if (user) {
         const sessionDuration = Math.floor(
-          (new Date().getTime() - user.joinedAt.getTime()) / 1000
+          (new Date().getTime() - user.joinedAt.getTime()) / 1000,
         );
         console.log(
           formatSessionLog(
             `👋 ${name} left manually (was in session ${Math.floor(
-              sessionDuration / 60
+              sessionDuration / 60,
             )}m${sessionDuration % 60}s)`,
-            "LEAVE"
-          )
+            "LEAVE",
+          ),
         );
         emitSystemLog(`👋 ${name} left manually`);
       } else {
         console.log(
           formatSessionLog(
             `👋 ${name} left manually (no session data)`,
-            "LEAVE"
-          )
+            "LEAVE",
+          ),
         );
         emitSystemLog(`👋 ${name} left manually`);
       }
@@ -604,29 +654,40 @@ export function setupSocketHandlers(io: Server) {
       const user = users.get(socket.id);
       if (user) {
         const sessionDuration = Math.floor(
-          (new Date().getTime() - user.joinedAt.getTime()) / 1000
+          (new Date().getTime() - user.joinedAt.getTime()) / 1000,
         );
         console.log(
           formatSessionLog(
             `❌ ${
               user.name
             } disconnected unexpectedly (was in session ${Math.floor(
-              sessionDuration / 60
+              sessionDuration / 60,
             )}m${sessionDuration % 60}s)`,
-            "LEAVE"
-          )
+            "LEAVE",
+          ),
         );
         emitSystemLog(`❌ ${user.name} disconnected`);
       } else {
         console.log(
           formatSessionLog(
             `❌ Unknown socket ${socket.id} disconnected (no user data)`,
-            "ERROR"
-          )
+            "ERROR",
+          ),
         );
         emitSystemLog(`❌ Unknown disconnected`);
       }
       cleanupUser(socket);
+
+      // ✨ ENGINE V2: Shadow dispatch
+      try {
+        const roomId = extractRoomId(socket, {});
+        const userId = socket.id; // Use socketId consistently
+        const action = mapLegacyToV2Action("disconnect", {});
+        shadowDispatch(roomId, userId, action);
+      } catch (error) {
+        // Swallow errors, don't break V1
+        console.error("[V2 Shadow] Failed on disconnect:", error);
+      }
     });
 
     socket.on("pointing", ({ from, to }) => {
@@ -649,8 +710,19 @@ export function setupSocketHandlers(io: Server) {
           gestureCatalog,
           socketId: socket.id,
           users,
-        }
+        },
       );
+
+      // ✨ ENGINE V2: Shadow dispatch
+      try {
+        const roomId = extractRoomId(socket, { from, to });
+        const userId = socket.id; // Use socketId consistently
+        const action = mapLegacyToV2Action("pointing", { from, to });
+        shadowDispatch(roomId, userId, action);
+      } catch (error) {
+        // Swallow errors, don't break V1
+        console.error("[V2 Shadow] Failed on pointing:", error);
+      }
     });
 
     socket.on(
@@ -660,7 +732,7 @@ export function setupSocketHandlers(io: Server) {
 
         if (!user) {
           console.log(
-            `🚫 Rejected logBar:update — unknown user (${socket.id})`
+            `🚫 Rejected logBar:update — unknown user (${socket.id})`,
           );
           return;
         }
@@ -669,7 +741,7 @@ export function setupSocketHandlers(io: Server) {
 
         if (user.name !== liveSpeaker) {
           console.log(
-            `🚫 Rejected logBar:update — ${user.name} is not live (liveSpeaker=${liveSpeaker})`
+            `🚫 Rejected logBar:update — ${user.name} is not live (liveSpeaker=${liveSpeaker})`,
           );
           return;
         }
@@ -685,9 +757,9 @@ export function setupSocketHandlers(io: Server) {
               timestamp: Date.now(),
             },
           },
-          io
+          io,
         );
-      }
+      },
     );
 
     // Optional P2P (currently dormant)
@@ -724,19 +796,146 @@ export function setupSocketHandlers(io: Server) {
       console.log(
         formatSessionLog(
           `🛠️ [PANEL-DEBUG] Building panel config for ${userName} (socket: ${socket.id}) | Request #${currentCount} | ${timeSinceLastRequest}ms since last`,
-          "INFO"
-        )
+          "INFO",
+        ),
       );
 
       const config = getPanelConfigFor(userName);
       console.log(
         formatSessionLog(
           `🛠️ [PANEL-DEBUG] Sending panel config to ${userName} (socket: ${socket.id})`,
-          "INFO"
-        )
+          "INFO",
+        ),
       );
       socket.emit("receive:panelConfig", config);
     });
+
+    // ========================================================================
+    // ENGINE V2: Session Registry Handlers (Phase 1A)
+    // ========================================================================
+
+    socket.on("get-sessions", () => {
+      console.log(`[Server] 📊 get-sessions request from ${socket.id}`);
+
+      try {
+        // Import session registry API
+        const { sessionRegistry } = require("./engine-v2/api/sessionRegistry");
+        const sessions = sessionRegistry.getAllSessions();
+
+        console.log(
+          `[Server] 📊 Returning ${sessions.length} active session(s)`,
+        );
+
+        socket.emit("sessions-list", {
+          sessions,
+          timestamp: Date.now(),
+        });
+      } catch (error) {
+        console.error("[Server] ❌ Error fetching sessions:", error);
+        socket.emit("sessions-list", {
+          sessions: [],
+          error: "Failed to fetch sessions",
+          timestamp: Date.now(),
+        });
+      }
+    });
+
+    socket.on("check-session", ({ userId }) => {
+      if (!userId) {
+        console.warn("⚠️ No userId provided in check-session");
+        socket.emit("session-status", {
+          inSession: false,
+          error: "userId required",
+        });
+        return;
+      }
+
+      try {
+        const { sessionRegistry } = require("./engine-v2/api/sessionRegistry");
+        const sessionInfo = sessionRegistry.getUserSession(userId);
+
+        if (sessionInfo) {
+          socket.emit("session-status", {
+            inSession: true,
+            session: sessionInfo,
+          });
+        } else {
+          socket.emit("session-status", {
+            inSession: false,
+          });
+        }
+      } catch (error) {
+        console.error("[Server] ❌ Error checking session:", error);
+        socket.emit("session-status", {
+          inSession: false,
+          error: "Failed to check session",
+        });
+      }
+    });
+
+    socket.on("admin-end-session", ({ sessionId, adminId }) => {
+      if (!sessionId) {
+        console.warn("⚠️ No sessionId provided in admin-end-session");
+        socket.emit("admin-end-session-result", {
+          success: false,
+          error: "sessionId required",
+        });
+        return;
+      }
+
+      console.log(
+        `[Server] 🛑 admin-end-session: Session ${sessionId} by admin ${adminId || "unknown"}`,
+      );
+
+      try {
+        // Import dispatch and action types
+        const { dispatch } = require("./engine-v2/reducer/dispatch");
+        const { sessionRegistry } = require("./engine-v2/api/sessionRegistry");
+
+        // Get room ID for this session
+        const sessionInfo = sessionRegistry.getSession(sessionId);
+        if (!sessionInfo) {
+          console.warn(`⚠️ Session ${sessionId} not found`);
+          socket.emit("admin-end-session-result", {
+            success: false,
+            error: "Session not found",
+          });
+          return;
+        }
+
+        // Dispatch ADMIN_END_SESSION action to V2
+        dispatch(sessionInfo.roomId, null, {
+          type: "ADMIN_END_SESSION",
+          payload: { adminId, sessionId },
+        });
+
+        console.log(
+          `[Server] ✅ admin-end-session dispatched for session ${sessionId}`,
+        );
+
+        socket.emit("admin-end-session-result", {
+          success: true,
+          sessionId,
+        });
+
+        // Broadcast to all clients that session was terminated
+        io.emit("session-terminated", {
+          sessionId,
+          reason: "admin-terminated",
+          adminId,
+        });
+      } catch (error) {
+        console.error("[Server] ❌ Error ending session:", error);
+        socket.emit("admin-end-session-result", {
+          success: false,
+          error: "Failed to end session",
+        });
+      }
+    });
+
+    // ========================================================================
+    // END ENGINE V2 Session Registry Handlers
+    // ========================================================================
 
     // Request: list of avatars
     socket.on("get-avatars", () => {
@@ -820,11 +1019,11 @@ export function setupSocketHandlers(io: Server) {
 
       for (const candidate of candidates) {
         const everyoneElse = candidates.filter(
-          (u) => u.name !== candidate.name
+          (u) => u.name !== candidate.name,
         );
 
         const allPointing = everyoneElse.every(
-          (u) => pointerMap.get(u.name) === candidate.name
+          (u) => pointerMap.get(u.name) === candidate.name,
         );
         const selfPointing = pointerMap.get(candidate.name) === candidate.name;
 
@@ -863,15 +1062,15 @@ export function setupSocketHandlers(io: Server) {
             console.log(
               formatSessionLog(
                 `🛠️ [PANEL-DEBUG-SYNC] Building panel config for ${user.name} (socket: ${socketId}) during speaker sync`,
-                "INFO"
-              )
+                "INFO",
+              ),
             );
             const config = getPanelConfigFor(user.name);
             console.log(
               formatSessionLog(
                 `🛠️ [PANEL-DEBUG-SYNC] Sending panel config to ${user.name} (socket: ${socketId}) during speaker sync`,
-                "INFO"
-              )
+                "INFO",
+              ),
             );
             io.to(socketId).emit("receive:panelConfig", config);
           }

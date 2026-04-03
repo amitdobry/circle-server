@@ -4,11 +4,153 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug TS-Node Server",
+      "name": "🔍 Debug Server (Default SHADOW Mode)",
       "runtimeArgs": ["-r", "ts-node/register", "index.ts"],
       "cwd": "${workspaceFolder}",
       "protocol": "inspector",
-      "skipFiles": ["<node_internals>/**"]
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "ENGINE_MODE": "SHADOW"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "🟢 Debug Server (HYBRID - Panel Config)",
+      "runtimeArgs": ["-r", "ts-node/register", "index.ts"],
+      "cwd": "${workspaceFolder}",
+      "protocol": "inspector",
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "ENGINE_MODE": "HYBRID",
+        "ENGINE_V2_PANEL_CONFIG": "true",
+        "ENGINE_V2_STATE_QUERIES": "true"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "🟡 Debug Server (HYBRID - Medium Risk)",
+      "runtimeArgs": ["-r", "ts-node/register", "index.ts"],
+      "cwd": "${workspaceFolder}",
+      "protocol": "inspector",
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "ENGINE_MODE": "HYBRID",
+        "ENGINE_V2_PANEL_CONFIG": "true",
+        "ENGINE_V2_STATE_QUERIES": "true",
+        "ENGINE_V2_POINTING": "true",
+        "ENGINE_V2_LIVE_SPEAKER": "true",
+        "ENGINE_V2_GESTURE_ROUTING": "true"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "🔴 Debug Server (HYBRID - All Features)",
+      "runtimeArgs": ["-r", "ts-node/register", "index.ts"],
+      "cwd": "${workspaceFolder}",
+      "protocol": "inspector",
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "ENGINE_MODE": "HYBRID",
+        "ENGINE_V2_SESSION_CONTROL": "true",
+        "ENGINE_V2_USER_MANAGEMENT": "true",
+        "ENGINE_V2_POINTING": "true",
+        "ENGINE_V2_PANEL_CONFIG": "true",
+        "ENGINE_V2_LIVE_SPEAKER": "true",
+        "ENGINE_V2_GESTURE_ROUTING": "true",
+        "ENGINE_V2_GLIFF_LOGGING": "true",
+        "ENGINE_V2_STATE_QUERIES": "true"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "🚀 Debug Server (V2 FULL AUTHORITY)",
+      "runtimeArgs": ["-r", "ts-node/register", "index.ts"],
+      "cwd": "${workspaceFolder}",
+      "protocol": "inspector",
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "ENGINE_MODE": "V2_FULL"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "🔙 Debug Server (V1 ONLY - Rollback)",
+      "runtimeArgs": ["-r", "ts-node/register", "index.ts"],
+      "cwd": "${workspaceFolder}",
+      "protocol": "inspector",
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "ENGINE_MODE": "V1_ONLY"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "🧪 Test Feature Flags",
+      "runtimeArgs": ["-r", "ts-node/register", "test-feature-flags.ts"],
+      "cwd": "${workspaceFolder}",
+      "protocol": "inspector",
+      "skipFiles": ["<node_internals>/**"],
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "🔬 Debug Engine V2 Tests",
+      "runtimeArgs": ["-r", "ts-node/register"],
+      "args": ["${workspaceFolder}/server/engine-v2/tests/mutationBoundary.test.ts"],
+      "cwd": "${workspaceFolder}",
+      "protocol": "inspector",
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "NODE_ENV": "test"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "⚡ Debug Server (Session Control Only)",
+      "runtimeArgs": ["-r", "ts-node/register", "index.ts"],
+      "cwd": "${workspaceFolder}",
+      "protocol": "inspector",
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "ENGINE_MODE": "HYBRID",
+        "ENGINE_V2_SESSION_CONTROL": "true"
+      },
+      "console": "integratedTerminal",
+      "presentation": {
+        "group": "advanced"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "👥 Debug Server (User Management Only)",
+      "runtimeArgs": ["-r", "ts-node/register", "index.ts"],
+      "cwd": "${workspaceFolder}",
+      "protocol": "inspector",
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "ENGINE_MODE": "HYBRID",
+        "ENGINE_V2_USER_MANAGEMENT": "true"
+      },
+      "console": "integratedTerminal",
+      "presentation": {
+        "group": "advanced"
+      }
     }
   ]
 }

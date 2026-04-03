@@ -21,6 +21,7 @@ const socketHandler_1 = require("./server/socketHandler");
 const database_1 = require("./server/config/database");
 const passport_2 = require("./server/config/passport");
 const authRoutes_1 = __importDefault(require("./server/routes/authRoutes"));
+const featureFlags_1 = require("./server/config/featureFlags");
 const buildTime = new Date().toLocaleString("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -31,6 +32,8 @@ const app = (0, express_1.default)();
 (0, database_1.connectDB)();
 // Configure Passport
 (0, passport_2.configurePassport)();
+// Log Engine Configuration (V1 vs V2 authority)
+(0, featureFlags_1.logConfigSummary)();
 // Middleware
 app.use((0, cors_1.default)({
     origin: process.env.FRONTEND_URL || "http://localhost:3000",

@@ -1,0 +1,360 @@
+/**
+ * Engine V2: Effect Runner
+ *
+ * Executes side effects produced by the reducer.
+ * Effects are plain objects (not functions), so this module
+ * interprets them and performs the actual side effects.
+ *
+ * CRITICAL: This module CANNOT mutate TableState.
+ * It can only trigger external side effects (socket emits, timers, etc.)
+ */
+
+import { Server, Socket } from "socket.io";
+import { Effect } from "../state/types";
+import { dispatch } from "../reducer/dispatch";
+
+// ============================================================================
+// TIMER MANAGEMENT
+// ============================================================================
+
+/**
+ * Active session timers (roomId -> NodeJS.Timeout)
+ */
+const sessionTimers = new Map<string, NodeJS.Timeout>();
+
+/**
+ * Active delayed action timers (roomId -> NodeJS.Timeout)
+ */
+const delayedActionTimers = new Map<string, NodeJS.Timeout>();
+
+/**
+ * Active cleanup timers (roomId -> NodeJS.Timeout)
+ */
+const cleanupTimers = new Map<string, NodeJS.Timeout>();
+
+/**
+ * Start a session timer that dispatches TIMER_EXPIRED when done
+ */
+function startSessionTimer(
+  roomId: string,
+  durationMs: number,
+  io: Server,
+): void {
+  // Cancel existing timer for this room
+  cancelSessionTimer(roomId);
+
+  console.log(`[Timer] Starting ${durationMs}ms timer for room ${roomId}`);
+
+  const timer = setTimeout(() => {
+    console.log(`[Timer] ⏰ Timer expired for room ${roomId}`);
+
+    // Dispatch TIMER_EXPIRED action to V2
+    const effects = dispatch(roomId, null, {
+      type: "TIMER_EXPIRED",
+      payload: {},
+    });
+
+    // Run resulting effects
+    runEffects(effects, io);
+  }, durationMs);
+
+  sessionTimers.set(roomId, timer);
+}
+
+/**
+ * Cancel a session timer
+ */
+function cancelSessionTimer(roomId: string): void {
+  const timer = sessionTimers.get(roomId);
+  if (timer) {
+    clearTimeout(timer);
+    sessionTimers.delete(roomId);
+    console.log(`[Timer] Cancelled timer for room ${roomId}`);
+  }
+}
+
+/**
+ * Schedule a delayed action dispatch
+ */
+function scheduleDelayedAction(
+  roomId: string,
+  delayMs: number,
+  action: any,
+  io: Server,
+): void {
+  // Cancel existing delayed action for this room
+  cancelDelayedAction(roomId);
+
+  console.log(
+    `[DelayedAction] Scheduling ${action.type} in ${delayMs}ms for room ${roomId}`,
+  );
+
+  const timer = setTimeout(() => {
+    console.log(
+      `[DelayedAction] 🕐 Executing ${action.type} for room ${roomId}`,
+    );
+
+    // Dispatch the delayed action
+    const effects = dispatch(roomId, null, action);
+
+    // Run resulting effects
+    runEffects(effects, io);
+  }, delayMs);
+
+  delayedActionTimers.set(roomId, timer);
+}
+
+/**
+ * Cancel a delayed action
+ */
+function cancelDelayedAction(roomId: string): void {
+  const timer = delayedActionTimers.get(roomId);
+  if (timer) {
+    clearTimeout(timer);
+    delayedActionTimers.delete(roomId);
+    console.log(`[DelayedAction] Cancelled delayed action for room ${roomId}`);
+  }
+}
+
+/**
+ * Schedule room cleanup
+ */
+function scheduleCleanup(roomId: string, delayMs: number, io: Server): void {
+  // Cancel existing cleanup timer
+  cancelCleanup(roomId);
+
+  console.log(
+    `[Cleanup] Scheduling cleanup in ${delayMs}ms for room ${roomId}`,
+  );
+
+  const timer = setTimeout(() => {
+    console.log(`[Cleanup] 🧹 Executing cleanup for room ${roomId}`);
+
+    // Dispatch EXECUTE_CLEANUP effect
+    runEffects(
+      [
+        {
+          type: "EXECUTE_CLEANUP",
+          roomId,
+        },
+      ],
+      io,
+    );
+  }, delayMs);
+
+  cleanupTimers.set(roomId, timer);
+}
+
+/**
+ * Cancel scheduled cleanup
+ */
+function cancelCleanup(roomId: string): void {
+  const timer = cleanupTimers.get(roomId);
+  if (timer) {
+    clearTimeout(timer);
+    cleanupTimers.delete(roomId);
+    console.log(`[Cleanup] Cancelled cleanup for room ${roomId}`);
+  }
+}
+
+// ============================================================================
+// EFFECT RUNNER
+// ============================================================================
+
+/**
+ * Execute a list of effects.
+ *
+ * @param effects - Array of effect objects to execute
+ * @param io - Socket.IO server instance
+ */
+export function runEffects(effects: Effect[], io: Server): void {
+  for (const effect of effects) {
+    try {
+      executeEffect(effect, io);
+    } catch (error) {
+      console.error(
+        "[runEffects] Effect execution failed:",
+        effect.type,
+        error,
+      );
+    }
+  }
+}
+
+/**
+ * Execute a single effect.
+ */
+function executeEffect(effect: Effect, io: Server): void {
+  switch (effect.type) {
+    // ========================================================================
+    // SOCKET EMISSIONS
+    // ========================================================================
+
+    case "SOCKET_EMIT_ROOM":
+      // Emit to all sockets in a room
+      io.to(effect.roomId).emit(effect.event, effect.data);
+      break;
+
+    case "SOCKET_EMIT_USER":
+      // Emit to a specific user (requires finding their socketId)
+      // Note: This requires a lookup. We'll implement this properly
+      // when we integrate with the adapter layer.
+      console.warn(
+        "[runEffects] SOCKET_EMIT_USER not yet implemented:",
+        effect.userId,
+      );
+      // TODO: Implement user-specific emission
+      break;
+
+    case "EMIT_FULL_STATE_TO_USER":
+      // Send full state snapshot to reconnecting user
+      console.warn(
+        "[runEffects] EMIT_FULL_STATE_TO_USER not yet implemented:",
+        effect.userId,
+      );
+      // TODO: Implement state snapshot emission
+      break;
+
+    case "EMIT_PANEL_CONFIG":
+      // Send UI panel configuration to user
+      console.warn(
+        "[runEffects] EMIT_PANEL_CONFIG not yet implemented:",
+        effect.userId,
+      );
+      // TODO: Implement panel config emission
+      break;
+
+    // ========================================================================
+    // GLIFF LOG
+    // ========================================================================
+
+    case "GLIFF_APPEND":
+      // Append to gliff log (conversation log)
+      console.warn(
+        "[runEffects] GLIFF_APPEND not yet implemented:",
+        effect.roomId,
+      );
+      // TODO: Integrate with gliffService
+      break;
+
+    // ========================================================================
+    // TIMER
+    // ========================================================================
+
+    case "TIMER_START":
+      // Start session timer
+      startSessionTimer(effect.roomId, effect.durationMs, io);
+      console.log(
+        `[runEffects] TIMER_START: ${effect.durationMs}ms for room ${effect.roomId}`,
+      );
+      break;
+
+    case "TIMER_CANCEL":
+      // Cancel session timer
+      cancelSessionTimer(effect.roomId);
+      console.log(`[runEffects] TIMER_CANCEL: room ${effect.roomId}`);
+      break;
+
+    // ========================================================================
+    // SYSTEM LOGGING
+    // ========================================================================
+
+    case "SYSTEM_LOG":
+      // Log system message
+      const level = effect.level || "info";
+      const prefix = `[Room ${effect.roomId}]`;
+
+      if (level === "error") {
+        console.error(prefix, effect.message);
+      } else if (level === "warn") {
+        console.warn(prefix, effect.message);
+      } else {
+        console.log(prefix, effect.message);
+      }
+
+      // Also emit to room for client-side display
+      io.to(effect.roomId).emit("system-message", {
+        message: effect.message,
+        timestamp: Date.now(),
+      });
+      break;
+
+    // ========================================================================
+    // DELAYED ACTIONS
+    // ========================================================================
+
+    case "DELAYED_ACTION":
+      // Schedule a future dispatch
+      scheduleDelayedAction(effect.roomId, effect.delayMs, effect.action, io);
+      console.log(
+        `[runEffects] DELAYED_ACTION: ${effect.action.type} in ${effect.delayMs}ms for room ${effect.roomId}`,
+      );
+      break;
+
+    // ========================================================================
+    // ROOM LIFECYCLE
+    // ========================================================================
+
+    case "SCHEDULE_CLEANUP":
+      // Schedule room cleanup after delay
+      scheduleCleanup(effect.roomId, effect.delayMs, io);
+      console.log(
+        `[runEffects] SCHEDULE_CLEANUP: ${effect.delayMs}ms for room ${effect.roomId}`,
+      );
+      break;
+
+    case "EXECUTE_CLEANUP":
+      // Immediately cleanup room
+      console.log(
+        `[runEffects] EXECUTE_CLEANUP: Removing room ${effect.roomId}`,
+      );
+
+      // Import roomRegistry to delete the room
+      const { roomRegistry } = require("../registry/RoomRegistry");
+      roomRegistry.destroyRoom(effect.roomId);
+
+      // Clear all timers for this room
+      cancelSessionTimer(effect.roomId);
+      cancelDelayedAction(effect.roomId);
+      cancelCleanup(effect.roomId);
+
+      console.log(
+        `[runEffects] ✅ Room ${effect.roomId} cleaned up and deleted`,
+      );
+      break;
+
+    case "CANCEL_CLEANUP":
+      // Cancel scheduled cleanup
+      cancelCleanup(effect.roomId);
+      console.log(`[runEffects] CANCEL_CLEANUP: room ${effect.roomId}`);
+      break;
+
+    // ========================================================================
+    // UNKNOWN EFFECT
+    // ========================================================================
+
+    default:
+      console.error("[runEffects] Unknown effect type:", (effect as any).type);
+      break;
+  }
+}
+
+// ============================================================================
+// HELPER: Find Socket by User ID
+// ============================================================================
+
+/**
+ * Find a socket by userId.
+ * This requires looking up the participant's socketId in the room state.
+ *
+ * NOTE: This creates a coupling to roomRegistry, which we want to avoid.
+ * We'll handle this properly in the adapter layer.
+ */
+export function findSocketByUserId(
+  io: Server,
+  userId: string,
+): Socket | undefined {
+  // TODO: Implement proper socket lookup
+  // For now, we'll leave this as a placeholder
+  return undefined;
+}

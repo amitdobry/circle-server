@@ -18,6 +18,7 @@ import { setupSocketHandlers, getSessionStats } from "./server/socketHandler";
 import { connectDB } from "./server/config/database";
 import { configurePassport } from "./server/config/passport";
 import authRoutes from "./server/routes/authRoutes";
+import { logConfigSummary } from "./server/config/featureFlags";
 
 const buildTime = new Date().toLocaleString("en-GB", {
   dateStyle: "medium",
@@ -33,12 +34,15 @@ connectDB();
 // Configure Passport
 configurePassport();
 
+// Log Engine Configuration (V1 vs V2 authority)
+logConfigSummary();
+
 // Middleware
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:3000",
     credentials: true,
-  })
+  }),
 );
 
 app.use(express.json());
@@ -54,7 +58,7 @@ app.use(
       secure: process.env.NODE_ENV === "production",
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
-  })
+  }),
 );
 
 // Initialize Passport
@@ -159,7 +163,7 @@ app.post("/api/users/clear", (_req, res) => {
   // Release all avatars
   for (const [socketId, user] of users.entries()) {
     console.log(
-      `🔓 Force releasing avatar ${user.avatarId} for user ${user.name}`
+      `🔓 Force releasing avatar ${user.avatarId} for user ${user.name}`,
     );
     releaseAvatarByName(user.name);
     removeUser(socketId);
