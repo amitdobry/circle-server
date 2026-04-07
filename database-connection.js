@@ -8,10 +8,7 @@ class DatabaseConnection {
 
   async connectToMongoDB() {
     try {
-      const mongoUri =
-        process.env.NODE_ENV === "production"
-          ? process.env.MONGODB_URI_PROD
-          : process.env.MONGODB_URI;
+      const mongoUri = process.env.MONGODB_URI;
 
       console.log(
         `Connecting to MongoDB (${
