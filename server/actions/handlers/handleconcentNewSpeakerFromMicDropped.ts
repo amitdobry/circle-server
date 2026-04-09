@@ -1,16 +1,17 @@
 import { getPanelConfigFor } from "../../panelConfigService";
 import { ActionPayload, ActionContext } from "../routeAction";
+import { setPointer } from "../../socketHandler";
 
 export function handleConcentNewSpeakerFromMicDropped(
   payload: ActionPayload,
-  context: ActionContext
+  context: ActionContext,
 ) {
   const { name } = payload;
   const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
 
   if (!name) {
     logSystem(
-      "🚨 Missing name in handleConcentNewSpeakerFromMicDropped payload."
+      "🚨 Missing name in handleConcentNewSpeakerFromMicDropped payload.",
     );
     return;
   }
@@ -35,7 +36,7 @@ export function handleConcentNewSpeakerFromMicDropped(
   }
 
   // 👆 Set pointer and update state
-  pointerMap.set(name, speakerCandidate);
+  setPointer("default-room", name, speakerCandidate);
   io.emit("update-pointing", { from: name, to: speakerCandidate });
 
   const responder = users.get(socketIdOfResponder);
@@ -45,7 +46,7 @@ export function handleConcentNewSpeakerFromMicDropped(
   }
 
   logAction(
-    `👂 ${name} gave consent for ${speakerCandidate} to pick up the mic`
+    `👂 ${name} gave consent for ${speakerCandidate} to pick up the mic`,
   );
 
   // 🔁 Refresh panels for everyone

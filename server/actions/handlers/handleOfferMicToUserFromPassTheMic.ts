@@ -1,10 +1,14 @@
 import { getPanelConfigFor } from "../../panelConfigService";
-import { setIsSyncPauseMode, setLiveSpeaker } from "../../socketHandler";
+import {
+  setIsSyncPauseMode,
+  setLiveSpeaker,
+  setPointer,
+} from "../../socketHandler";
 import { ActionPayload, ActionContext } from "../routeAction";
 
 export function handleOfferMicToUserFromPassTheMic(
   payload: ActionPayload,
-  context: ActionContext
+  context: ActionContext,
 ) {
   const { name, targetUser } = payload;
   const { users, pointerMap, io, logSystem, logAction, evaluateSync } = context;
@@ -30,7 +34,7 @@ export function handleOfferMicToUserFromPassTheMic(
   }
 
   // 👆 Set pointer and update state
-  pointerMap.set(name, targetUser);
+  setPointer("default-room", name, targetUser);
   io.emit("update-pointing", { from: name, to: targetUser });
 
   setIsSyncPauseMode(true);

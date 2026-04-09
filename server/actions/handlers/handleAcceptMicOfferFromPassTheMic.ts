@@ -1,9 +1,10 @@
 import { ActionPayload, ActionContext } from "../routeAction";
 import { getPanelConfigFor } from "../../panelConfigService";
+import { setPointer } from "../../socketHandler";
 
 export function handleAcceptMicOfferFromPassTheMic(
   payload: ActionPayload,
-  context: ActionContext
+  context: ActionContext,
 ) {
   const { name } = payload;
   const { users, io, logAction, logSystem, evaluateSync, pointerMap } = context;
@@ -22,7 +23,7 @@ export function handleAcceptMicOfferFromPassTheMic(
     // 🙋 Target user who accepted
     if (user.name === name) {
       user.state = "wantsToPickUpTheMic";
-      pointerMap.set(user.name, user.name); // ✅ Point to self
+      setPointer("default-room", user.name, user.name); // ✅ Point to self
     }
 
     // 🧘 Speaker who previously offered

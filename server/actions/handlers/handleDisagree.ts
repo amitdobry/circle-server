@@ -1,5 +1,5 @@
 import { getPanelConfigFor } from "../../panelConfigService";
-import { setIsSyncPauseMode } from "../../socketHandler";
+import { setIsSyncPauseMode, clearPointer } from "../../socketHandler";
 import { ActionPayload, ActionContext } from "../routeAction";
 
 export function handleDisagree(payload: ActionPayload, context: ActionContext) {
@@ -13,7 +13,7 @@ export function handleDisagree(payload: ActionPayload, context: ActionContext) {
 
   for (const [socketId, user] of users.entries()) {
     // 🔄 Reset pointing for the disagreeing user and all other users
-    pointerMap.set(name, null);
+    clearPointer("default-room", name);
     io.emit("update-pointing", { from: name, to: null });
     user.state = "regular";
     users.set(socketId, user);

@@ -4,6 +4,8 @@
  * This module controls the gradual authority shift from the legacy Engine V1
  * (in socketHandler.ts) to the new event-sourced Engine V2 (in engine-v2/).
  *
+ * Phase B: Speaker Manager Migration - Room-scoped speaker state
+ *
  * Usage:
  *   import { shouldUseV2, EngineMode } from './config/featureFlags';
  *
@@ -92,6 +94,19 @@ const FEATURE_FLAGS: Record<FeatureFlag, FeatureFlagConfig> = {
     risk: "low",
   },
 };
+
+// ============================================================================
+// MANAGER-LEVEL FLAGS (Phase B: Multi-Table Migration)
+// ============================================================================
+
+/**
+ * Speaker Manager: Room-scoped speaker state (Phase B)
+ * When enabled, uses SpeakerManager instead of global variables
+ */
+export const ENGINE_V2_SPEAKER_MANAGER = parseEnvBoolean(
+  "ENGINE_V2_SPEAKER_MANAGER",
+  false,
+);
 
 // ============================================================================
 // ENGINE MODE
@@ -203,6 +218,7 @@ export function logConfigSummary(): void {
   console.log(`Mode:              ${summary.mode}`);
   console.log(`Shadow Active:     ${summary.shadowActive}`);
   console.log(`Execute Effects:   ${summary.executeEffects}`);
+  console.log(`Speaker Manager:   ${ENGINE_V2_SPEAKER_MANAGER ? "V2" : "V1"}`);
   console.log(
     `Enabled Features:  ${summary.enabledFeatures.length > 0 ? "" : "None"}`,
   );

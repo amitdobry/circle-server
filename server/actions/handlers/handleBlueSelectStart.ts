@@ -1,11 +1,11 @@
 // handlers/handleBlueSelectStart.ts
 import { ActionContext, ActionPayload } from "../routeAction";
-import { setIsSyncPauseMode } from "../../socketHandler";
+import { setIsSyncPauseMode, clearPointer } from "../../socketHandler";
 import { getPanelConfigFor } from "../../panelConfigService";
 
 export function handleBlueSelectStart(
   payload: ActionPayload,
-  context: ActionContext
+  context: ActionContext,
 ) {
   const { name, flavor } = payload;
   const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
@@ -21,14 +21,14 @@ export function handleBlueSelectStart(
   }
 
   const speaker = Array.from(users.values()).find(
-    (u) => u.state === "speaking"
+    (u) => u.state === "speaking",
   );
   if (!speaker) {
     logSystem(`🟦 handleBlueSelectStart: no current speaker in session 123`);
     return;
   }
 
-  pointerMap.set(name, null);
+  clearPointer("default-room", name);
   io.emit("update-pointing", { from: name, to: null });
 
   // ✅ Now update all states:

@@ -1,10 +1,10 @@
 import { getPanelConfigFor } from "../../panelConfigService";
-import { setIsSyncPauseMode } from "../../socketHandler";
+import { setIsSyncPauseMode, clearPointer } from "../../socketHandler";
 import { ActionPayload, ActionContext } from "../routeAction";
 
 export function handleDeclineToSpeakAfterMicDropped(
   payload: ActionPayload,
-  context: ActionContext
+  context: ActionContext,
 ) {
   const { name } = payload;
   const { users, pointerMap, io, logSystem, logAction, evaluateSync } = context;
@@ -19,7 +19,7 @@ export function handleDeclineToSpeakAfterMicDropped(
 
   for (const [socketId, user] of users.entries()) {
     if (user.name === name) {
-      pointerMap.set(user.name, null);
+      clearPointer("default-room", user.name);
       io.emit("update-pointing", { from: user.name, to: null });
       user.state = "doesNotWantToPickUpTheMic";
     }
@@ -39,14 +39,14 @@ export function handleDeclineToSpeakAfterMicDropped(
   // 🔍 Check if ALL listeners declined
   if (declinedCount === totalEligibleUsers && totalEligibleUsers > 0) {
     logAction(
-      `📢 No one stepped up to take the mic — returning to attention phase`
+      `📢 No one stepped up to take the mic — returning to attention phase`,
     );
     setIsSyncPauseMode(false);
 
     // Optional: reset state and emit new panels
     for (const [socketId, user] of users.entries()) {
       user.state = "regular";
-      pointerMap.set(user.name, null);
+      clearPointer("default-room", user.name);
       const config = getPanelConfigFor(user.name);
       io.to(socketId).emit("receive:panelConfig", config);
     }
