@@ -122,9 +122,26 @@ Added structured snapshot logs to detect V1/V2 panel override races.
 
 ---
 
-## Next Steps
-- Live re-test with 3 users: verify speaker panel appears on consensus
-- Monitor `heroku logs --tail` for `🎤 Consensus!` and `REBUILD_ALL_PANELS`
-- Phase B Step 7: Remove legacy globals (`pointerMap`, `liveSpeaker`, `isSyncPauseMode`) from `socketHandler.ts` once V2 confirmed stable
-- `REBUILD_ALL_PANELS` effect: currently logs only — wire actual panel rebuild trigger in `socketHandler.ts`
-- FireKeeper: `docs/2026-04/FIREKEEPER_AI_ENTITY_PLAN.md` ready — begin Step 1 (join as presence)
+## Next: Phase D
+
+Full plan: `docs/2026-04/PHASE_D_V2_FULL_OWNERSHIP_PLAN.md`
+
+**Goal:** V2 becomes single source of truth — V1's `evaluateSync()`, legacy globals, and per-handler panel rebuilds are removed.
+
+**9 steps, in order:**
+
+| Step | What | Status |
+|---|---|---|
+| 1 | Wire `REBUILD_ALL_PANELS` to actually emit panels to all sockets | ❌ |
+| 2 | `DROP_MIC` in V2 reducer | ❌ |
+| 3 | `PASS_MIC` in V2 reducer | ❌ |
+| 4 | `ACCEPT_MIC` / `DECLINE_MIC` in V2 reducer | ❌ |
+| 5 | `LEAVE_SESSION` + `RECONNECT` in V2 reducer | ❌ |
+| 6 | Wire `SOCKET_EMIT_USER` effect in runEffects | ❌ |
+| 7 | **Remove V1 `evaluateSync()` + legacy globals** (the actual cutover) | ❌ |
+| 8 | Wire `GLIFF_APPEND` effect | ❌ |
+| 9 | `SEND_GESTURE` / `TEXT_INPUT` in V2 reducer | ❌ |
+
+**What stays in V1 after Phase D:** per-user UI states (`user.state`), `panelConfigService`, `panelBuilderRouter`, gliff log writing.
+
+**Phase E (future):** Model per-user UI states in V2 `ParticipantState`, FireKeeper joins as socket client, full removal of V1 action handlers.

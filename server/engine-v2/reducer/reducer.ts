@@ -153,10 +153,59 @@ export function reducer(
       ];
     }
 
-    case ActionTypes.LEAVE_SESSION:
-      // return transitions.leave(tableState, userId!);
-      console.warn(`[reducer] ${action.type} not yet implemented`);
-      return [];
+    case ActionTypes.LEAVE_SESSION: {
+      // =====================================================================
+      // LEAVE_SESSION: User voluntarily left — remove their seat entirely
+      // =====================================================================
+      console.log(
+        `[V2 Reducer] 👋 LEAVE_SESSION | Room: ${tableState.roomId} | User: ${userId}`,
+      );
+
+      if (!userId) return [];
+
+      const leaver = getParticipantBySocketId(tableState, userId)
+        || (action.payload?.displayName ? findParticipantByDisplayName(tableState, action.payload.displayName) : null);
+
+      if (!leaver) {
+        console.warn(`[V2 Reducer] ⚠️ LEAVE_SESSION: User ${userId} not found`);
+        return [];
+      }
+
+      const leaverName = leaver.displayName;
+      const wasLiveSpeaker = tableState.liveSpeaker === leaver.userId;
+
+      // Remove participant entirely
+      tableState.participants.delete(leaver.userId);
+      tableState.pointerMap.delete(leaver.userId);
+      // Clear any pointers TO this user
+      for (const [from, to] of tableState.pointerMap.entries()) {
+        if (to === leaver.userId) tableState.pointerMap.delete(from);
+      }
+
+      // If they were the live speaker, reset
+      if (wasLiveSpeaker) {
+        tableState.liveSpeaker = null;
+        tableState.phase = "ATTENTION_SELECTION";
+        tableState.syncPause = false;
+      }
+
+      console.log(
+        `[V2 Reducer] ✅ ${leaverName} left | Remaining: ${tableState.participants.size}`,
+      );
+
+      return [
+        {
+          type: "SYSTEM_LOG",
+          roomId: tableState.roomId,
+          message: `${leaverName} left the circle`,
+          level: "info",
+        },
+        {
+          type: "REBUILD_ALL_PANELS",
+          roomId: tableState.roomId,
+        },
+      ];
+    }
 
     case ActionTypes.DISCONNECT: {
       // =====================================================================
@@ -242,10 +291,62 @@ export function reducer(
       return effects;
     }
 
-    case ActionTypes.RECONNECT:
-      // return transitions.reconnect(tableState, userId!, action.payload);
-      console.warn(`[reducer] ${action.type} not yet implemented`);
-      return [];
+    case ActionTypes.RECONNECT: {
+      // =====================================================================
+      // RECONNECT: Restore a GHOST user to CONNECTED with new socketId
+      // =====================================================================
+      console.log(
+        `[V2 Reducer] 🔄 RECONNECT | Room: ${tableState.roomId} | User: ${userId}`,
+      );
+
+      if (!userId) return [];
+
+      // Try to find by new socketId first, then by display name
+      const displayName = action.payload?.displayName;
+      const ghost = displayName
+        ? findParticipantByDisplayName(tableState, displayName)
+        : getParticipantBySocketId(tableState, userId);
+
+      if (!ghost) {
+        console.warn(`[V2 Reducer] ⚠️ RECONNECT: No matching participant for ${displayName ?? userId}`);
+        return [];
+      }
+
+      if (ghost.presence === "CONNECTED") {
+        console.log(`[V2 Reducer] ⚠️ RECONNECT: ${ghost.displayName} is already CONNECTED, updating socketId`);
+      }
+
+      // Restore presence and update socketId
+      ghost.presence = "CONNECTED";
+      ghost.socketId = userId; // userId = new socketId in shadow dispatch
+      ghost.lastSeen = Date.now();
+
+      console.log(`[V2 Reducer] ✅ ${ghost.displayName} reconnected | socketId updated`);
+
+      return [
+        {
+          type: "SYSTEM_LOG",
+          roomId: tableState.roomId,
+          message: `${ghost.displayName} reconnected`,
+          level: "info",
+        },
+        {
+          type: "SOCKET_EMIT_USER",
+          userId, // new socketId
+          event: "v2:reconnect-state",
+          data: {
+            phase: tableState.phase,
+            liveSpeaker: tableState.liveSpeaker
+              ? tableState.participants.get(tableState.liveSpeaker)?.displayName ?? null
+              : null,
+          },
+        },
+        {
+          type: "REBUILD_ALL_PANELS",
+          roomId: tableState.roomId,
+        },
+      ];
+    }
 
     // ========================================================================
     // ATTENTION & CONSENSUS
@@ -498,25 +599,175 @@ export function reducer(
     // SPEAKING & MIC CONTROL
     // ========================================================================
 
-    case ActionTypes.DROP_MIC:
-      // return transitions.dropMic(tableState, userId!);
-      console.warn(`[reducer] ${action.type} not yet implemented`);
-      return [];
+    case ActionTypes.DROP_MIC: {
+      // =====================================================================
+      // DROP_MIC: Speaker releases mic, enter selection mode
+      // =====================================================================
+      console.log(
+        `[V2 Reducer] 🎤 DROP_MIC | Room: ${tableState.roomId} | User: ${userId}`,
+      );
 
-    case ActionTypes.PASS_MIC:
-      // return transitions.passMic(tableState, userId!, action.payload);
-      console.warn(`[reducer] ${action.type} not yet implemented`);
-      return [];
+      const dropper = userId ? getParticipantBySocketId(tableState, userId) : null;
 
-    case ActionTypes.ACCEPT_MIC:
-      // return transitions.acceptMic(tableState, userId!);
-      console.warn(`[reducer] ${action.type} not yet implemented`);
-      return [];
+      // Clear live speaker and all pointers
+      tableState.liveSpeaker = null;
+      tableState.syncPause = true;
+      tableState.phase = "ATTENTION_SELECTION";
+      tableState.pointerMap.clear();
 
-    case ActionTypes.DECLINE_MIC:
-      // return transitions.declineMic(tableState, userId!);
-      console.warn(`[reducer] ${action.type} not yet implemented`);
-      return [];
+      // Reset all roles to listener
+      for (const [, p] of tableState.participants) {
+        p.role = "listener";
+      }
+
+      console.log(
+        `[V2 Reducer] ✅ Mic dropped by ${dropper?.displayName ?? userId} | Phase → ATTENTION_SELECTION | syncPause=true`,
+      );
+
+      return [
+        {
+          type: "SYSTEM_LOG",
+          roomId: tableState.roomId,
+          message: `${dropper?.displayName ?? "Speaker"} dropped the mic`,
+          level: "info",
+        },
+        {
+          type: "SOCKET_EMIT_ROOM",
+          roomId: tableState.roomId,
+          event: "live-speaker-cleared",
+          data: {},
+        },
+        {
+          type: "REBUILD_ALL_PANELS",
+          roomId: tableState.roomId,
+        },
+      ];
+    }
+
+    case ActionTypes.PASS_MIC: {
+      // =====================================================================
+      // PASS_MIC: Speaker passes mic, enter selection mode
+      // =====================================================================
+      console.log(
+        `[V2 Reducer] 🎤 PASS_MIC | Room: ${tableState.roomId} | User: ${userId}`,
+      );
+
+      const passer = userId ? getParticipantBySocketId(tableState, userId) : null;
+
+      // Clear live speaker and all pointers
+      tableState.liveSpeaker = null;
+      tableState.syncPause = true;
+      tableState.phase = "ATTENTION_SELECTION";
+      tableState.pointerMap.clear();
+
+      // Reset all roles to listener
+      for (const [, p] of tableState.participants) {
+        p.role = "listener";
+      }
+
+      console.log(
+        `[V2 Reducer] ✅ Mic passed by ${passer?.displayName ?? userId} | Phase → ATTENTION_SELECTION | syncPause=true`,
+      );
+
+      return [
+        {
+          type: "SYSTEM_LOG",
+          roomId: tableState.roomId,
+          message: `${passer?.displayName ?? "Speaker"} is passing the mic`,
+          level: "info",
+        },
+        {
+          type: "SOCKET_EMIT_ROOM",
+          roomId: tableState.roomId,
+          event: "live-speaker-cleared",
+          data: {},
+        },
+        {
+          type: "REBUILD_ALL_PANELS",
+          roomId: tableState.roomId,
+        },
+      ];
+    }
+
+    case ActionTypes.ACCEPT_MIC: {
+      // =====================================================================
+      // ACCEPT_MIC: User accepts offered mic, becomes live speaker
+      // =====================================================================
+      console.log(
+        `[V2 Reducer] 🎤 ACCEPT_MIC | Room: ${tableState.roomId} | User: ${userId}`,
+      );
+
+      const accepter = userId ? getParticipantBySocketId(tableState, userId) : null;
+
+      if (!accepter) {
+        console.warn(`[V2 Reducer] ⚠️ ACCEPT_MIC: User ${userId} not found`);
+        return [];
+      }
+
+      tableState.liveSpeaker = accepter.userId;
+      tableState.syncPause = false;
+      tableState.phase = "LIVE_SPEAKER";
+
+      for (const [, p] of tableState.participants) {
+        p.role = p.userId === accepter.userId ? "speaker" : "listener";
+      }
+
+      console.log(
+        `[V2 Reducer] ✅ ${accepter.displayName} accepted mic | Phase → LIVE_SPEAKER`,
+      );
+
+      return [
+        {
+          type: "SYSTEM_LOG",
+          roomId: tableState.roomId,
+          message: `${accepter.displayName} accepted the mic`,
+          level: "info",
+        },
+        {
+          type: "SOCKET_EMIT_ROOM",
+          roomId: tableState.roomId,
+          event: "live-speaker",
+          data: { name: accepter.displayName, userId: accepter.userId },
+        },
+        {
+          type: "REBUILD_ALL_PANELS",
+          roomId: tableState.roomId,
+        },
+      ];
+    }
+
+    case ActionTypes.DECLINE_MIC: {
+      // =====================================================================
+      // DECLINE_MIC: User declines offered mic, stay in selection
+      // =====================================================================
+      console.log(
+        `[V2 Reducer] 🙅 DECLINE_MIC | Room: ${tableState.roomId} | User: ${userId}`,
+      );
+
+      const decliner = userId ? getParticipantBySocketId(tableState, userId) : null;
+
+      // Clear any pointer this user had set
+      if (decliner) {
+        tableState.pointerMap.delete(decliner.userId);
+      }
+
+      console.log(
+        `[V2 Reducer] ✅ ${decliner?.displayName ?? userId} declined mic | Phase stays ${tableState.phase}`,
+      );
+
+      return [
+        {
+          type: "SYSTEM_LOG",
+          roomId: tableState.roomId,
+          message: `${decliner?.displayName ?? "User"} declined the mic`,
+          level: "info",
+        },
+        {
+          type: "REBUILD_ALL_PANELS",
+          roomId: tableState.roomId,
+        },
+      ];
+    }
 
     // ========================================================================
     // GESTURES & COMMUNICATION

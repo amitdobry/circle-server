@@ -147,22 +147,37 @@ function executeEffect(effect, io) {
             io.to(effect.roomId).emit(effect.event, effect.data);
             break;
         case "SOCKET_EMIT_USER":
-            // Emit to a specific user (requires finding their socketId)
-            // Note: This requires a lookup. We'll implement this properly
-            // when we integrate with the adapter layer.
-            console.warn("[runEffects] SOCKET_EMIT_USER not yet implemented:", effect.userId);
-            // TODO: Implement user-specific emission
+            // userId in V2 = socketId (socket.id passed as userId throughout shadow dispatch)
+            if (effect.userId) {
+                io.to(effect.userId).emit(effect.event, effect.data);
+                console.log(`[runEffects] SOCKET_EMIT_USER → ${effect.userId} | event: ${effect.event}`);
+            }
+            else {
+                console.warn("[runEffects] SOCKET_EMIT_USER: missing userId");
+            }
             break;
-        case "EMIT_FULL_STATE_TO_USER":
-            // Send full state snapshot to reconnecting user
-            console.warn("[runEffects] EMIT_FULL_STATE_TO_USER not yet implemented:", effect.userId);
-            // TODO: Implement state snapshot emission
+        case "EMIT_FULL_STATE_TO_USER": {
+            // Send phase + speaker state to a reconnecting user
+            if (effect.userId && effect.snapshot) {
+                io.to(effect.userId).emit("v2:full-state", effect.snapshot);
+                console.log(`[runEffects] EMIT_FULL_STATE_TO_USER → ${effect.userId}`);
+            }
+            else {
+                console.warn("[runEffects] EMIT_FULL_STATE_TO_USER: missing userId or snapshot");
+            }
             break;
-        case "EMIT_PANEL_CONFIG":
-            // Send UI panel configuration to user
-            console.warn("[runEffects] EMIT_PANEL_CONFIG not yet implemented:", effect.userId);
-            // TODO: Implement panel config emission
+        }
+        case "EMIT_PANEL_CONFIG": {
+            // Send a pre-built panel config to a specific user
+            if (effect.userId && effect.config) {
+                io.to(effect.userId).emit("receive:panelConfig", effect.config);
+                console.log(`[runEffects] EMIT_PANEL_CONFIG → ${effect.userId}`);
+            }
+            else {
+                console.warn("[runEffects] EMIT_PANEL_CONFIG: missing userId or config");
+            }
             break;
+        }
         // ========================================================================
         // GLIFF LOG
         // ========================================================================
@@ -245,6 +260,7 @@ function executeEffect(effect, io) {
         case "REBUILD_ALL_PANELS": {
             // V2 panel snapshot — compare against [PANEL-SNAPSHOT][V1] to detect override races
             const { roomRegistry } = require("../registry/RoomRegistry");
+            const { getPanelConfigFor } = require("../../panelConfigService");
             const tableState = roomRegistry.getRoom(effect.roomId);
             if (tableState) {
                 const pointerEntries = Array.from(tableState.pointerMap.entries())
@@ -255,11 +271,26 @@ function executeEffect(effect, io) {
                     .map((p) => p.displayName)
                     .join(", ") || "(none)";
                 console.log(`[PANEL-SNAPSHOT][V2] room=${effect.roomId} phase=${tableState.phase} liveSpeaker=${tableState.liveSpeaker ?? "none"} connected=[${connected}] pointerMap={${pointerEntries}}`);
+                // ✅ Emit panel configs to all connected users
+                let emitCount = 0;
+                for (const [, participant] of tableState.participants) {
+                    if (participant.presence !== "CONNECTED" || !participant.socketId)
+                        continue;
+                    try {
+                        const config = getPanelConfigFor(participant.displayName);
+                        io.to(participant.socketId).emit("receive:panelConfig", config);
+                        console.log(`[REBUILD_ALL_PANELS] ✅ Sent panel to ${participant.displayName} (${participant.socketId})`);
+                        emitCount++;
+                    }
+                    catch (err) {
+                        console.error(`[REBUILD_ALL_PANELS] ❌ Failed panel for ${participant.displayName}:`, err);
+                    }
+                }
+                console.log(`[REBUILD_ALL_PANELS] Done — emitted to ${emitCount} user(s) in room ${effect.roomId}`);
             }
             else {
                 console.log(`[PANEL-SNAPSHOT][V2] room=${effect.roomId} — no TableState found`);
             }
-            console.log(`[runEffects] REBUILD_ALL_PANELS: room ${effect.roomId} (socketHandler should handle this)`);
             break;
         }
         // ========================================================================
