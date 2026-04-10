@@ -23,7 +23,7 @@ export function handleAcceptMicOfferFromPassTheMic(
     // 🙋 Target user who accepted
     if (user.name === name) {
       user.state = "wantsToPickUpTheMic";
-      setPointer("default-room", user.name, user.name); // ✅ Point to self
+      setPointer(user.name, user.name); // ✅ Point to self
     }
 
     // 🧘 Speaker who previously offered

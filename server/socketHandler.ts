@@ -393,6 +393,15 @@ function endSession(io: Server) {
   setLiveSpeaker(null, "default-room");
   setIsSyncPauseMode(false, "default-room");
 
+  // Reset V2 room state so new session starts clean
+  try {
+    const { roomRegistry } = require("./engine-v2/registry/RoomRegistry");
+    roomRegistry.destroyRoom("default-room");
+    console.log("[V2] Room 'default-room' reset for new session");
+  } catch (e) {
+    // Non-fatal
+  }
+
   // Notify all users session is ending and to navigate home
   io.emit("session-ended", {
     message: "Session has ended. Thank you for participating!",
@@ -1190,6 +1199,12 @@ export function setupSocketHandlers(io: Server) {
             text: `${newLiveSpeaker}: `,
             userName: newLiveSpeaker,
           });
+          console.log(
+            formatSessionLog(
+              `[PANEL-SNAPSHOT][V1-SYNC] evaluateSync triggered panel rebuild for all users | newLiveSpeaker=${newLiveSpeaker}`,
+              "INFO",
+            ),
+          );
           for (const [socketId, user] of users.entries()) {
             console.log(
               formatSessionLog(

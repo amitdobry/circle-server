@@ -51,6 +51,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.reducer = reducer;
 const ActionTypes = __importStar(require("../actions/actionTypes"));
 const defaults_1 = require("../state/defaults");
+const selectors_1 = require("../state/selectors");
 // Import transition functions (to be created)
 // import * as transitions from "./transitions";
 // ============================================================================
@@ -99,11 +100,12 @@ function reducer(tableState, userId, action) {
                     },
                 ];
             }
-            // Check avatar availability
+            // Check avatar availability — only block if another CONNECTED user holds it.
+            // GHOST users vacated their seat; allow new users to claim their avatar.
             for (const [, participant] of tableState.participants) {
                 if (participant.avatarId === avatarId &&
-                    participant.presence !== "LEFT") {
-                    console.warn(`[V2 Reducer] ⚠️ Avatar ${avatarId} already taken by ${participant.displayName}`);
+                    participant.presence === "CONNECTED") {
+                    console.warn(`[V2 Reducer] ⚠️ Avatar ${avatarId} already taken by ${participant.displayName} (CONNECTED)`);
                     return [
                         {
                             type: "SOCKET_EMIT_USER",
@@ -172,8 +174,9 @@ function reducer(tableState, userId, action) {
                 // Check if ALL users are now ghosts
                 const connectedCount = Array.from(tableState.participants.values()).filter((p) => p.presence === "CONNECTED").length;
                 if (connectedCount === 0) {
-                    console.log(`[V2 Reducer] 💤 All users are ghosts, clearing speaker and staying in phase`);
+                    console.log(`[V2 Reducer] 💤 All users are ghosts, clearing speaker and resetting phase`);
                     tableState.liveSpeaker = null;
+                    tableState.phase = "ATTENTION_SELECTION";
                     participant.role = "listener";
                     effects.push({
                         type: "SYSTEM_LOG",
@@ -211,10 +214,78 @@ function reducer(tableState, userId, action) {
         // ========================================================================
         // ATTENTION & CONSENSUS
         // ========================================================================
-        case ActionTypes.POINT_TO_USER:
-            // return transitions.pointToUser(tableState, userId!, action.payload);
-            console.warn(`[reducer] ${action.type} not yet implemented`);
-            return [];
+        case ActionTypes.POINT_TO_USER: {
+            // =====================================================================
+            // POINT_TO_USER: Update pointer map and check consensus
+            // =====================================================================
+            const { from: fromName, targetUserId: toName } = action.payload || {};
+            // Resolve "from": try socketId first (passed as userId param), then display name
+            const fromParticipant = (userId ? (0, selectors_1.getParticipantBySocketId)(tableState, userId) : null) ||
+                (fromName ? (0, selectors_1.findParticipantByDisplayName)(tableState, fromName) : null);
+            // Resolve "to": comes as display name from V1 protocol
+            const toParticipant = toName
+                ? (0, selectors_1.findParticipantByDisplayName)(tableState, toName) ||
+                    tableState.participants.get(toName)
+                : null;
+            if (!fromParticipant || !toParticipant) {
+                console.warn(`[V2 Reducer] ⚠️ POINT_TO_USER could not resolve participants: ` +
+                    `from=${fromName || userId} → to=${toName} | ` +
+                    `participants=${Array.from(tableState.participants.values()).map(p => p.displayName).join(", ")}`);
+                return [];
+            }
+            // Update pointer in TableState
+            tableState.pointerMap.set(fromParticipant.userId, toParticipant.userId);
+            tableState.lastUpdated = Date.now();
+            console.log(`[V2 Reducer] 👉 ${fromParticipant.displayName} → ${toParticipant.displayName} | ` +
+                `pointerMap size: ${tableState.pointerMap.size}`);
+            const effects = [];
+            // Check consensus after every pointer change
+            const consensusUserId = (0, selectors_1.evaluateConsensus)(tableState);
+            const connected = (0, selectors_1.getConnectedParticipants)(tableState);
+            if (consensusUserId && consensusUserId !== tableState.liveSpeaker) {
+                const speaker = tableState.participants.get(consensusUserId);
+                // Transition to LIVE_SPEAKER
+                tableState.liveSpeaker = consensusUserId;
+                tableState.syncPause = false;
+                tableState.phase = "LIVE_SPEAKER";
+                // Set speaker role, reset all others to listener
+                for (const [, p] of tableState.participants) {
+                    p.role = p.userId === consensusUserId ? "speaker" : "listener";
+                }
+                console.log(`[V2 Reducer] 🎤 Consensus! ${speaker?.displayName} goes LIVE | ` +
+                    `connected: ${connected.length}`);
+                effects.push({
+                    type: "SYSTEM_LOG",
+                    roomId: tableState.roomId,
+                    message: `🎤 All attention on ${speaker?.displayName}. Going LIVE.`,
+                    level: "info",
+                }, {
+                    type: "SOCKET_EMIT_ROOM",
+                    roomId: tableState.roomId,
+                    event: "live-speaker",
+                    data: { name: speaker?.displayName, userId: consensusUserId },
+                }, {
+                    type: "REBUILD_ALL_PANELS",
+                    roomId: tableState.roomId,
+                });
+            }
+            else if (!consensusUserId && tableState.liveSpeaker !== null) {
+                // Consensus was lost
+                tableState.liveSpeaker = null;
+                tableState.phase = "ATTENTION_SELECTION";
+                for (const [, p] of tableState.participants) {
+                    if (p.role === "speaker")
+                        p.role = "listener";
+                }
+                effects.push({
+                    type: "SOCKET_EMIT_ROOM",
+                    roomId: tableState.roomId,
+                    event: "live-speaker-cleared",
+                    data: {},
+                });
+            }
+            return effects;
+        }
         case ActionTypes.CLICK_READY_TO_GLOW: {
             // =====================================================================
             // CLICK_READY_TO_GLOW: Start session, transition to picker mode
@@ -277,14 +348,67 @@ function reducer(tableState, userId, action) {
                 },
             ];
         }
-        case ActionTypes.EVALUATE_SYNC:
-            // return transitions.evaluateSync(tableState);
-            console.warn(`[reducer] ${action.type} not yet implemented`);
-            return [];
-        case ActionTypes.SET_LIVE_SPEAKER:
-            // return transitions.setLiveSpeaker(tableState, action.payload.userId);
-            console.warn(`[reducer] ${action.type} not yet implemented`);
-            return [];
+        case ActionTypes.EVALUATE_SYNC: {
+            // =====================================================================
+            // EVALUATE_SYNC: Re-check consensus on current pointer state
+            // =====================================================================
+            const consensusUserId = (0, selectors_1.evaluateConsensus)(tableState);
+            if (!consensusUserId) {
+                if (tableState.liveSpeaker !== null) {
+                    tableState.liveSpeaker = null;
+                    tableState.phase = "ATTENTION_SELECTION";
+                    return [{
+                            type: "SOCKET_EMIT_ROOM",
+                            roomId: tableState.roomId,
+                            event: "live-speaker-cleared",
+                            data: {},
+                        }];
+                }
+                return [];
+            }
+            if (consensusUserId === tableState.liveSpeaker)
+                return [];
+            const speaker = tableState.participants.get(consensusUserId);
+            tableState.liveSpeaker = consensusUserId;
+            tableState.syncPause = false;
+            tableState.phase = "LIVE_SPEAKER";
+            console.log(`[V2 Reducer] 🎤 EVALUATE_SYNC → ${speaker?.displayName} LIVE`);
+            return [
+                {
+                    type: "SYSTEM_LOG",
+                    roomId: tableState.roomId,
+                    message: `🎤 ${speaker?.displayName} is now live.`,
+                    level: "info",
+                },
+                {
+                    type: "SOCKET_EMIT_ROOM",
+                    roomId: tableState.roomId,
+                    event: "live-speaker",
+                    data: { name: speaker?.displayName, userId: consensusUserId },
+                },
+                {
+                    type: "REBUILD_ALL_PANELS",
+                    roomId: tableState.roomId,
+                },
+            ];
+        }
+        case ActionTypes.SET_LIVE_SPEAKER: {
+            const targetUserId = action.payload?.userId;
+            if (!targetUserId)
+                return [];
+            const speaker = tableState.participants.get(targetUserId);
+            if (!speaker)
+                return [];
+            tableState.liveSpeaker = targetUserId;
+            tableState.syncPause = false;
+            console.log(`[V2 Reducer] 🎤 SET_LIVE_SPEAKER → ${speaker.displayName}`);
+            return [{
+                    type: "SOCKET_EMIT_ROOM",
+                    roomId: tableState.roomId,
+                    event: "live-speaker",
+                    data: { name: speaker.displayName, userId: targetUserId },
+                }];
+        }
         // ========================================================================
         // SPEAKING & MIC CONTROL
         // ========================================================================

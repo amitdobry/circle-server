@@ -19,7 +19,7 @@ function handleBlueSelectStart(payload, context) {
         logSystem(`🟦 handleBlueSelectStart: no current speaker in session 123`);
         return;
     }
-    (0, socketHandler_1.clearPointer)("default-room", name);
+    (0, socketHandler_1.clearPointer)(name);
     io.emit("update-pointing", { from: name, to: null });
     // ✅ Now update all states:
     for (const [socketId, user] of users.entries()) {

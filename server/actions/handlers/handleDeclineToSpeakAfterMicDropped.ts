@@ -19,7 +19,7 @@ export function handleDeclineToSpeakAfterMicDropped(
 
   for (const [socketId, user] of users.entries()) {
     if (user.name === name) {
-      clearPointer("default-room", user.name);
+      clearPointer(user.name);
       io.emit("update-pointing", { from: user.name, to: null });
       user.state = "doesNotWantToPickUpTheMic";
     }
@@ -46,7 +46,7 @@ export function handleDeclineToSpeakAfterMicDropped(
     // Optional: reset state and emit new panels
     for (const [socketId, user] of users.entries()) {
       user.state = "regular";
-      clearPointer("default-room", user.name);
+      clearPointer(user.name);
       const config = getPanelConfigFor(user.name);
       io.to(socketId).emit("receive:panelConfig", config);
     }

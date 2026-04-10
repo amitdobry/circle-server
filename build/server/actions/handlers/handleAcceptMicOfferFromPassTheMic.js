@@ -17,7 +17,7 @@ function handleAcceptMicOfferFromPassTheMic(payload, context) {
         // 🙋 Target user who accepted
         if (user.name === name) {
             user.state = "wantsToPickUpTheMic";
-            (0, socketHandler_1.setPointer)("default-room", user.name, user.name); // ✅ Point to self
+            (0, socketHandler_1.setPointer)(user.name, user.name); // ✅ Point to self
         }
         // 🧘 Speaker who previously offered
         else if (user.state === "hasOfferedMicToUserFromPassTheMic") {

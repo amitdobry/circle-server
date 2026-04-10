@@ -18,7 +18,7 @@ export function handleDeclineNewCandidateRequestAfterMicDropped(
 
   for (const [socketId, user] of users.entries()) {
     if (user.name === name) {
-      clearPointer("default-room", user.name);
+      clearPointer(user.name);
       io.emit("update-pointing", { from: user.name, to: null });
     }
     if (user.state === "wantsToPickUpTheMic") {

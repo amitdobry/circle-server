@@ -13,7 +13,7 @@ export function handleBreakSync(
     return;
   }
 
-  setPointer("default-room", name, name);
+  setPointer(name, name);
   io.emit("update-pointing", { from: name, to: name });
   logAction(`👄 ${name} requests the mic (breakSync)`);
 

@@ -330,6 +330,41 @@ function executeEffect(effect: Effect, io: Server): void {
       break;
 
     // ========================================================================
+    // PANEL REBUILD
+    // ========================================================================
+
+    case "REBUILD_ALL_PANELS": {
+      // V2 panel snapshot — compare against [PANEL-SNAPSHOT][V1] to detect override races
+      const { roomRegistry } = require("../registry/RoomRegistry");
+      const tableState = roomRegistry.getRoom(effect.roomId);
+      if (tableState) {
+        const pointerEntries =
+          Array.from((tableState.pointerMap as Map<string, string>).entries())
+            .map(([k, v]) => `${k}→${v}`)
+            .join(", ") || "(empty)";
+        const connected = Array.from(
+          (tableState.participants as Map<string, any>).values(),
+        )
+          .filter((p) => p.presence === "CONNECTED")
+          .map((p) => p.displayName)
+          .join(", ") || "(none)";
+        console.log(
+          `[PANEL-SNAPSHOT][V2] room=${effect.roomId} phase=${tableState.phase} liveSpeaker=${
+            tableState.liveSpeaker ?? "none"
+          } connected=[${connected}] pointerMap={${pointerEntries}}`,
+        );
+      } else {
+        console.log(
+          `[PANEL-SNAPSHOT][V2] room=${effect.roomId} — no TableState found`,
+        );
+      }
+      console.log(
+        `[runEffects] REBUILD_ALL_PANELS: room ${effect.roomId} (socketHandler should handle this)`,
+      );
+      break;
+    }
+
+    // ========================================================================
     // UNKNOWN EFFECT
     // ========================================================================
 

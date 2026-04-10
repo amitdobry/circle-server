@@ -9,7 +9,7 @@ function handleBreakSync(payload, context) {
         logSystem("🚨 Missing name in handleBreakSync payload.");
         return;
     }
-    (0, socketHandler_1.setPointer)("default-room", name, name);
+    (0, socketHandler_1.setPointer)(name, name);
     io.emit("update-pointing", { from: name, to: name });
     logAction(`👄 ${name} requests the mic (breakSync)`);
     evaluateSync();

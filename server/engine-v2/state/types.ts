@@ -176,6 +176,10 @@ export type Effect =
   | {
       type: "CANCEL_CLEANUP";
       roomId: string;
+    }
+  | {
+      type: "REBUILD_ALL_PANELS";
+      roomId: string;
     };
 
 // ============================================================================

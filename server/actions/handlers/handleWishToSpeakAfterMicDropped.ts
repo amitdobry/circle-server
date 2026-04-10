@@ -1,5 +1,5 @@
 import { getPanelConfigFor } from "../../panelConfigService";
-// import { setIsSyncPauseMode, setLiveSpeaker } from "../../socketHandler";
+import { setPointer, clearPointer } from "../../socketHandler";
 import { ActionPayload, ActionContext } from "../routeAction";
 
 export function handleWishToSpeakAfterMicDropped(
@@ -7,7 +7,7 @@ export function handleWishToSpeakAfterMicDropped(
   context: ActionContext
 ) {
   const { name } = payload;
-  const { users, pointerMap, io, logSystem, logAction, evaluateSync } = context;
+  const { users, io, logSystem, logAction, evaluateSync } = context;
 
   if (!name) {
     logSystem("🚨 Missing name in handleBreakSync payload.");
@@ -17,7 +17,12 @@ export function handleWishToSpeakAfterMicDropped(
   for (const [socketId, user] of users.entries()) {
     const isCandidate = user.name === name;
 
-    pointerMap.set(user.name, isCandidate ? name : null);
+    // Use setPointer/clearPointer so SpeakerManager stays in sync
+    if (isCandidate) {
+      setPointer(user.name, name);
+    } else {
+      clearPointer(user.name);
+    }
     io.emit("update-pointing", {
       from: user.name,
       to: isCandidate ? name : null,

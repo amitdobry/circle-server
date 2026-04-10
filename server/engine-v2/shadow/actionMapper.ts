@@ -85,7 +85,8 @@ export function mapLegacyToV2Action(
       return {
         type: actionType,
         payload: {
-          targetUserId: legacyPayload.to,
+          from: legacyPayload.from,  // display name of pointer
+          targetUserId: legacyPayload.to, // display name of target
         },
       };
 

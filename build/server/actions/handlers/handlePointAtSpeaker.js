@@ -10,7 +10,7 @@ function handlePointAtSpeaker(payload, context) {
         logSystem("🚨 Missing 'from' or 'to' in pointAtSpeaker payload.");
         return;
     }
-    (0, socketHandler_1.setPointer)("default-room", from, to);
+    (0, socketHandler_1.setPointer)(from, to);
     io.emit("update-pointing", { from, to });
     const avatarId = Array.from(users.values()).find((u) => u.name === from)?.avatarId || "";
     const emoji = avatarManager_1.emojiLookup[avatarId] || "";

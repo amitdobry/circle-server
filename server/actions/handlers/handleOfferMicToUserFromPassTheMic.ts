@@ -34,7 +34,7 @@ export function handleOfferMicToUserFromPassTheMic(
   }
 
   // 👆 Set pointer and update state
-  setPointer("default-room", name, targetUser);
+  setPointer(name, targetUser);
   io.emit("update-pointing", { from: name, to: targetUser });
 
   setIsSyncPauseMode(true);

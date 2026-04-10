@@ -14,7 +14,7 @@ export function handlePointAtSpeaker(
     return;
   }
 
-  setPointer("default-room", from, to);
+  setPointer(from, to);
   io.emit("update-pointing", { from, to });
 
   const avatarId =

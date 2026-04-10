@@ -150,6 +150,34 @@ export function hasConsensus(tableState: TableState): boolean {
 }
 
 // ============================================================================
+// DISPLAY NAME RESOLUTION
+// ============================================================================
+
+/**
+ * Find a participant by their display name.
+ * V1 protocol sends display names; V2 uses userId as keys.
+ * Returns undefined if not found.
+ */
+export function findParticipantByDisplayName(
+  tableState: TableState,
+  displayName: string,
+): ParticipantState | undefined {
+  for (const participant of tableState.participants.values()) {
+    if (participant.displayName === displayName) {
+      return participant;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Get all connected participant userIds.
+ */
+export function getConnectedParticipantIds(tableState: TableState): string[] {
+  return getConnectedParticipants(tableState).map((p) => p.userId);
+}
+
+// ============================================================================
 // PHASE QUERIES
 // ============================================================================
 

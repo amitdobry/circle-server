@@ -28,7 +28,7 @@ export function handleBlueSelectStart(
     return;
   }
 
-  clearPointer("default-room", name);
+  clearPointer(name);
   io.emit("update-pointing", { from: name, to: null });
 
   // ✅ Now update all states:

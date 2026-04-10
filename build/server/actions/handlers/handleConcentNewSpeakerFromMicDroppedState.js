@@ -27,7 +27,7 @@ function handleConcentNewSpeakerFromMicDropped(payload, context) {
         return;
     }
     // 👆 Set pointer and update state
-    (0, socketHandler_1.setPointer)("default-room", name, speakerCandidate);
+    (0, socketHandler_1.setPointer)(name, speakerCandidate);
     io.emit("update-pointing", { from: name, to: speakerCandidate });
     const responder = users.get(socketIdOfResponder);
     if (responder) {

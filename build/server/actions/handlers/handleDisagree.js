@@ -12,7 +12,7 @@ function handleDisagree(payload, context) {
     }
     for (const [socketId, user] of users.entries()) {
         // 🔄 Reset pointing for the disagreeing user and all other users
-        (0, socketHandler_1.clearPointer)("default-room", name);
+        (0, socketHandler_1.clearPointer)(name);
         io.emit("update-pointing", { from: name, to: null });
         user.state = "regular";
         users.set(socketId, user);

@@ -16,6 +16,8 @@ exports.getPointersToTarget = getPointersToTarget;
 exports.getVoteCounts = getVoteCounts;
 exports.evaluateConsensus = evaluateConsensus;
 exports.hasConsensus = hasConsensus;
+exports.findParticipantByDisplayName = findParticipantByDisplayName;
+exports.getConnectedParticipantIds = getConnectedParticipantIds;
 exports.isTimerExpired = isTimerExpired;
 exports.getRemainingTime = getRemainingTime;
 exports.isInGracePeriod = isInGracePeriod;
@@ -126,6 +128,28 @@ function evaluateConsensus(tableState) {
  */
 function hasConsensus(tableState) {
     return evaluateConsensus(tableState) !== null;
+}
+// ============================================================================
+// DISPLAY NAME RESOLUTION
+// ============================================================================
+/**
+ * Find a participant by their display name.
+ * V1 protocol sends display names; V2 uses userId as keys.
+ * Returns undefined if not found.
+ */
+function findParticipantByDisplayName(tableState, displayName) {
+    for (const participant of tableState.participants.values()) {
+        if (participant.displayName === displayName) {
+            return participant;
+        }
+    }
+    return undefined;
+}
+/**
+ * Get all connected participant userIds.
+ */
+function getConnectedParticipantIds(tableState) {
+    return getConnectedParticipants(tableState).map((p) => p.userId);
 }
 // ============================================================================
 // PHASE QUERIES

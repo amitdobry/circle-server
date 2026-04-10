@@ -13,7 +13,7 @@ function handleDeclineNewCandidateRequestAfterMicDropped(payload, context) {
     let MicPickerProspect = "";
     for (const [socketId, user] of users.entries()) {
         if (user.name === name) {
-            (0, socketHandler_1.clearPointer)("default-room", user.name);
+            (0, socketHandler_1.clearPointer)(user.name);
             io.emit("update-pointing", { from: user.name, to: null });
         }
         if (user.state === "wantsToPickUpTheMic") {

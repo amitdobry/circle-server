@@ -2,9 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleWishToSpeakAfterMicDropped = handleWishToSpeakAfterMicDropped;
 const panelConfigService_1 = require("../../panelConfigService");
+const socketHandler_1 = require("../../socketHandler");
 function handleWishToSpeakAfterMicDropped(payload, context) {
     const { name } = payload;
-    const { users, pointerMap, io, logSystem, logAction, evaluateSync } = context;
+    const { users, io, logSystem, logAction, evaluateSync } = context;
     if (!name) {
         logSystem("🚨 Missing name in handleBreakSync payload.");
         return;
@@ -12,7 +13,13 @@ function handleWishToSpeakAfterMicDropped(payload, context) {
     // ✅ 1. Set pointing and assign states
     for (const [socketId, user] of users.entries()) {
         const isCandidate = user.name === name;
-        pointerMap.set(user.name, isCandidate ? name : null);
+        // Use setPointer/clearPointer so SpeakerManager stays in sync
+        if (isCandidate) {
+            (0, socketHandler_1.setPointer)(user.name, name);
+        }
+        else {
+            (0, socketHandler_1.clearPointer)(user.name);
+        }
         io.emit("update-pointing", {
             from: user.name,
             to: isCandidate ? name : null,
