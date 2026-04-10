@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handlePointAtSpeaker = handlePointAtSpeaker;
 const avatarManager_1 = require("../../avatarManager"); // adjust path if needed
+const socketHandler_1 = require("../../socketHandler");
 function handlePointAtSpeaker(payload, context) {
     const { from, to } = payload;
     const { pointerMap, users, io, logAction, logSystem, evaluateSync } = context;
@@ -9,7 +10,7 @@ function handlePointAtSpeaker(payload, context) {
         logSystem("🚨 Missing 'from' or 'to' in pointAtSpeaker payload.");
         return;
     }
-    pointerMap.set(from, to);
+    (0, socketHandler_1.setPointer)("default-room", from, to);
     io.emit("update-pointing", { from, to });
     const avatarId = Array.from(users.values()).find((u) => u.name === from)?.avatarId || "";
     const emoji = avatarManager_1.emojiLookup[avatarId] || "";

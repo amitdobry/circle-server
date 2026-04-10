@@ -25,7 +25,7 @@ function handleOfferMicToUserFromPassTheMic(payload, context) {
         users.set(socketId, user);
     }
     // 👆 Set pointer and update state
-    pointerMap.set(name, targetUser);
+    (0, socketHandler_1.setPointer)("default-room", name, targetUser);
     io.emit("update-pointing", { from: name, to: targetUser });
     (0, socketHandler_1.setIsSyncPauseMode)(true);
     // Emit updates

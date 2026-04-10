@@ -13,12 +13,12 @@ function handlePassTheMic(payload, context) {
     // ✅ Now update all states:
     for (const [socketId, user] of users.entries()) {
         if (user.name === name) {
-            pointerMap.set(name, null);
+            (0, socketHandler_1.clearPointer)("default-room", name);
             io.emit("update-pointing", { from: name, to: null });
             user.state = "isPassingTheMic";
         }
         else {
-            pointerMap.set(user.name, null);
+            (0, socketHandler_1.clearPointer)("default-room", user.name);
             io.emit("update-pointing", { from: user.name, to: null });
             user.state = "micPassInProcess";
         }

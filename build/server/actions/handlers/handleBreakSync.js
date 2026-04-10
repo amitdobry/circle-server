@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleBreakSync = handleBreakSync;
+const socketHandler_1 = require("../../socketHandler");
 function handleBreakSync(payload, context) {
     const { name } = payload;
     const { pointerMap, io, logAction, logSystem, evaluateSync } = context;
@@ -8,7 +9,7 @@ function handleBreakSync(payload, context) {
         logSystem("🚨 Missing name in handleBreakSync payload.");
         return;
     }
-    pointerMap.set(name, name);
+    (0, socketHandler_1.setPointer)("default-room", name, name);
     io.emit("update-pointing", { from: name, to: name });
     logAction(`👄 ${name} requests the mic (breakSync)`);
     evaluateSync();

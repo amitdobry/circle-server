@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleConcentNewSpeakerFromMicDropped = handleConcentNewSpeakerFromMicDropped;
 const panelConfigService_1 = require("../../panelConfigService");
+const socketHandler_1 = require("../../socketHandler");
 function handleConcentNewSpeakerFromMicDropped(payload, context) {
     const { name } = payload;
     const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
@@ -26,7 +27,7 @@ function handleConcentNewSpeakerFromMicDropped(payload, context) {
         return;
     }
     // 👆 Set pointer and update state
-    pointerMap.set(name, speakerCandidate);
+    (0, socketHandler_1.setPointer)("default-room", name, speakerCandidate);
     io.emit("update-pointing", { from: name, to: speakerCandidate });
     const responder = users.get(socketIdOfResponder);
     if (responder) {

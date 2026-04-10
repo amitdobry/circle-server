@@ -2,6 +2,34 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+// ============================================================
+// FILE LOGGING: tee all console output to logs/server.log
+// ============================================================
+import fs from "fs";
+import path from "path";
+
+const logsDir = path.join(__dirname, "logs");
+if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+
+const logFile = fs.createWriteStream(
+  path.join(logsDir, `server-${new Date().toISOString().slice(0, 10)}.log`),
+  { flags: "a" }
+);
+
+const origLog = console.log.bind(console);
+const origError = console.error.bind(console);
+const origWarn = console.warn.bind(console);
+
+function writeToFile(level: string, args: any[]) {
+  const line = `[${new Date().toISOString()}] [${level}] ${args.map(String).join(" ")}\n`;
+  logFile.write(line);
+}
+
+console.log = (...args: any[]) => { origLog(...args); writeToFile("LOG", args); };
+console.error = (...args: any[]) => { origError(...args); writeToFile("ERR", args); };
+console.warn = (...args: any[]) => { origWarn(...args); writeToFile("WRN", args); };
+// ============================================================
+
 // Debug environment variables
 console.log("🔧 Environment check:");
 console.log("JWT_SECRET:", process.env.JWT_SECRET ? "Set" : "NOT SET");

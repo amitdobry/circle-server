@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleAcceptMicOfferFromPassTheMic = handleAcceptMicOfferFromPassTheMic;
 const panelConfigService_1 = require("../../panelConfigService");
+const socketHandler_1 = require("../../socketHandler");
 function handleAcceptMicOfferFromPassTheMic(payload, context) {
     const { name } = payload;
     const { users, io, logAction, logSystem, evaluateSync, pointerMap } = context;
@@ -16,7 +17,7 @@ function handleAcceptMicOfferFromPassTheMic(payload, context) {
         // 🙋 Target user who accepted
         if (user.name === name) {
             user.state = "wantsToPickUpTheMic";
-            pointerMap.set(user.name, user.name); // ✅ Point to self
+            (0, socketHandler_1.setPointer)("default-room", user.name, user.name); // ✅ Point to self
         }
         // 🧘 Speaker who previously offered
         else if (user.state === "hasOfferedMicToUserFromPassTheMic") {

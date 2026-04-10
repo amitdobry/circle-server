@@ -4,9 +4,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getIsSyncPauseMode = getIsSyncPauseMode;
 exports.setIsSyncPauseMode = setIsSyncPauseMode;
 exports.getPointerMap = getPointerMap;
-exports.getSessionStats = getSessionStats;
+exports.setPointer = setPointer;
+exports.clearPointer = clearPointer;
+exports.clearAllPointers = clearAllPointers;
 exports.getLiveSpeaker = getLiveSpeaker;
 exports.setLiveSpeaker = setLiveSpeaker;
+exports.getSessionStats = getSessionStats;
 exports.resetSessionState = resetSessionState;
 exports.getSessionState = getSessionState;
 exports.getUsers = getUsers;
@@ -24,6 +27,9 @@ const sessionLogic_1 = require("./BL/sessionLogic");
 // ✨ ENGINE V2: Shadow Mode Integration
 const shadowDispatcher_1 = require("./engine-v2/shadow/shadowDispatcher");
 const actionMapper_1 = require("./engine-v2/shadow/actionMapper");
+// ✨ ENGINE V2: Speaker Manager (Phase B)
+const SpeakerManager_1 = require("./engine-v2/managers/SpeakerManager");
+const featureFlags_1 = require("./config/featureFlags");
 const users = new Map(); // socketId -> { name, avatarId }
 // Panel request tracking
 const panelRequestCount = new Map(); // userName -> count
@@ -59,19 +65,112 @@ function updateUserActivity(socketId) {
         user.lastActivity = new Date();
     }
 }
+// ============================================================================
+// SPEAKER STATE (Dual-Mode: Legacy + Engine V2)
+// ============================================================================
+// Legacy globals (will be deprecated when ENGINE_V2_SPEAKER_MANAGER is enabled)
 const pointerMap = new Map(); // from -> to
 let liveSpeaker = null;
-let currentLogInput = ""; // optional state if needed later
 let isSyncPauseMode = false;
-function getIsSyncPauseMode() {
-    return isSyncPauseMode;
+let currentLogInput = ""; // optional state if needed later
+/**
+ * Get sync pause mode - supports both legacy and V2
+ * @param roomId - Room ID (default: "default-room")
+ */
+function getIsSyncPauseMode(roomId = "default-room") {
+    if (featureFlags_1.ENGINE_V2_SPEAKER_MANAGER) {
+        return SpeakerManager_1.speakerManager.getSyncPauseMode(roomId);
+    }
+    return isSyncPauseMode; // Legacy
 }
-function setIsSyncPauseMode(value) {
-    isSyncPauseMode = value;
+/**
+ * Set sync pause mode - supports both legacy and V2
+ * @param value - true to enable sync pause
+ * @param roomId - Room ID (default: "default-room")
+ */
+function setIsSyncPauseMode(value, roomId = "default-room") {
+    if (featureFlags_1.ENGINE_V2_SPEAKER_MANAGER) {
+        SpeakerManager_1.speakerManager.setSyncPauseMode(roomId, value);
+    }
+    else {
+        isSyncPauseMode = value; // Legacy
+    }
 }
-function getPointerMap() {
-    return pointerMap;
+/**
+ * Get pointer map - supports both legacy and V2
+ * @param roomId - Room ID (default: "default-room")
+ */
+function getPointerMap(roomId = "default-room") {
+    if (featureFlags_1.ENGINE_V2_SPEAKER_MANAGER) {
+        return SpeakerManager_1.speakerManager.getPointerMap(roomId);
+    }
+    return pointerMap; // Legacy
 }
+/**
+ * Set a pointer - supports both legacy and V2
+ * @param fromUser - User who is pointing
+ * @param toUser - User being pointed to
+ * @param roomId - Room ID (default: "default-room")
+ */
+function setPointer(fromUser, toUser, roomId = "default-room") {
+    if (featureFlags_1.ENGINE_V2_SPEAKER_MANAGER) {
+        SpeakerManager_1.speakerManager.setPointer(roomId, fromUser, toUser);
+    }
+    else {
+        pointerMap.set(fromUser, toUser); // Legacy
+    }
+}
+/**
+ * Clear a pointer - supports both legacy and V2
+ * @param fromUser - User whose pointer to clear
+ * @param roomId - Room ID (default: "default-room")
+ */
+function clearPointer(fromUser, roomId = "default-room") {
+    if (featureFlags_1.ENGINE_V2_SPEAKER_MANAGER) {
+        SpeakerManager_1.speakerManager.clearPointer(roomId, fromUser);
+    }
+    else {
+        pointerMap.delete(fromUser); // Legacy
+    }
+}
+/**
+ * Clear all pointers - supports both legacy and V2
+ * @param roomId - Room ID (default: "default-room")
+ */
+function clearAllPointers(roomId = "default-room") {
+    if (featureFlags_1.ENGINE_V2_SPEAKER_MANAGER) {
+        SpeakerManager_1.speakerManager.clearAllPointers(roomId);
+    }
+    else {
+        pointerMap.clear(); // Legacy
+    }
+}
+/**
+ * Get live speaker - supports both legacy and V2
+ * @param roomId - Room ID (default: "default-room")
+ */
+function getLiveSpeaker(roomId = "default-room") {
+    if (featureFlags_1.ENGINE_V2_SPEAKER_MANAGER) {
+        return SpeakerManager_1.speakerManager.getLiveSpeaker(roomId);
+    }
+    return liveSpeaker; // Legacy
+}
+/**
+ * Set live speaker - supports both legacy and V2
+ * @param name - User name (or null to clear)
+ * @param roomId - Room ID (default: "default-room")
+ */
+function setLiveSpeaker(name, roomId = "default-room") {
+    if (featureFlags_1.ENGINE_V2_SPEAKER_MANAGER) {
+        SpeakerManager_1.speakerManager.setLiveSpeaker(roomId, name);
+    }
+    else {
+        liveSpeaker = name; // Legacy
+    }
+}
+// ============================================================================
+// SESSION STATS
+// ============================================================================
 function getSessionStats() {
     const currentTime = new Date();
     const userCount = users.size;
@@ -88,12 +187,9 @@ function getSessionStats() {
         sessionActive,
     };
 }
-function getLiveSpeaker() {
-    return liveSpeaker;
-}
-function setLiveSpeaker(name) {
-    liveSpeaker = name;
-}
+// ============================================================================
+// SESSION RESET
+// ============================================================================
 // Debug function to reset session state
 function resetSessionState() {
     sessionActive = false;
@@ -117,9 +213,18 @@ function resetSessionState() {
     }
     // Clear all user data
     users.clear();
-    pointerMap.clear();
-    liveSpeaker = null;
-    setIsSyncPauseMode(false);
+    // Clear speaker state (dual-mode compatible)
+    const roomId = "default-room";
+    if (featureFlags_1.ENGINE_V2_SPEAKER_MANAGER) {
+        SpeakerManager_1.speakerManager.clearAllPointers(roomId);
+        SpeakerManager_1.speakerManager.setLiveSpeaker(roomId, null);
+        SpeakerManager_1.speakerManager.setSyncPauseMode(roomId, false);
+    }
+    else {
+        pointerMap.clear();
+        liveSpeaker = null;
+        isSyncPauseMode = false;
+    }
     console.log("🔄 Session state manually reset");
 }
 // Session state checker
@@ -197,9 +302,9 @@ function endSession(io) {
     }
     // Clear all user data
     users.clear();
-    pointerMap.clear();
-    liveSpeaker = null;
-    setIsSyncPauseMode(false);
+    clearAllPointers("default-room");
+    setLiveSpeaker(null, "default-room");
+    setIsSyncPauseMode(false, "default-room");
     // Notify all users session is ending and to navigate home
     io.emit("session-ended", {
         message: "Session has ended. Thank you for participating!",
@@ -537,8 +642,10 @@ function setupSocketHandlers(io) {
                 return;
             }
             updateUserActivity(socket.id);
-            if (user.name !== liveSpeaker) {
-                console.log(`🚫 Rejected logBar:update — ${user.name} is not live (liveSpeaker=${liveSpeaker})`);
+            const roomId = "default-room";
+            const currentSpeaker = getLiveSpeaker(roomId);
+            if (user.name !== currentSpeaker) {
+                console.log(`🚫 Rejected logBar:update — ${user.name} is not live (liveSpeaker=${currentSpeaker})`);
                 return;
             }
             console.log(`📡 logBar:update from ${user.name}:`, text);
@@ -701,12 +808,14 @@ function setupSocketHandlers(io) {
             users.delete(socket.id);
             // Also remove from session logic tracking
             (0, sessionLogic_1.removeUser)(socket.id);
-            pointerMap.delete(user.name);
+            clearPointer("default-room", user.name);
             (0, avatarManager_1.releaseAvatarByName)(user.name);
-            setIsSyncPauseMode(false);
-            for (const [from, to] of pointerMap.entries()) {
+            setIsSyncPauseMode(false, "default-room");
+            // Clear any pointers TO this user
+            const currentPointers = getPointerMap("default-room");
+            for (const [from, to] of currentPointers.entries()) {
                 if (to === user.name)
-                    pointerMap.delete(from);
+                    clearPointer("default-room", from);
             }
             // Reset session timer if all users have left
             if (users.size === 0 && sessionActive) {
@@ -725,15 +834,19 @@ function setupSocketHandlers(io) {
             io.emit("avatars", (0, avatarManager_1.getAvailableAvatars)());
         }
         function sendInitialPointerMap(socket) {
-            const map = Array.from(pointerMap.entries()).map(([from, to]) => ({
+            const roomId = "default-room";
+            const currentPointers = getPointerMap(roomId);
+            const map = Array.from(currentPointers.entries()).map(([from, to]) => ({
                 from,
                 to,
             }));
             socket.emit("initial-pointer-map", map);
         }
         function sendCurrentLiveSpeaker(socket) {
-            if (liveSpeaker) {
-                socket.emit("live-speaker", { name: liveSpeaker });
+            const roomId = "default-room";
+            const currentSpeaker = getLiveSpeaker(roomId);
+            if (currentSpeaker) {
+                socket.emit("live-speaker", { name: currentSpeaker });
             }
         }
         // function logToConsole(msg: string) {
@@ -755,12 +868,15 @@ function setupSocketHandlers(io) {
             console.log("[TEXT]", payload);
         }
         function evaluateSync() {
+            const roomId = "default-room";
             const candidates = Array.from(users.values());
+            const currentPointers = getPointerMap(roomId);
+            const currentSpeaker = getLiveSpeaker(roomId);
             let newLiveSpeaker = null;
             for (const candidate of candidates) {
                 const everyoneElse = candidates.filter((u) => u.name !== candidate.name);
-                const allPointing = everyoneElse.every((u) => pointerMap.get(u.name) === candidate.name);
-                const selfPointing = pointerMap.get(candidate.name) === candidate.name;
+                const allPointing = everyoneElse.every((u) => currentPointers.get(u.name) === candidate.name);
+                const selfPointing = currentPointers.get(candidate.name) === candidate.name;
                 if (allPointing && selfPointing) {
                     newLiveSpeaker = candidate.name;
                     break;
@@ -772,22 +888,22 @@ function setupSocketHandlers(io) {
                     users.set(socketId, user);
                 }
             }
-            if (newLiveSpeaker !== liveSpeaker) {
-                liveSpeaker = newLiveSpeaker;
-                if (liveSpeaker) {
-                    emitActionLog(`🎤 All attention on ${liveSpeaker}. Going LIVE.`);
+            if (newLiveSpeaker !== currentSpeaker) {
+                setLiveSpeaker(newLiveSpeaker, roomId);
+                if (newLiveSpeaker) {
+                    emitActionLog(`🎤 All attention on ${newLiveSpeaker}. Going LIVE.`);
                     // 💡 Reset concent-mode users to regular listeners
                     for (const [socketId, user] of users.entries()) {
-                        if (user.name !== liveSpeaker) {
+                        if (user.name !== newLiveSpeaker) {
                             user.state = "regular";
                             users.set(socketId, user);
                         }
                     }
-                    setIsSyncPauseMode(false);
-                    io.emit("live-speaker", { name: liveSpeaker });
+                    setIsSyncPauseMode(false, roomId);
+                    io.emit("live-speaker", { name: newLiveSpeaker });
                     io.emit("logBar:update", {
-                        text: `${liveSpeaker}: `,
-                        userName: liveSpeaker,
+                        text: `${newLiveSpeaker}: `,
+                        userName: newLiveSpeaker,
                     });
                     for (const [socketId, user] of users.entries()) {
                         console.log(formatSessionLog(`🛠️ [PANEL-DEBUG-SYNC] Building panel config for ${user.name} (socket: ${socketId}) during speaker sync`, "INFO"));

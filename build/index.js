@@ -6,6 +6,26 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // Load environment variables first
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
+// ============================================================
+// FILE LOGGING: tee all console output to logs/server.log
+// ============================================================
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const logsDir = path_1.default.join(__dirname, "logs");
+if (!fs_1.default.existsSync(logsDir))
+    fs_1.default.mkdirSync(logsDir, { recursive: true });
+const logFile = fs_1.default.createWriteStream(path_1.default.join(logsDir, `server-${new Date().toISOString().slice(0, 10)}.log`), { flags: "a" });
+const origLog = console.log.bind(console);
+const origError = console.error.bind(console);
+const origWarn = console.warn.bind(console);
+function writeToFile(level, args) {
+    const line = `[${new Date().toISOString()}] [${level}] ${args.map(String).join(" ")}\n`;
+    logFile.write(line);
+}
+console.log = (...args) => { origLog(...args); writeToFile("LOG", args); };
+console.error = (...args) => { origError(...args); writeToFile("ERR", args); };
+console.warn = (...args) => { origWarn(...args); writeToFile("WRN", args); };
+// ============================================================
 // Debug environment variables
 console.log("🔧 Environment check:");
 console.log("JWT_SECRET:", process.env.JWT_SECRET ? "Set" : "NOT SET");
@@ -93,6 +113,43 @@ app.get("/api/session/stats", (_req, res) => {
 app.get("/api/session/active", (_req, res) => {
     const stats = (0, socketHandler_1.getSessionStats)();
     res.json({ active: stats.sessionActive });
+});
+// Get all active rooms (Engine V2 Registry)
+app.get("/api/rooms/active", (_req, res) => {
+    const { roomRegistry } = require("./server/engine-v2/registry/RoomRegistry");
+    const allRooms = roomRegistry.getAllRooms();
+    const rooms = Array.from(allRooms.values()).map((room) => {
+        const participantCount = room.participants.size;
+        const currentSpeaker = room.liveSpeaker
+            ? room.participants.get(room.liveSpeaker)
+            : null;
+        // Calculate elapsed time from timer
+        const now = Date.now();
+        const timerElapsed = room.timer.active
+            ? Math.floor((now - room.timer.startTime) / 1000)
+            : 0;
+        return {
+            roomId: room.roomId,
+            sessionId: room.sessionId,
+            participantCount,
+            maxCapacity: 8, // Could make this configurable
+            status: room.phase !== "LOBBY" && room.phase !== "ENDED" ? "active" : "waiting",
+            currentSpeaker: currentSpeaker
+                ? {
+                    userId: room.liveSpeaker,
+                    name: currentSpeaker.displayName,
+                    avatar: currentSpeaker.avatarId,
+                }
+                : null,
+            timer: {
+                sessionTime: timerElapsed,
+                totalDuration: Math.floor(room.timer.durationMs / 1000),
+            },
+            phase: room.phase,
+            createdAt: new Date(room.createdAt).toISOString(),
+        };
+    });
+    res.json({ rooms });
 });
 // Debug route to reset session state
 app.post("/api/session/reset", (_req, res) => {

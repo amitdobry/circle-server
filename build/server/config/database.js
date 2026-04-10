@@ -7,17 +7,17 @@ exports.connectDB = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const connectDB = async () => {
     try {
-        // Use production URI if NODE_ENV is production, otherwise use development URI
-        const mongoURI = process.env.NODE_ENV === "production"
-            ? process.env.MONGODB_URI_PROD
-            : process.env.MONGODB_URI || "mongodb://localhost:27017/soulcircle";
+        // Priority: MONGODB_URI > MONGODB_URI_PROD > localhost fallback
+        const mongoURI = process.env.MONGODB_URI ||
+            process.env.MONGODB_URI_PROD ||
+            "mongodb://localhost:27017/soulcircle";
         if (!mongoURI) {
             throw new Error("MongoDB URI not found in environment variables");
         }
-        console.log(`🔗 Connecting to MongoDB (${process.env.NODE_ENV || "development"} mode)...`);
+        console.log(`🔗 Connecting to MongoDB (${mongoURI.includes("mongodb+srv") ? "Atlas/Production" : "Local"} mode)...`);
         const conn = await mongoose_1.default.connect(mongoURI, {
-            // Production-specific options
-            ...(process.env.NODE_ENV === "production" && {
+            // Atlas/Production optimizations
+            ...(mongoURI.includes("mongodb+srv") && {
                 retryWrites: true,
                 retryReads: true,
                 maxPoolSize: 10,
