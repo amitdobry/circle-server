@@ -111,6 +111,49 @@ app.get("/api/session/active", (_req, res) => {
   res.json({ active: stats.sessionActive });
 });
 
+// Get all active rooms (Engine V2 Registry)
+app.get("/api/rooms/active", (_req, res) => {
+  const { roomRegistry } = require("./server/engine-v2/registry/RoomRegistry");
+
+  const allRooms = roomRegistry.getAllRooms();
+  const rooms = Array.from(allRooms.values()).map((room: any) => {
+    const participantCount = room.participants.size;
+    const currentSpeaker = room.liveSpeaker
+      ? room.participants.get(room.liveSpeaker)
+      : null;
+
+    // Calculate elapsed time from timer
+    const now = Date.now();
+    const timerElapsed = room.timer.active
+      ? Math.floor((now - room.timer.startTime) / 1000)
+      : 0;
+
+    return {
+      roomId: room.roomId,
+      sessionId: room.sessionId,
+      participantCount,
+      maxCapacity: 8, // Could make this configurable
+      status:
+        room.phase !== "LOBBY" && room.phase !== "ENDED" ? "active" : "waiting",
+      currentSpeaker: currentSpeaker
+        ? {
+            userId: room.liveSpeaker,
+            name: currentSpeaker.displayName,
+            avatar: currentSpeaker.avatarId,
+          }
+        : null,
+      timer: {
+        sessionTime: timerElapsed,
+        totalDuration: Math.floor(room.timer.durationMs / 1000),
+      },
+      phase: room.phase,
+      createdAt: new Date(room.createdAt).toISOString(),
+    };
+  });
+
+  res.json({ rooms });
+});
+
 // Debug route to reset session state
 app.post("/api/session/reset", (_req, res) => {
   const { resetSessionState } = require("./server/socketHandler");

@@ -1,9 +1,10 @@
 import { ActionPayload, ActionContext } from "../routeAction";
 import { emojiLookup } from "../../avatarManager"; // adjust path if needed
+import { setPointer } from "../../socketHandler";
 
 export function handlePointAtSpeaker(
   payload: ActionPayload,
-  context: ActionContext
+  context: ActionContext,
 ) {
   const { from, to } = payload;
   const { pointerMap, users, io, logAction, logSystem, evaluateSync } = context;
@@ -13,7 +14,7 @@ export function handlePointAtSpeaker(
     return;
   }
 
-  pointerMap.set(from, to);
+  setPointer("default-room", from, to);
   io.emit("update-pointing", { from, to });
 
   const avatarId =

@@ -1,10 +1,10 @@
 import { getPanelConfigFor } from "../../panelConfigService";
-import { setIsSyncPauseMode } from "../../socketHandler";
+import { setIsSyncPauseMode, clearPointer } from "../../socketHandler";
 import { ActionPayload, ActionContext } from "../routeAction";
 
 export function handleDeclineNewCandidateRequestAfterMicDropped(
   payload: ActionPayload,
-  context: ActionContext
+  context: ActionContext,
 ) {
   const { name } = payload;
   const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
@@ -18,7 +18,7 @@ export function handleDeclineNewCandidateRequestAfterMicDropped(
 
   for (const [socketId, user] of users.entries()) {
     if (user.name === name) {
-      pointerMap.set(user.name, null);
+      clearPointer("default-room", user.name);
       io.emit("update-pointing", { from: user.name, to: null });
     }
     if (user.state === "wantsToPickUpTheMic") {
@@ -28,7 +28,7 @@ export function handleDeclineNewCandidateRequestAfterMicDropped(
   }
 
   logAction(
-    `✋ ${name} declined ${MicPickerProspect} to pick up the mic, shifting back to attention selector`
+    `✋ ${name} declined ${MicPickerProspect} to pick up the mic, shifting back to attention selector`,
   );
 
   // 🔍 Check if ALL listeners declined

@@ -1,10 +1,15 @@
 import { getPanelConfigFor } from "../../panelConfigService";
-import { setIsSyncPauseMode, setLiveSpeaker } from "../../socketHandler";
+import {
+  setIsSyncPauseMode,
+  setLiveSpeaker,
+  setPointer,
+  clearPointer,
+} from "../../socketHandler";
 import { ActionPayload, ActionContext } from "../routeAction";
 
 export function handlePassTheMic(
   payload: ActionPayload,
-  context: ActionContext
+  context: ActionContext,
 ) {
   const { name } = payload;
   const { users, pointerMap, io, logSystem, logAction, evaluateSync } = context;
@@ -17,11 +22,11 @@ export function handlePassTheMic(
   // ✅ Now update all states:
   for (const [socketId, user] of users.entries()) {
     if (user.name === name) {
-      pointerMap.set(name, null);
+      clearPointer("default-room", name);
       io.emit("update-pointing", { from: name, to: null });
       user.state = "isPassingTheMic";
     } else {
-      pointerMap.set(user.name, null);
+      clearPointer("default-room", user.name);
       io.emit("update-pointing", { from: user.name, to: null });
       user.state = "micPassInProcess";
     }

@@ -1,8 +1,9 @@
 import { ActionPayload, ActionContext } from "../routeAction";
+import { setPointer } from "../../socketHandler";
 
 export function handleBreakSync(
   payload: ActionPayload,
-  context: ActionContext
+  context: ActionContext,
 ) {
   const { name } = payload;
   const { pointerMap, io, logAction, logSystem, evaluateSync } = context;
@@ -12,7 +13,7 @@ export function handleBreakSync(
     return;
   }
 
-  pointerMap.set(name, name);
+  setPointer("default-room", name, name);
   io.emit("update-pointing", { from: name, to: name });
   logAction(`👄 ${name} requests the mic (breakSync)`);
 
