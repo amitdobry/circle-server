@@ -5,7 +5,7 @@ const socketHandler_1 = require("../../socketHandler");
 const panelConfigService_1 = require("../../panelConfigService");
 function handleBlueSelectStart(payload, context) {
     const { name, flavor } = payload;
-    const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
+    const { users, pointerMap, io, logAction, logSystem } = context;
     if (!name) {
         logSystem("🟦 handleBlueSelectStart: missing name in payload");
         return;
@@ -14,9 +14,12 @@ function handleBlueSelectStart(payload, context) {
         logSystem("🟦 handleBlueSelectStart: missing flavor in payload");
         return;
     }
-    const speaker = Array.from(users.values()).find((u) => u.state === "speaking");
+    const liveSpeakerName = (0, socketHandler_1.getLiveSpeaker)();
+    const speaker = liveSpeakerName
+        ? Array.from(users.values()).find((u) => u.name === liveSpeakerName)
+        : null;
     if (!speaker) {
-        logSystem(`🟦 handleBlueSelectStart: no current speaker in session 123`);
+        logSystem(`🟦 handleBlueSelectStart: no current speaker in room`);
         return;
     }
     (0, socketHandler_1.clearPointer)(name);
@@ -26,7 +29,7 @@ function handleBlueSelectStart(payload, context) {
         if (user.name === name) {
             user.state = "isPickingBlueSpeaker";
         }
-        else if (user.state === "speaking") {
+        else if (user.name === speaker.name) {
             user.state = "postSpeakerWaitingOnBlue";
         }
         else {

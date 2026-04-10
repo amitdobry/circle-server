@@ -25,6 +25,7 @@ import {
   shadowDispatch,
   enableShadowMode,
 } from "./engine-v2/shadow/shadowDispatcher";
+import { dispatchAndRun } from "./engine-v2/reducer/dispatch";
 import {
   mapLegacyToV2Action,
   extractUserId,
@@ -102,25 +103,16 @@ function updateUserActivity(socketId: string) {
 }
 
 // ============================================================================
-// SPEAKER STATE (Dual-Mode: Legacy + Engine V2)
+// SPEAKER STATE (Engine V2 only)
 // ============================================================================
-
-// Legacy globals (will be deprecated when ENGINE_V2_SPEAKER_MANAGER is enabled)
-const pointerMap = new Map<string, string>(); // from -> to
-let liveSpeaker: string | null = null;
-let isSyncPauseMode = false;
 
 let currentLogInput: string = ""; // optional state if needed later
 
 /**
- * Get sync pause mode - supports both legacy and V2
- * @param roomId - Room ID (default: "default-room")
+ * Get sync pause mode
  */
 export function getIsSyncPauseMode(roomId: string = "default-room"): boolean {
-  if (ENGINE_V2_SPEAKER_MANAGER) {
-    return speakerManager.getSyncPauseMode(roomId);
-  }
-  return isSyncPauseMode; // Legacy
+  return speakerManager.getSyncPauseMode(roomId);
 }
 
 /**
@@ -132,11 +124,7 @@ export function setIsSyncPauseMode(
   value: boolean,
   roomId: string = "default-room",
 ): void {
-  if (ENGINE_V2_SPEAKER_MANAGER) {
-    speakerManager.setSyncPauseMode(roomId, value);
-  } else {
-    isSyncPauseMode = value; // Legacy
-  }
+  speakerManager.setSyncPauseMode(roomId, value);
 }
 
 /**
@@ -146,10 +134,7 @@ export function setIsSyncPauseMode(
 export function getPointerMap(
   roomId: string = "default-room",
 ): Map<string, string> {
-  if (ENGINE_V2_SPEAKER_MANAGER) {
-    return speakerManager.getPointerMap(roomId);
-  }
-  return pointerMap; // Legacy
+  return speakerManager.getPointerMap(roomId);
 }
 
 /**
@@ -163,11 +148,7 @@ export function setPointer(
   toUser: string,
   roomId: string = "default-room",
 ): void {
-  if (ENGINE_V2_SPEAKER_MANAGER) {
-    speakerManager.setPointer(roomId, fromUser, toUser);
-  } else {
-    pointerMap.set(fromUser, toUser); // Legacy
-  }
+  speakerManager.setPointer(roomId, fromUser, toUser);
 }
 
 /**
@@ -179,11 +160,7 @@ export function clearPointer(
   fromUser: string,
   roomId: string = "default-room",
 ): void {
-  if (ENGINE_V2_SPEAKER_MANAGER) {
-    speakerManager.clearPointer(roomId, fromUser);
-  } else {
-    pointerMap.delete(fromUser); // Legacy
-  }
+  speakerManager.clearPointer(roomId, fromUser);
 }
 
 /**
@@ -191,11 +168,7 @@ export function clearPointer(
  * @param roomId - Room ID (default: "default-room")
  */
 export function clearAllPointers(roomId: string = "default-room"): void {
-  if (ENGINE_V2_SPEAKER_MANAGER) {
-    speakerManager.clearAllPointers(roomId);
-  } else {
-    pointerMap.clear(); // Legacy
-  }
+  speakerManager.clearAllPointers(roomId);
 }
 
 /**
@@ -203,10 +176,7 @@ export function clearAllPointers(roomId: string = "default-room"): void {
  * @param roomId - Room ID (default: "default-room")
  */
 export function getLiveSpeaker(roomId: string = "default-room"): string | null {
-  if (ENGINE_V2_SPEAKER_MANAGER) {
-    return speakerManager.getLiveSpeaker(roomId);
-  }
-  return liveSpeaker; // Legacy
+  return speakerManager.getLiveSpeaker(roomId);
 }
 
 /**
@@ -218,11 +188,7 @@ export function setLiveSpeaker(
   name: string | null,
   roomId: string = "default-room",
 ): void {
-  if (ENGINE_V2_SPEAKER_MANAGER) {
-    speakerManager.setLiveSpeaker(roomId, name);
-  } else {
-    liveSpeaker = name; // Legacy
-  }
+  speakerManager.setLiveSpeaker(roomId, name);
 }
 
 // ============================================================================
@@ -277,17 +243,11 @@ export function resetSessionState() {
   // Clear all user data
   users.clear();
 
-  // Clear speaker state (dual-mode compatible)
+  // Clear speaker state
   const roomId = "default-room";
-  if (ENGINE_V2_SPEAKER_MANAGER) {
-    speakerManager.clearAllPointers(roomId);
-    speakerManager.setLiveSpeaker(roomId, null);
-    speakerManager.setSyncPauseMode(roomId, false);
-  } else {
-    pointerMap.clear();
-    liveSpeaker = null;
-    isSyncPauseMode = false;
-  }
+  speakerManager.clearAllPointers(roomId);
+  speakerManager.setLiveSpeaker(roomId, null);
+  speakerManager.setSyncPauseMode(roomId, false);
 
   console.log("🔄 Session state manually reset");
 }
@@ -648,7 +608,7 @@ export function setupSocketHandlers(io: Server) {
       sendInitialPointerMap(socket);
       sendCurrentLiveSpeaker(socket);
 
-      // ✨ ENGINE V2: Shadow dispatch
+      // ✨ ENGINE V2: Dispatch with effects
       try {
         const roomId = extractRoomId(socket, { name, avatarId });
         const userId = socket.id; // Use socketId consistently
@@ -657,10 +617,9 @@ export function setupSocketHandlers(io: Server) {
           avatarId,
           socketId: socket.id,
         });
-        shadowDispatch(roomId, userId, action);
+        dispatchAndRun(roomId, userId, action, io);
       } catch (error) {
-        // Swallow errors, don't break V1
-        console.error("[V2 Shadow] Failed on request-join:", error);
+        console.error("[V2] Failed on request-join:", error);
       }
     });
 
@@ -695,17 +654,16 @@ export function setupSocketHandlers(io: Server) {
           message: `${user.name} started a ${durationMinutes}-minute session`,
         });
 
-        // ✨ ENGINE V2: Shadow dispatch
+        // ✨ ENGINE V2: Dispatch with effects
         try {
           const roomId = extractRoomId(socket, { durationMinutes });
           const userId = socket.id; // Use socketId consistently
           const action = mapLegacyToV2Action("start-session", {
             durationMinutes,
           });
-          shadowDispatch(roomId, userId, action);
+          dispatchAndRun(roomId, userId, action, io);
         } catch (error) {
-          // Swallow errors, don't break V1
-          console.error("[V2 Shadow] Failed on start-session:", error);
+          console.error("[V2] Failed on start-session:", error);
         }
       } else if (sessionActive) {
         socket.emit("session-start-rejected", {
@@ -741,8 +699,7 @@ export function setupSocketHandlers(io: Server) {
             io,
             logSystem: emitSystemLog,
             logAction: emitActionLog,
-            pointerMap,
-            evaluateSync,
+            pointerMap: getPointerMap(),
             gestureCatalog,
             socketId: socket.id,
             users,
@@ -806,15 +763,14 @@ export function setupSocketHandlers(io: Server) {
       }
       cleanupUser(socket);
 
-      // ✨ ENGINE V2: Shadow dispatch
+      // ✨ ENGINE V2: Dispatch with effects
       try {
         const roomId = extractRoomId(socket, {});
         const userId = socket.id; // Use socketId consistently
         const action = mapLegacyToV2Action("disconnect", {});
-        shadowDispatch(roomId, userId, action);
+        dispatchAndRun(roomId, userId, action, io);
       } catch (error) {
-        // Swallow errors, don't break V1
-        console.error("[V2 Shadow] Failed on disconnect:", error);
+        console.error("[V2] Failed on disconnect:", error);
       }
     });
 
@@ -833,23 +789,21 @@ export function setupSocketHandlers(io: Server) {
           io,
           logSystem: emitSystemLog,
           logAction: emitActionLog,
-          pointerMap,
-          evaluateSync,
+          pointerMap: getPointerMap(),
           gestureCatalog,
           socketId: socket.id,
           users,
         },
       );
 
-      // ✨ ENGINE V2: Shadow dispatch
+      // ✨ ENGINE V2: Dispatch with effects
       try {
         const roomId = extractRoomId(socket, { from, to });
         const userId = socket.id; // Use socketId consistently
         const action = mapLegacyToV2Action("pointing", { from, to });
-        shadowDispatch(roomId, userId, action);
+        dispatchAndRun(roomId, userId, action, io);
       } catch (error) {
-        // Swallow errors, don't break V1
-        console.error("[V2 Shadow] Failed on pointing:", error);
+        console.error("[V2] Failed on pointing:", error);
       }
     });
 
@@ -1080,14 +1034,14 @@ export function setupSocketHandlers(io: Server) {
       // Also remove from session logic tracking
       removeUserFromBL(socket.id);
 
-      clearPointer("default-room", user.name);
+      clearPointer(user.name);
       releaseAvatarByName(user.name);
-      setIsSyncPauseMode(false, "default-room");
+      setIsSyncPauseMode(false);
 
       // Clear any pointers TO this user
-      const currentPointers = getPointerMap("default-room");
+      const currentPointers = getPointerMap();
       for (const [from, to] of currentPointers.entries()) {
-        if (to === user.name) clearPointer("default-room", from);
+        if (to === user.name) clearPointer(from);
       }
 
       // Reset session timer if all users have left
@@ -1098,7 +1052,6 @@ export function setupSocketHandlers(io: Server) {
 
       broadcastUserList();
       broadcastAvatarState();
-      evaluateSync();
     }
 
     function broadcastUserList() {
@@ -1150,82 +1103,5 @@ export function setupSocketHandlers(io: Server) {
       console.log("[TEXT]", payload);
     }
 
-    function evaluateSync() {
-      const roomId = "default-room";
-      const candidates = Array.from(users.values());
-      const currentPointers = getPointerMap(roomId);
-      const currentSpeaker = getLiveSpeaker(roomId);
-      let newLiveSpeaker: string | null = null;
-
-      for (const candidate of candidates) {
-        const everyoneElse = candidates.filter(
-          (u) => u.name !== candidate.name,
-        );
-
-        const allPointing = everyoneElse.every(
-          (u) => currentPointers.get(u.name) === candidate.name,
-        );
-        const selfPointing =
-          currentPointers.get(candidate.name) === candidate.name;
-
-        if (allPointing && selfPointing) {
-          newLiveSpeaker = candidate.name;
-          break;
-        }
-      }
-
-      for (const [socketId, user] of users.entries()) {
-        if (user.name === newLiveSpeaker) {
-          user.state = "speaking";
-          users.set(socketId, user);
-        }
-      }
-
-      if (newLiveSpeaker !== currentSpeaker) {
-        setLiveSpeaker(newLiveSpeaker, roomId);
-
-        if (newLiveSpeaker) {
-          emitActionLog(`🎤 All attention on ${newLiveSpeaker}. Going LIVE.`);
-          // 💡 Reset concent-mode users to regular listeners
-          for (const [socketId, user] of users.entries()) {
-            if (user.name !== newLiveSpeaker) {
-              user.state = "regular";
-              users.set(socketId, user);
-            }
-          }
-          setIsSyncPauseMode(false, roomId);
-          io.emit("live-speaker", { name: newLiveSpeaker });
-          io.emit("logBar:update", {
-            text: `${newLiveSpeaker}: `,
-            userName: newLiveSpeaker,
-          });
-          console.log(
-            formatSessionLog(
-              `[PANEL-SNAPSHOT][V1-SYNC] evaluateSync triggered panel rebuild for all users | newLiveSpeaker=${newLiveSpeaker}`,
-              "INFO",
-            ),
-          );
-          for (const [socketId, user] of users.entries()) {
-            console.log(
-              formatSessionLog(
-                `🛠️ [PANEL-DEBUG-SYNC] Building panel config for ${user.name} (socket: ${socketId}) during speaker sync`,
-                "INFO",
-              ),
-            );
-            const config = getPanelConfigFor(user.name);
-            console.log(
-              formatSessionLog(
-                `🛠️ [PANEL-DEBUG-SYNC] Sending panel config to ${user.name} (socket: ${socketId}) during speaker sync`,
-                "INFO",
-              ),
-            );
-            io.to(socketId).emit("receive:panelConfig", config);
-          }
-        } else {
-          emitActionLog("🔇 No speaker in sync. Clearing Live tag.");
-          io.emit("live-speaker-cleared");
-        }
-      }
-    }
   });
 }

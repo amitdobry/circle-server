@@ -11,7 +11,7 @@ export function handleOfferMicToUserFromPassTheMic(
   context: ActionContext,
 ) {
   const { name, targetUser } = payload;
-  const { users, pointerMap, io, logSystem, logAction, evaluateSync } = context;
+  const { users, pointerMap, io, logSystem, logAction } = context;
 
   if (!name || !targetUser) {
     logSystem("🚨 Missing name or targetUser in mic pass handler");
@@ -44,6 +44,4 @@ export function handleOfferMicToUserFromPassTheMic(
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);
   }
-
-  evaluateSync();
 }

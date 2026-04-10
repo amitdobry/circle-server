@@ -6,7 +6,7 @@ export function handleOpenChooseASpeakerFromPassTheMic(
   context: ActionContext
 ) {
   const { name } = payload;
-  const { users, io, logSystem, logAction, evaluateSync } = context;
+  const { users, io, logSystem, logAction } = context;
 
   if (!name) {
     logSystem(
@@ -28,6 +28,4 @@ export function handleOpenChooseASpeakerFromPassTheMic(
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);
   }
-
-  evaluateSync();
 }

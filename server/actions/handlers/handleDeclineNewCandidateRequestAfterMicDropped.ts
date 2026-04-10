@@ -7,7 +7,7 @@ export function handleDeclineNewCandidateRequestAfterMicDropped(
   context: ActionContext,
 ) {
   const { name } = payload;
-  const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
+  const { users, pointerMap, io, logAction, logSystem } = context;
 
   if (!name) {
     logSystem("🚨 Missing name in handleBreakSync payload.");
@@ -40,7 +40,5 @@ export function handleDeclineNewCandidateRequestAfterMicDropped(
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);
   }
-
-  evaluateSync(); // clear any previous sync
   return;
 }

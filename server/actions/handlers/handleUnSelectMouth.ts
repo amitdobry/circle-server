@@ -1,5 +1,6 @@
 import { ActionContext, ActionPayload } from "../routeAction";
 import { getPanelConfigFor } from "../../panelConfigService";
+import { getLiveSpeaker } from "../../socketHandler";
 
 export function handleUnselectMouth(
   payload: ActionPayload,
@@ -24,9 +25,10 @@ export function handleUnselectMouth(
   }
 
   // 🔁 Reset speaker's `interruptedBy` field
-  const speakerEntry = Array.from(users.entries()).find(
-    ([, user]) => user.state === "speaking"
-  );
+  const liveSpeakerName = getLiveSpeaker();
+  const speakerEntry = liveSpeakerName
+    ? Array.from(users.entries()).find(([, user]) => user.name === liveSpeakerName)
+    : undefined;
   if (speakerEntry) {
     const [socketId, speakerUser] = speakerEntry;
     speakerUser.interruptedBy = "";

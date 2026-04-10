@@ -5,7 +5,7 @@ const panelConfigService_1 = require("../../panelConfigService");
 const socketHandler_1 = require("../../socketHandler");
 function handleDropTheMic(payload, context) {
     const { name } = payload;
-    const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
+    const { users, pointerMap, io, logAction, logSystem } = context;
     if (!name) {
         logSystem("🚨 Missing name in handleBreakSync payload.");
         return;
@@ -36,5 +36,4 @@ function handleDropTheMic(payload, context) {
         // );
         io.to(socketId).emit("receive:panelConfig", config);
     }
-    evaluateSync();
 }

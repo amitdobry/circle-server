@@ -7,7 +7,7 @@ export function handleWishToSpeakAfterMicDropped(
   context: ActionContext
 ) {
   const { name } = payload;
-  const { users, io, logSystem, logAction, evaluateSync } = context;
+  const { users, io, logSystem, logAction } = context;
 
   if (!name) {
     logSystem("🚨 Missing name in handleBreakSync payload.");
@@ -45,7 +45,4 @@ export function handleWishToSpeakAfterMicDropped(
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);
   }
-
-  // ✅ 3. Re-evaluate sync state
-  evaluateSync();
 }

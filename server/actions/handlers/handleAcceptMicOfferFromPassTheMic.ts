@@ -7,7 +7,7 @@ export function handleAcceptMicOfferFromPassTheMic(
   context: ActionContext,
 ) {
   const { name } = payload;
-  const { users, io, logAction, logSystem, evaluateSync, pointerMap } = context;
+  const { users, io, logAction, logSystem, pointerMap } = context;
 
   if (!name) {
     logSystem("🚨 Missing name in acceptMicOffer handler.");
@@ -45,6 +45,4 @@ export function handleAcceptMicOfferFromPassTheMic(
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);
   }
-
-  evaluateSync(); // ✅ Trigger sync check
 }

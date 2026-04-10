@@ -364,6 +364,23 @@ function executeEffect(effect: Effect, io: Server): void {
           } connected=[${connected}] pointerMap={${pointerEntries}}`,
         );
 
+        // Sync V2 liveSpeaker into SpeakerManager so panelConfigService reads the correct value
+        const { setLiveSpeaker } = require("../../socketHandler");
+        const speakerSocketId = tableState.liveSpeaker as string | null;
+        let syncedSpeakerName: string | null = null;
+        if (speakerSocketId) {
+          for (const [, p] of tableState.participants as Map<string, any>) {
+            if (p.socketId === speakerSocketId) {
+              syncedSpeakerName = p.displayName;
+              break;
+            }
+          }
+        }
+        setLiveSpeaker(syncedSpeakerName, effect.roomId);
+        console.log(
+          `[REBUILD_ALL_PANELS] Synced liveSpeaker → ${syncedSpeakerName ?? "none"} in room ${effect.roomId}`,
+        );
+
         // ✅ Emit panel configs to all connected users
         let emitCount = 0;
         for (const [, participant] of tableState.participants as Map<string, any>) {

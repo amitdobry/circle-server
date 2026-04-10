@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleUnSelectBrain = handleUnSelectBrain;
 const panelConfigService_1 = require("../../panelConfigService");
+const socketHandler_1 = require("../../socketHandler");
 function handleUnSelectBrain(payload, context) {
     const { name } = payload;
     const { users, io, logSystem, logAction } = context;
@@ -18,7 +19,10 @@ function handleUnSelectBrain(payload, context) {
         }
     }
     // 🔁 Reset speaker's `interruptedBy` field
-    const speakerEntry = Array.from(users.entries()).find(([, user]) => user.state === "speaking");
+    const liveSpeakerName = (0, socketHandler_1.getLiveSpeaker)();
+    const speakerEntry = liveSpeakerName
+        ? Array.from(users.entries()).find(([, user]) => user.name === liveSpeakerName)
+        : undefined;
     if (speakerEntry) {
         const [socketId, speakerUser] = speakerEntry;
         speakerUser.interruptedBy = "";

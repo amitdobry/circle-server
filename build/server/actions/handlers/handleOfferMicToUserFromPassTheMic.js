@@ -5,7 +5,7 @@ const panelConfigService_1 = require("../../panelConfigService");
 const socketHandler_1 = require("../../socketHandler");
 function handleOfferMicToUserFromPassTheMic(payload, context) {
     const { name, targetUser } = payload;
-    const { users, pointerMap, io, logSystem, logAction, evaluateSync } = context;
+    const { users, pointerMap, io, logSystem, logAction } = context;
     if (!name || !targetUser) {
         logSystem("🚨 Missing name or targetUser in mic pass handler");
         return;
@@ -33,5 +33,4 @@ function handleOfferMicToUserFromPassTheMic(payload, context) {
         const config = (0, panelConfigService_1.getPanelConfigFor)(user.name);
         io.to(socketId).emit("receive:panelConfig", config);
     }
-    evaluateSync();
 }

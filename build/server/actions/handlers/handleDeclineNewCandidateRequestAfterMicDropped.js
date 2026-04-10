@@ -5,7 +5,7 @@ const panelConfigService_1 = require("../../panelConfigService");
 const socketHandler_1 = require("../../socketHandler");
 function handleDeclineNewCandidateRequestAfterMicDropped(payload, context) {
     const { name } = payload;
-    const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
+    const { users, pointerMap, io, logAction, logSystem } = context;
     if (!name) {
         logSystem("🚨 Missing name in handleBreakSync payload.");
         return;
@@ -30,6 +30,5 @@ function handleDeclineNewCandidateRequestAfterMicDropped(payload, context) {
         const config = (0, panelConfigService_1.getPanelConfigFor)(user.name);
         io.to(socketId).emit("receive:panelConfig", config);
     }
-    evaluateSync(); // clear any previous sync
     return;
 }

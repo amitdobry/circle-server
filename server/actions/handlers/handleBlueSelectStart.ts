@@ -1,6 +1,6 @@
 // handlers/handleBlueSelectStart.ts
 import { ActionContext, ActionPayload } from "../routeAction";
-import { setIsSyncPauseMode, clearPointer } from "../../socketHandler";
+import { setIsSyncPauseMode, clearPointer, getLiveSpeaker } from "../../socketHandler";
 import { getPanelConfigFor } from "../../panelConfigService";
 
 export function handleBlueSelectStart(
@@ -8,7 +8,7 @@ export function handleBlueSelectStart(
   context: ActionContext,
 ) {
   const { name, flavor } = payload;
-  const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
+  const { users, pointerMap, io, logAction, logSystem } = context;
 
   if (!name) {
     logSystem("🟦 handleBlueSelectStart: missing name in payload");
@@ -20,11 +20,12 @@ export function handleBlueSelectStart(
     return;
   }
 
-  const speaker = Array.from(users.values()).find(
-    (u) => u.state === "speaking",
-  );
+  const liveSpeakerName = getLiveSpeaker();
+  const speaker = liveSpeakerName
+    ? Array.from(users.values()).find((u) => u.name === liveSpeakerName)
+    : null;
   if (!speaker) {
-    logSystem(`🟦 handleBlueSelectStart: no current speaker in session 123`);
+    logSystem(`🟦 handleBlueSelectStart: no current speaker in room`);
     return;
   }
 
@@ -35,7 +36,7 @@ export function handleBlueSelectStart(
   for (const [socketId, user] of users.entries()) {
     if (user.name === name) {
       user.state = "isPickingBlueSpeaker";
-    } else if (user.state === "speaking") {
+    } else if (user.name === speaker.name) {
       user.state = "postSpeakerWaitingOnBlue";
     } else {
       user.state = "waitingOnPickerOfBlueSpeaker";

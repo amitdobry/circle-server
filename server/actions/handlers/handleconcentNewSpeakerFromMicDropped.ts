@@ -7,7 +7,7 @@ export function handleConcentNewSpeakerFromMicDropped(
   context: ActionContext,
 ) {
   const { name } = payload;
-  const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
+  const { users, pointerMap, io, logAction, logSystem } = context;
 
   if (!name) {
     logSystem(
@@ -55,7 +55,4 @@ export function handleConcentNewSpeakerFromMicDropped(
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);
   }
-
-  // 🔄 Re-check group sync
-  evaluateSync();
 }

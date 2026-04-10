@@ -5,7 +5,7 @@ const avatarManager_1 = require("../../avatarManager"); // adjust path if needed
 const socketHandler_1 = require("../../socketHandler");
 function handlePointAtSpeaker(payload, context) {
     const { from, to } = payload;
-    const { pointerMap, users, io, logAction, logSystem, evaluateSync } = context;
+    const { pointerMap, users, io, logAction, logSystem } = context;
     if (!from || !to) {
         logSystem("🚨 Missing 'from' or 'to' in pointAtSpeaker payload.");
         return;
@@ -20,5 +20,4 @@ function handlePointAtSpeaker(payload, context) {
     else {
         logAction(`🔁 ${emoji} ${from} ➡️ ${to}`);
     }
-    evaluateSync();
 }

@@ -5,7 +5,7 @@ const panelConfigService_1 = require("../../panelConfigService");
 const socketHandler_1 = require("../../socketHandler");
 function handleAcceptMicOfferFromPassTheMic(payload, context) {
     const { name } = payload;
-    const { users, io, logAction, logSystem, evaluateSync, pointerMap } = context;
+    const { users, io, logAction, logSystem, pointerMap } = context;
     if (!name) {
         logSystem("🚨 Missing name in acceptMicOffer handler.");
         return;
@@ -35,5 +35,4 @@ function handleAcceptMicOfferFromPassTheMic(payload, context) {
         const config = (0, panelConfigService_1.getPanelConfigFor)(user.name);
         io.to(socketId).emit("receive:panelConfig", config);
     }
-    evaluateSync(); // ✅ Trigger sync check
 }

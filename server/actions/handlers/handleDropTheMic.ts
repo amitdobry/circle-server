@@ -11,7 +11,7 @@ export function handleDropTheMic(
   context: ActionContext,
 ) {
   const { name } = payload;
-  const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
+  const { users, pointerMap, io, logAction, logSystem } = context;
 
   if (!name) {
     logSystem("🚨 Missing name in handleBreakSync payload.");
@@ -45,6 +45,4 @@ export function handleDropTheMic(
     // );
     io.to(socketId).emit("receive:panelConfig", config);
   }
-
-  evaluateSync();
 }

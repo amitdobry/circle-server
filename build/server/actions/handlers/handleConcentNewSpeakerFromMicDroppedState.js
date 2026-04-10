@@ -5,7 +5,7 @@ const panelConfigService_1 = require("../../panelConfigService");
 const socketHandler_1 = require("../../socketHandler");
 function handleConcentNewSpeakerFromMicDropped(payload, context) {
     const { name } = payload;
-    const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
+    const { users, pointerMap, io, logAction, logSystem } = context;
     if (!name) {
         logSystem("🚨 Missing name in handleConcentNewSpeakerFromMicDropped payload.");
         return;
@@ -41,6 +41,4 @@ function handleConcentNewSpeakerFromMicDropped(payload, context) {
         const config = (0, panelConfigService_1.getPanelConfigFor)(user.name);
         io.to(socketId).emit("receive:panelConfig", config);
     }
-    // 🔄 Re-check group sync
-    evaluateSync();
 }

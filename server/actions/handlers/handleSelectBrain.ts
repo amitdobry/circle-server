@@ -1,13 +1,14 @@
 import { ActionPayload, ActionContext } from "../routeAction";
 import { emojiLookup } from "../../avatarManager"; // adjust path if needed
 import { getPanelConfigFor } from "../../panelConfigService";
+import { getLiveSpeaker } from "../../socketHandler";
 
 export function handleSelectBrain(
   payload: ActionPayload,
   context: ActionContext
 ) {
   const { name: brainClickerName } = payload;
-  const { users, io, logSystem, logAction, evaluateSync } = context;
+  const { users, io, logSystem, logAction } = context;
 
   if (!brainClickerName) {
     logSystem("🚨 Missing 'name' in selectMouth payload.");
@@ -24,9 +25,10 @@ export function handleSelectBrain(
   );
 
   // ✅ Find the speaker FIRST (before changing any states)
-  const speakerEntry = Array.from(users.entries()).find(
-    ([, user]) => user.state === "speaking"
-  );
+  const liveSpeakerName = getLiveSpeaker();
+  const speakerEntry = liveSpeakerName
+    ? Array.from(users.entries()).find(([, user]) => user.name === liveSpeakerName)
+    : undefined;
 
   // ✅ Now update all states:
   for (const [socketId, user] of users.entries()) {
@@ -50,6 +52,4 @@ export function handleSelectBrain(
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);
   }
-
-  evaluateSync(); // (optional: may not be needed for this flow)
 }

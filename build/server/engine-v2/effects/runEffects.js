@@ -271,6 +271,20 @@ function executeEffect(effect, io) {
                     .map((p) => p.displayName)
                     .join(", ") || "(none)";
                 console.log(`[PANEL-SNAPSHOT][V2] room=${effect.roomId} phase=${tableState.phase} liveSpeaker=${tableState.liveSpeaker ?? "none"} connected=[${connected}] pointerMap={${pointerEntries}}`);
+                // Sync V2 liveSpeaker into SpeakerManager so panelConfigService reads the correct value
+                const { setLiveSpeaker } = require("../../socketHandler");
+                const speakerSocketId = tableState.liveSpeaker;
+                let syncedSpeakerName = null;
+                if (speakerSocketId) {
+                    for (const [, p] of tableState.participants) {
+                        if (p.socketId === speakerSocketId) {
+                            syncedSpeakerName = p.displayName;
+                            break;
+                        }
+                    }
+                }
+                setLiveSpeaker(syncedSpeakerName, effect.roomId);
+                console.log(`[REBUILD_ALL_PANELS] Synced liveSpeaker → ${syncedSpeakerName ?? "none"} in room ${effect.roomId}`);
                 // ✅ Emit panel configs to all connected users
                 let emitCount = 0;
                 for (const [, participant] of tableState.participants) {

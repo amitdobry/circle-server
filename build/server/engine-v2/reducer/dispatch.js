@@ -69,18 +69,7 @@ function dispatch(roomId, userId, action) {
     // =========================================================================
     // 1. VALIDATE ROOM EXISTS
     // =========================================================================
-    const room = RoomRegistry_1.roomRegistry.getRoom(roomId);
-    if (!room) {
-        console.error(`[dispatch] Room '${roomId}' not found`);
-        return [
-            {
-                type: "SYSTEM_LOG",
-                roomId,
-                message: `Cannot perform ${action.type}: room not found`,
-                level: "error",
-            },
-        ];
-    }
+    const room = RoomRegistry_1.roomRegistry.getOrCreateRoom(roomId);
     // =========================================================================
     // 2. PERMISSION CHECK (OPTIONAL - Let reducer handle validation)
     // =========================================================================

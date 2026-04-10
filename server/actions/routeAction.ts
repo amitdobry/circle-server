@@ -48,7 +48,6 @@ type ActionContext = {
   logSystem: (msg: string) => void;
   logAction: (msg: string) => void;
   pointerMap: Map<string, string | null>;
-  evaluateSync: () => void;
   gestureCatalog: typeof gestureCatalog;
   socketId: string;
   users: Map<

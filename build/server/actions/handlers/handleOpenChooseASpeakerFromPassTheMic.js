@@ -4,7 +4,7 @@ exports.handleOpenChooseASpeakerFromPassTheMic = handleOpenChooseASpeakerFromPas
 const panelConfigService_1 = require("../../panelConfigService");
 function handleOpenChooseASpeakerFromPassTheMic(payload, context) {
     const { name } = payload;
-    const { users, io, logSystem, logAction, evaluateSync } = context;
+    const { users, io, logSystem, logAction } = context;
     if (!name) {
         logSystem("🚨 Missing name in handleOpenChooseASpeakerFromPassTheMic payload.");
         return;
@@ -20,5 +20,4 @@ function handleOpenChooseASpeakerFromPassTheMic(payload, context) {
         const config = (0, panelConfigService_1.getPanelConfigFor)(user.name);
         io.to(socketId).emit("receive:panelConfig", config);
     }
-    evaluateSync();
 }

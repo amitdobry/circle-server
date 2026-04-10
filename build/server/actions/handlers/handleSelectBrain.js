@@ -3,9 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleSelectBrain = handleSelectBrain;
 const avatarManager_1 = require("../../avatarManager"); // adjust path if needed
 const panelConfigService_1 = require("../../panelConfigService");
+const socketHandler_1 = require("../../socketHandler");
 function handleSelectBrain(payload, context) {
     const { name: brainClickerName } = payload;
-    const { users, io, logSystem, logAction, evaluateSync } = context;
+    const { users, io, logSystem, logAction } = context;
     if (!brainClickerName) {
         logSystem("🚨 Missing 'name' in selectMouth payload.");
         return;
@@ -15,7 +16,10 @@ function handleSelectBrain(payload, context) {
     const emoji = avatarManager_1.emojiLookup[avatarId] || "";
     logAction(`✋ ${emoji} ${brainClickerName} clicked brain — requesting to interrupt`);
     // ✅ Find the speaker FIRST (before changing any states)
-    const speakerEntry = Array.from(users.entries()).find(([, user]) => user.state === "speaking");
+    const liveSpeakerName = (0, socketHandler_1.getLiveSpeaker)();
+    const speakerEntry = liveSpeakerName
+        ? Array.from(users.entries()).find(([, user]) => user.name === liveSpeakerName)
+        : undefined;
     // ✅ Now update all states:
     for (const [socketId, user] of users.entries()) {
         if (user.name === brainClickerName) {
@@ -37,5 +41,4 @@ function handleSelectBrain(payload, context) {
         const config = (0, panelConfigService_1.getPanelConfigFor)(user.name);
         io.to(socketId).emit("receive:panelConfig", config);
     }
-    evaluateSync(); // (optional: may not be needed for this flow)
 }

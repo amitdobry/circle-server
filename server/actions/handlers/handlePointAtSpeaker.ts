@@ -7,7 +7,7 @@ export function handlePointAtSpeaker(
   context: ActionContext,
 ) {
   const { from, to } = payload;
-  const { pointerMap, users, io, logAction, logSystem, evaluateSync } = context;
+  const { pointerMap, users, io, logAction, logSystem } = context;
 
   if (!from || !to) {
     logSystem("🚨 Missing 'from' or 'to' in pointAtSpeaker payload.");
@@ -26,6 +26,4 @@ export function handlePointAtSpeaker(
   } else {
     logAction(`🔁 ${emoji} ${from} ➡️ ${to}`);
   }
-
-  evaluateSync();
 }

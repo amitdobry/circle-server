@@ -1,10 +1,10 @@
 import { getPanelConfigFor } from "../../panelConfigService";
-import { setIsSyncPauseMode, clearPointer } from "../../socketHandler";
+import { setIsSyncPauseMode, setLiveSpeaker, clearPointer } from "../../socketHandler";
 import { ActionPayload, ActionContext } from "../routeAction";
 
 export function handleDisagree(payload: ActionPayload, context: ActionContext) {
   const { name } = payload;
-  const { users, pointerMap, io, logAction, logSystem, evaluateSync } = context;
+  const { users, pointerMap, io, logAction, logSystem } = context;
 
   if (!name) {
     logSystem("🚨 Missing name in handleDisagree payload.");
@@ -21,9 +21,9 @@ export function handleDisagree(payload: ActionPayload, context: ActionContext) {
 
   // 🔍 Go back to attention selector mode (like declining mic offer)
   setIsSyncPauseMode(false);
+  setLiveSpeaker(null);
 
   logAction(`❌ ${name} disagreed - going back to attention selector`);
-  evaluateSync(); // clear any previous sync and return to attention selector
 
   // 🔄 Reset all users to regular state and emit new panels
   for (const [socketId, user] of users.entries()) {
