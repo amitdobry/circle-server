@@ -39,6 +39,11 @@ export function handleOfferMicToUserFromPassTheMic(
 
   setIsSyncPauseMode(true);
 
+  // Clear live speaker — the interrupter has chosen a candidate,
+  // the previous speaker's authority is suspended from this point.
+  // (In V1 this was handled by evaluateSync detecting broken consensus.)
+  setLiveSpeaker(null);
+
   // Emit updates
   for (const [socketId, user] of users.entries()) {
     const config = getPanelConfigFor(user.name);
