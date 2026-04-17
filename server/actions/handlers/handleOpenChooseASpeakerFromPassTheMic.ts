@@ -1,5 +1,6 @@
 import { ActionPayload, ActionContext } from "../routeAction";
 import { getPanelConfigFor } from "../../panelConfigService";
+import { setLiveSpeaker } from "../../socketHandler";
 
 export function handleOpenChooseASpeakerFromPassTheMic(
   payload: ActionPayload,
@@ -16,6 +17,10 @@ export function handleOpenChooseASpeakerFromPassTheMic(
   }
 
   logAction(`🎯 ${name} is choosing a user to pass the mic to.`);
+
+  // Speaker is no longer "live" — clear so panelBuilderRouter routes
+  // them to buildListenerSyncPanel → state-13 (participant picker)
+  setLiveSpeaker(null);
 
   for (const [socketId, user] of users.entries()) {
     if (user.name === name) {

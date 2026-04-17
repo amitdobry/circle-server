@@ -22,7 +22,13 @@ function handleDeclineNewCandidateRequestAfterMicDropped(payload, context) {
         users.set(socketId, user);
     }
     logAction(`✋ ${name} declined ${MicPickerProspect} to pick up the mic, shifting back to attention selector`);
-    // 🔍 Check if ALL listeners declined
+    // Clear all pointers and live speaker so V2 pointerMap is clean
+    // for the next attention-selection round
+    for (const [, user] of users.entries()) {
+        (0, socketHandler_1.clearPointer)(user.name);
+        io.emit("update-pointing", { from: user.name, to: null });
+    }
+    (0, socketHandler_1.setLiveSpeaker)(null);
     (0, socketHandler_1.setIsSyncPauseMode)(false);
     // Optional: reset state and emit new panels
     for (const [socketId, user] of users.entries()) {

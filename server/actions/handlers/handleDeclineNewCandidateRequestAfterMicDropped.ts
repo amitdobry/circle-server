@@ -1,5 +1,5 @@
 import { getPanelConfigFor } from "../../panelConfigService";
-import { setIsSyncPauseMode, clearPointer } from "../../socketHandler";
+import { setIsSyncPauseMode, setLiveSpeaker, clearPointer } from "../../socketHandler";
 import { ActionPayload, ActionContext } from "../routeAction";
 
 export function handleDeclineNewCandidateRequestAfterMicDropped(
@@ -31,7 +31,14 @@ export function handleDeclineNewCandidateRequestAfterMicDropped(
     `✋ ${name} declined ${MicPickerProspect} to pick up the mic, shifting back to attention selector`,
   );
 
-  // 🔍 Check if ALL listeners declined
+  // Clear all pointers and live speaker so V2 pointerMap is clean
+  // for the next attention-selection round
+  for (const [, user] of users.entries()) {
+    clearPointer(user.name);
+    io.emit("update-pointing", { from: user.name, to: null });
+  }
+
+  setLiveSpeaker(null);
   setIsSyncPauseMode(false);
 
   // Optional: reset state and emit new panels

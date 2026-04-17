@@ -25,8 +25,7 @@ function handlePassTheMic(payload, context) {
         users.set(socketId, user);
     }
     logAction(`👄 ${name} is going to pass the mic (breakSync)`);
-    //   io.emit("mic-dropped", { name });
-    // setLiveSpeaker(null);
+    (0, socketHandler_1.setLiveSpeaker)(null);
     (0, socketHandler_1.setIsSyncPauseMode)(true);
     for (const [socketId, user] of users.entries()) {
         const config = (0, panelConfigService_1.getPanelConfigFor)(user.name);

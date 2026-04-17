@@ -34,8 +34,7 @@ export function handlePassTheMic(
   }
 
   logAction(`👄 ${name} is going to pass the mic (breakSync)`);
-  //   io.emit("mic-dropped", { name });
-  // setLiveSpeaker(null);
+  setLiveSpeaker(null);
   setIsSyncPauseMode(true);
 
   for (const [socketId, user] of users.entries()) {
