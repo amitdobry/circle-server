@@ -242,17 +242,18 @@ export function reducer(
           `[V2 Reducer] 🎤 Speaker ${participant.displayName} went ghost`,
         );
 
-        // Check if ALL users are now ghosts
         const connectedCount = Array.from(
           tableState.participants.values(),
         ).filter((p) => p.presence === "CONNECTED").length;
 
         if (connectedCount === 0) {
+          // All users are now ghosts — pause the session
           console.log(
-            `[V2 Reducer] 💤 All users are ghosts, clearing speaker and resetting phase`,
+            `[V2 Reducer] 💤 All users are ghosts, clearing speaker and entering ENDING`,
           );
           tableState.liveSpeaker = null;
-          tableState.phase = "ATTENTION_SELECTION";
+          tableState.phase = "ENDING";
+          tableState.syncPause = false;
           participant.role = "listener";
 
           effects.push({
@@ -270,6 +271,32 @@ export function reducer(
             roomId: tableState.roomId,
             message: `${participant.displayName} disconnected but holding mic`,
             level: "info",
+          });
+        }
+      } else {
+        // Non-speaker disconnected — check if room is now all-ghost
+        const connectedCount = Array.from(
+          tableState.participants.values(),
+        ).filter((p) => p.presence === "CONNECTED").length;
+
+        if (connectedCount === 0) {
+          console.log(
+            `[V2 Reducer] 💤 Last non-speaker went ghost, entering ENDING`,
+          );
+          // Clear any held speaker (ghost speaker can no longer hold the room)
+          if (tableState.liveSpeaker) {
+            const heldSpeaker = tableState.participants.get(tableState.liveSpeaker);
+            if (heldSpeaker) heldSpeaker.role = "listener";
+            tableState.liveSpeaker = null;
+          }
+          tableState.phase = "ENDING";
+          tableState.syncPause = false;
+
+          effects.push({
+            type: "SYSTEM_LOG",
+            roomId: tableState.roomId,
+            message: `All users disconnected. Session paused.`,
+            level: "warn",
           });
         }
       }
@@ -797,6 +824,13 @@ export function reducer(
 
       // Transition to ENDING phase (30-second grace period)
       tableState.phase = "ENDING";
+
+      // Clear live speaker — ENDING requires liveSpeaker = null (Invariant 14)
+      if (tableState.liveSpeaker) {
+        const speaker = tableState.participants.get(tableState.liveSpeaker);
+        if (speaker) speaker.role = "listener";
+        tableState.liveSpeaker = null;
+      }
 
       // Update timer state
       tableState.timer.active = false;
