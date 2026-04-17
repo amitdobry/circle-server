@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.testPanelListenerState18 = exports.testPanelListenerState17 = exports.panelListenersWatchingMicOffer = exports.panelSpeakerWaitingForMicAcceptance = exports.panelListenerMicOfferReceived = exports.testPanelListenerState13 = exports.testPanelListenerState12 = exports.testPanelListenerState11 = exports.testPanelListenerState10 = exports.testPanelListenerState9 = exports.testPanelListenerState8 = exports.testPanelListenerState7 = exports.testPanelListenerState6 = exports.testPanelListenerState5 = exports.testPanelListenerState4 = exports.testPanelListenerState3 = exports.testPanelListenerState2 = exports.testPanelListenerState1 = void 0;
+exports.panelEarBluePicker = exports.testPanelListenerState18 = exports.testPanelListenerState17 = exports.panelListenersWatchingMicOffer = exports.panelSpeakerWaitingForMicAcceptance = exports.panelListenerMicOfferReceived = exports.testPanelListenerState13 = exports.testPanelListenerState12 = exports.testPanelListenerState11 = exports.testPanelListenerState10 = exports.testPanelListenerState9 = exports.testPanelListenerState8 = exports.testPanelListenerState7 = exports.testPanelListenerState6 = exports.testPanelListenerState5 = exports.testPanelListenerState4 = exports.testPanelListenerState3 = exports.testPanelListenerState2 = exports.testPanelListenerState1 = void 0;
 // State 1: Default (no active group)
 exports.testPanelListenerState1 = [
     {
@@ -134,7 +134,7 @@ exports.testPanelListenerState2 = [
                     label: "🙋 I’d love to hear…",
                     type: "listenerControl",
                     group: "blue",
-                    actionType: "blueSelectStart",
+                    actionType: "earBlueSelectStart",
                     flavor: "loveToHear",
                 },
             },
@@ -732,6 +732,35 @@ exports.testPanelListenerState18 = [
     },
     {
         id: "choose-user-button-panel",
+        layout: "row",
+        panelType: "listenerSyncPanel",
+        label: "Participants",
+        panelStyle: "flex flex-row justify-center gap-4 flex-wrap",
+        // ⬇️ actual buttons are injected dynamically in buildListenerSyncPanel
+        blocks: [],
+    },
+];
+// State 19: Ear-blue picker — listener chooses who they want to hear more from
+exports.panelEarBluePicker = [
+    {
+        id: "ear-blue-choose-header",
+        layout: "column",
+        panelType: "listenerSyncPanel",
+        label: "Ear Blue Picker",
+        panelStyle: "flex flex-col items-center justify-center",
+        blocks: [
+            {
+                id: "ear-blue-instruction-text",
+                type: "text",
+                content: "Who would you like to hear more from?",
+                size: "lg",
+                align: "center",
+                textClass: "text-center text-gray-700 font-semibold mb-4",
+            },
+        ],
+    },
+    {
+        id: "ear-blue-choose-button-panel",
         layout: "row",
         panelType: "listenerSyncPanel",
         label: "Participants",

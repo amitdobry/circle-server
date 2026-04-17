@@ -27,6 +27,7 @@ type UserState =
   | "isPickingBlueSpeaker"
   | "waitingOnPickerOfBlueSpeaker"
   | "postSpeakerWaitingOnBlue"
+  | "isPickingEarBluePerson"
   | "appendingConcentToPickUpTheMic"
   | "wantsToPickUpTheMic"
   | "doesNotWantToPickUpTheMic"

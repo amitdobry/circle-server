@@ -143,7 +143,7 @@ export const testPanelListenerState2: PanelConfig = [
           label: "🙋 I’d love to hear…",
           type: "listenerControl",
           group: "blue",
-          actionType: "blueSelectStart",
+          actionType: "earBlueSelectStart",
           flavor: "loveToHear",
         },
       },
@@ -782,6 +782,36 @@ export const testPanelListenerState18: PanelConfig = [
   },
   {
     id: "choose-user-button-panel",
+    layout: "row",
+    panelType: "listenerSyncPanel",
+    label: "Participants",
+    panelStyle: "flex flex-row justify-center gap-4 flex-wrap",
+    // ⬇️ actual buttons are injected dynamically in buildListenerSyncPanel
+    blocks: [],
+  },
+];
+
+// State 19: Ear-blue picker — listener chooses who they want to hear more from
+export const panelEarBluePicker: PanelConfig = [
+  {
+    id: "ear-blue-choose-header",
+    layout: "column",
+    panelType: "listenerSyncPanel",
+    label: "Ear Blue Picker",
+    panelStyle: "flex flex-col items-center justify-center",
+    blocks: [
+      {
+        id: "ear-blue-instruction-text",
+        type: "text",
+        content: "Who would you like to hear more from?",
+        size: "lg",
+        align: "center",
+        textClass: "text-center text-gray-700 font-semibold mb-4",
+      },
+    ],
+  },
+  {
+    id: "ear-blue-choose-button-panel",
     layout: "row",
     panelType: "listenerSyncPanel",
     label: "Participants",

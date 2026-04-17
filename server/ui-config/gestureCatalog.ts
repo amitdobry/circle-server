@@ -32,7 +32,7 @@ export const gestureCatalog = {
       "🙋",
       "blue",
       "px-4 py-2 rounded-full text-sm bg-blue-100 text-blue-700 border border-blue-300 transition-all duration-200 hover:brightness-110 hover:shadow-md hover:scale-105",
-      "blueSelectStart",
+      "earBlueSelectStart",
       "loveToHear"
     ),
   },

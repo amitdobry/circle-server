@@ -41,7 +41,8 @@ type UserState =
   | "waitingForOthersAfterMicDropAndConcentNewSpeaker"
   | "waitingOnPickerOfBlueSpeaker"
   | "isPickingBlueSpeaker"
-  | "postSpeakerWaitingOnBlue";
+  | "postSpeakerWaitingOnBlue"
+  | "isPickingEarBluePerson";
 
 type ActionContext = {
   io: Server;

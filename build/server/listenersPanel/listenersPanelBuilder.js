@@ -58,6 +58,9 @@ function buildListenerSyncPanel(ctx) {
         case "isPickingBlueSpeaker":
             stateKey = "state-18"; // <-- NEW
             break;
+        case "isPickingEarBluePerson":
+            stateKey = "state-19";
+            break;
     }
     // ——————————————————————————————————————
     // 📦 Step 2: Load the panel config
@@ -82,7 +85,9 @@ function buildListenerSyncPanel(ctx) {
     // 🎯 Dynamic gesture sub-buttons (Ear group only)
     if (stateKey === "state-2") {
         const earGestures = (0, gesture_service_1.getAllGestureButtons)().ear;
-        const gesturePanelBlocks = earGestures.map((gesture, idx) => ({
+        const gesturePanelBlocks = earGestures
+            .filter((gesture) => gesture.actionType === "syncedGesture") // blue gestures are handled by static config
+            .map((gesture, idx) => ({
             id: `ear-${gesture.subType}-${idx}`,
             type: "button",
             buttonClass: gesture.tailwind,
@@ -100,7 +105,9 @@ function buildListenerSyncPanel(ctx) {
         }));
         config.forEach((block) => {
             if (block.id === "ear-sub-gesture-buttons") {
-                block.blocks = gesturePanelBlocks;
+                // Preserve any listenerControl (blue) buttons already in the config
+                const blueBlocks = block.blocks.filter((b) => b.type === "button" && "button" in b && b.button?.type === "listenerControl");
+                block.blocks = [...gesturePanelBlocks, ...blueBlocks];
             }
         });
     }
@@ -273,13 +280,35 @@ function buildListenerSyncPanel(ctx) {
             button: {
                 label: user.name,
                 type: "listenerControl",
-                group: "mic",
-                actionType: "offerMicToUserFromPassTheMic",
+                group: "blue",
+                actionType: "bluePersonChosen",
                 targetUser: user.name,
             },
         }));
         config.forEach((block) => {
             if (block.id === "choose-user-button-panel") {
+                block.blocks = candidates;
+            }
+        });
+    }
+    // state-19: ear-blue picker (private — only the initiating listener sees this)
+    if (stateKey === "state-19") {
+        const candidates = Array.from(ctx.allUsers.values())
+            .filter((u) => u.name !== ctx.userName)
+            .map((user) => ({
+            id: `ear-blue-pick-${user.name.toLowerCase()}-btn`,
+            type: "button",
+            buttonClass: "px-5 py-3 rounded-full text-sm font-semibold border transition-all duration-200 bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:shadow-md hover:scale-105",
+            button: {
+                label: user.name,
+                type: "listenerControl",
+                group: "blue",
+                actionType: "earBluePersonChosen",
+                targetUser: user.name,
+            },
+        }));
+        config.forEach((block) => {
+            if (block.id === "ear-blue-choose-button-panel") {
                 block.blocks = candidates;
             }
         });

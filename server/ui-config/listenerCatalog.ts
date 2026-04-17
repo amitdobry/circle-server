@@ -17,6 +17,7 @@ import {
   panelListenersWatchingMicOffer,
   testPanelListenerState17,
   testPanelListenerState18,
+  panelEarBluePicker,
 } from "./listenerConfigs";
 import { ListenerPanelState } from "./ListenerPanelState";
 
@@ -110,5 +111,10 @@ export const listenerCatalog = {
     "state-18",
     "Picking blue speaker",
     testPanelListenerState18
+  ),
+  "state-19": new ListenerPanelState(
+    "state-19",
+    "Ear-blue picker — choose who to hear more from",
+    panelEarBluePicker
   ),
 };

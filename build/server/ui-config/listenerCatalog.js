@@ -22,4 +22,5 @@ exports.listenerCatalog = {
     "state-16": new ListenerPanelState_1.ListenerPanelState("panelListenerMicOfferReceived", "Waiting for the invited user to accept the mic...", listenerConfigs_1.panelListenersWatchingMicOffer),
     "state-17": new ListenerPanelState_1.ListenerPanelState("state-17", "Waiting on picker of blue speaker", listenerConfigs_1.testPanelListenerState17),
     "state-18": new ListenerPanelState_1.ListenerPanelState("state-18", "Picking blue speaker", listenerConfigs_1.testPanelListenerState18),
+    "state-19": new ListenerPanelState_1.ListenerPanelState("state-19", "Ear-blue picker — choose who to hear more from", listenerConfigs_1.panelEarBluePicker),
 };

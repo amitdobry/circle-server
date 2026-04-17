@@ -100,7 +100,22 @@ export const config = [
   },
   {
     actionType: "blueSelectStart",
-    type: "blue", // 👈 you can keep "blue" as its own family
+    type: "blue",
     handler: "handleBlueSelectStart",
+  },
+  {
+    actionType: "bluePersonChosen",
+    type: "blue",
+    handler: "handleBluePersonChosen",
+  },
+  {
+    actionType: "earBlueSelectStart",
+    type: "blue",
+    handler: "handleEarBlueSelectStart",
+  },
+  {
+    actionType: "earBluePersonChosen",
+    type: "blue",
+    handler: "handleEarBluePersonChosen",
   },
 ];

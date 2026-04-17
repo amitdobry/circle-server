@@ -22,6 +22,9 @@ const handleAcceptMicOfferFromPassTheMic_1 = require("./handlers/handleAcceptMic
 const handleUnSelectEar_1 = require("./handlers/handleUnSelectEar");
 const handleDisagree_1 = require("./handlers/handleDisagree");
 const handleBlueSelectStart_1 = require("./handlers/handleBlueSelectStart");
+const handleBluePersonChosen_1 = require("./handlers/handleBluePersonChosen");
+const handleEarBlueSelectStart_1 = require("./handlers/handleEarBlueSelectStart");
+const handleEarBluePersonChosen_1 = require("./handlers/handleEarBluePersonChosen");
 exports.handlersMap = {
     handleSyncedGesture: handleSyncedGesture_1.handleSyncedGesture,
     handleBreakSync: handleBreakSync_1.handleBreakSync,
@@ -43,6 +46,9 @@ exports.handlersMap = {
     handleOfferMicToUserFromPassTheMic: handleOfferMicToUserFromPassTheMic_1.handleOfferMicToUserFromPassTheMic,
     handleAcceptMicOfferFromPassTheMic: handleAcceptMicOfferFromPassTheMic_1.handleAcceptMicOfferFromPassTheMic,
     handleDisagree: handleDisagree_1.handleDisagree,
-    // 🌊 New Blue handler
+    // 🌊 Blue handlers
     handleBlueSelectStart: handleBlueSelectStart_1.handleBlueSelectStart,
+    handleBluePersonChosen: handleBluePersonChosen_1.handleBluePersonChosen,
+    handleEarBlueSelectStart: handleEarBlueSelectStart_1.handleEarBlueSelectStart,
+    handleEarBluePersonChosen: handleEarBluePersonChosen_1.handleEarBluePersonChosen,
 };
