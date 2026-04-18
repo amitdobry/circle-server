@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handlePauseForThought = handlePauseForThought;
 function handlePauseForThought(payload, context) {
     const { name, type, subType } = payload;
-    const { gestureCatalog, io, logAction, logSystem } = context;
+    const { gestureCatalog, io, logAction, logSystem, roomId } = context;
     if (!name || !type || !subType) {
         logSystem("🚨 Missing data in handlePauseForThought payload.");
         return;
@@ -20,5 +20,5 @@ function handlePauseForThought(payload, context) {
         reasonCode: subType,
         ...gesture.getBroadcastPayload(name),
     });
-    gesture.triggerEffect?.(io);
+    gesture.triggerEffect?.(io, name, roomId);
 }

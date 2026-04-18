@@ -47,8 +47,12 @@ class RoomRegistry {
    */
   getOrCreateRoom(roomId: string): TableState {
     const existing = this.rooms.get(roomId);
-    if (existing) return existing;
+    if (existing) {
+      console.log(`[RoomRegistry] ✅ Room '${roomId}' exists - ${existing.participants.size} participants`);
+      return existing;
+    }
 
+    console.log(`[RoomRegistry] 🆕 Creating new room '${roomId}'`);
     return this.createRoom(roomId);
   }
 
@@ -72,6 +76,24 @@ class RoomRegistry {
    */
   listRooms(): string[] {
     return Array.from(this.rooms.keys());
+  }
+  
+  /**
+   * Debug: Print full room state
+   */
+  debugPrintAllRooms(): void {
+    console.log(`\n🗺️  [RoomRegistry] === FULL STATE DUMP ===`);
+    console.log(`   Total rooms: ${this.rooms.size}`);
+    for (const [roomId, room] of this.rooms.entries()) {
+      console.log(`   📍 Room: ${roomId}`);
+      console.log(`      - Participants: ${room.participants.size}`);
+      for (const [userId, participant] of room.participants.entries()) {
+        console.log(`        • ${participant.displayName} (${userId}) - ${participant.presence}`);
+      }
+      console.log(`      - Phase: ${room.phase}`);
+      console.log(`      - Session: ${room.sessionId || 'none'}`);
+    }
+    console.log(`   ================================\n`);
   }
 
   /**

@@ -19,26 +19,56 @@ export const emojiLookup: Record<string, string> = Object.fromEntries(
   avatarPool.map(({ id, emoji }) => [id, emoji])
 );
 
-const avatarAssignments = new Map<string, string>(); // avatarId -> name
+// Phase E: Room-scoped avatar assignments
+const avatarAssignmentsByRoom = new Map<string, Map<string, string>>(); // roomId -> (avatarId -> name)
 
-export function getAvailableAvatars() {
+/**
+ * Get or create avatar assignments for a room
+ */
+function getAvatarAssignments(roomId: string): Map<string, string> {
+  if (!avatarAssignmentsByRoom.has(roomId)) {
+    avatarAssignmentsByRoom.set(roomId, new Map());
+  }
+  return avatarAssignmentsByRoom.get(roomId)!;
+}
+
+export function getAvailableAvatars(roomId: string = "default-room") {
+  const assignments = getAvatarAssignments(roomId);
   return avatarPool.map((avatar) => ({
     ...avatar,
-    takenBy: avatarAssignments.get(avatar.id) || null,
+    takenBy: assignments.get(avatar.id) || null,
   }));
 }
 
-export function claimAvatar(avatarId: string, name: string): boolean {
+export function claimAvatar(
+  avatarId: string,
+  name: string,
+  roomId: string = "default-room",
+): boolean {
   if (!avatarPool.find((a) => a.id === avatarId)) return false; // invalid
-  if (avatarAssignments.has(avatarId)) return false; // already taken
-  avatarAssignments.set(avatarId, name);
+  const assignments = getAvatarAssignments(roomId);
+  if (assignments.has(avatarId)) return false; // already taken in this room
+  assignments.set(avatarId, name);
   return true;
 }
 
-export function releaseAvatarByName(name: string) {
-  for (const [avatarId, assignedName] of avatarAssignments.entries()) {
-    if (assignedName === name) {
-      avatarAssignments.delete(avatarId);
+export function releaseAvatarByName(name: string, roomId?: string) {
+  if (roomId) {
+    // Release from specific room
+    const assignments = getAvatarAssignments(roomId);
+    for (const [avatarId, assignedName] of assignments.entries()) {
+      if (assignedName === name) {
+        assignments.delete(avatarId);
+      }
+    }
+  } else {
+    // Release from all rooms (for backward compatibility)
+    for (const assignments of avatarAssignmentsByRoom.values()) {
+      for (const [avatarId, assignedName] of assignments.entries()) {
+        if (assignedName === name) {
+          assignments.delete(avatarId);
+        }
+      }
     }
   }
 }

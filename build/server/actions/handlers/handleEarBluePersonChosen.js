@@ -20,7 +20,7 @@ function handleEarBluePersonChosen(payload, context) {
             emoji: "🙋",
             timestamp: Date.now(),
         },
-    }, io);
+    }, io, "default-room");
     // Reset picker back to regular listener state
     for (const [socketId, user] of users.entries()) {
         if (user.name === name) {

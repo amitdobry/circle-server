@@ -33,6 +33,7 @@ export function handleEarBluePersonChosen(
       },
     },
     io,
+    "default-room", // Legacy V1 handler - uses default room
   );
 
   // Reset picker back to regular listener state

@@ -51,6 +51,7 @@ type ActionContext = {
   pointerMap: Map<string, string | null>;
   gestureCatalog: typeof gestureCatalog;
   socketId: string;
+  roomId: string; // Phase E: Room context for multi-table
   users: Map<
     string,
     { name: string; avatarId: string; state: UserState; interruptedBy: string }

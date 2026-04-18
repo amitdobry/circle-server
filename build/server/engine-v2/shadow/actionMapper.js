@@ -201,17 +201,27 @@ function extractUserId(socket, legacyPayload) {
 /**
  * Extract roomId from socket or payload.
  *
- * For now, V1 has a single implicit room.
- * We'll use "default-room" as the roomId.
- *
- * Later, when URL routing is added, we'll extract from socket.data.roomId.
+ * Phase E: Multi-table support
+ * Priority order:
+ * 1. socket.data.tableId (set during request-join)
+ * 2. socket.data.roomId (alternative)
+ * 3. payload.roomId or payload.tableId (explicit)
+ * 4. "default-room" (fallback for legacy)
  */
 function extractRoomId(socket, legacyPayload) {
-    // Priority 1: Explicit roomId in socket data (future)
+    // Priority 1: tableId in socket data (Phase E multi-table)
+    if (socket.data?.tableId) {
+        return socket.data.tableId;
+    }
+    // Priority 2: roomId in socket data
     if (socket.data?.roomId) {
         return socket.data.roomId;
     }
-    // Priority 2: Payload roomId (future)
+    // Priority 3: Payload tableId
+    if (legacyPayload.tableId) {
+        return legacyPayload.tableId;
+    }
+    // Priority 4: Payload roomId
     if (legacyPayload.roomId) {
         return legacyPayload.roomId;
     }

@@ -42,7 +42,7 @@ export class Gesture {
     };
   }
 
-  triggerEffect(io: Server, userName = "") {
+  triggerEffect(io: Server, userName = "", roomId = "default-room") {
     const message: GliffMessage = {
       userName,
       message: {
@@ -52,8 +52,8 @@ export class Gesture {
         timestamp: Date.now(),
       },
     };
-    createGliffLog(message, io);
-    console.log(`🎆 Trigger effect: ${this.label}`);
+    createGliffLog(message, io, roomId);
+    console.log(`🎆 [Room ${roomId}] Trigger effect: ${this.label}`);
   }
 
   getUIButtonConfig(type: "ear" | "brain" | "mouth" | "mic" | "blue") {

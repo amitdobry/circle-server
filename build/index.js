@@ -128,6 +128,8 @@ app.get("/api/rooms/active", (_req, res) => {
         const timerElapsed = room.timer.active
             ? Math.floor((now - room.timer.startTime) / 1000)
             : 0;
+        // Calculate speaker time (for now, same as session time - can be enhanced later)
+        const speakerTime = room.liveSpeaker ? timerElapsed : 0;
         return {
             roomId: room.roomId,
             sessionId: room.sessionId,
@@ -136,12 +138,14 @@ app.get("/api/rooms/active", (_req, res) => {
             status: room.phase !== "LOBBY" && room.phase !== "ENDED" ? "active" : "waiting",
             currentSpeaker: currentSpeaker
                 ? {
+                    socketId: room.liveSpeaker, // Include socketId for compatibility
                     userId: room.liveSpeaker,
                     name: currentSpeaker.displayName,
                     avatar: currentSpeaker.avatarId,
                 }
                 : null,
             timer: {
+                speakerTime: speakerTime,
                 sessionTime: timerElapsed,
                 totalDuration: Math.floor(room.timer.durationMs / 1000),
             },

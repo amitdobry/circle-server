@@ -2,9 +2,20 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createGliffLog = createGliffLog;
 exports.clearGliffLog = clearGliffLog;
-const gliffMemory = [];
+// Phase E: Room-scoped gliff memory
+const gliffMemoryByRoom = new Map();
 const MAX_MEMORY_SIZE = 20;
-function createGliffLog(entry, io) {
+/**
+ * Get or create gliff memory for a specific room
+ */
+function getGliffMemory(roomId) {
+    if (!gliffMemoryByRoom.has(roomId)) {
+        gliffMemoryByRoom.set(roomId, []);
+    }
+    return gliffMemoryByRoom.get(roomId);
+}
+function createGliffLog(entry, io, roomId = "default-room") {
+    const gliffMemory = getGliffMemory(roomId);
     const enriched = {
         ...entry,
         message: {
@@ -43,13 +54,16 @@ function createGliffLog(entry, io) {
     while (gliffMemory.length > MAX_MEMORY_SIZE) {
         gliffMemory.shift();
     }
-    console.log("🧾 gliffMemory snapshot:\n" + JSON.stringify(gliffMemory, null, 2));
-    io.emit("gliffLog:update", gliffMemory);
+    console.log(`🧾 [Room ${roomId}] gliffMemory snapshot:\n` +
+        JSON.stringify(gliffMemory, null, 2));
+    // Phase E: Room-scoped broadcast
+    io.to(roomId).emit("gliffLog:update", gliffMemory);
     return enriched;
 }
 // Function to clear the gliff log (e.g., when session ends)
-function clearGliffLog(io) {
-    console.log("🧹 Clearing gliff log - session ended");
+function clearGliffLog(io, roomId = "default-room") {
+    console.log(`🧹 [Room ${roomId}] Clearing gliff log - session ended`);
+    const gliffMemory = getGliffMemory(roomId);
     gliffMemory.length = 0; // Clear the array
-    io.emit("gliffLog:update", gliffMemory); // Notify all clients
+    io.to(roomId).emit("gliffLog:update", gliffMemory); // Notify room clients
 }

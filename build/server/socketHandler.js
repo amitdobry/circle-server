@@ -13,12 +13,15 @@ exports.getSessionStats = getSessionStats;
 exports.resetSessionState = resetSessionState;
 exports.getSessionState = getSessionState;
 exports.getUsers = getUsers;
+exports.getUserRoomId = getUserRoomId;
 exports.globalBroadcastUserList = globalBroadcastUserList;
 exports.globalBroadcastAvatarState = globalBroadcastAvatarState;
 exports.setupSocketHandlers = setupSocketHandlers;
 const avatarManager_1 = require("./avatarManager");
 const gestureCatalog_1 = require("./ui-config/gestureCatalog");
 const gesture_service_1 = require("./ui-config/gesture.service");
+const tableDefinitions_service_1 = require("./ui-config/tableDefinitions.service");
+const tableDefinitions_1 = require("./ui-config/tableDefinitions");
 const routeAction_1 = require("./actions/routeAction"); // adjust path if needed
 const panelConfigService_1 = require("./panelConfigService"); // or wherever you store them
 const gliffLogService_1 = require("./gliffLogService");
@@ -34,6 +37,8 @@ const users = new Map(); // socketId -> { name, avatarId }
 // Panel request tracking
 const panelRequestCount = new Map(); // userName -> count
 const lastPanelRequest = new Map(); // userName -> timestamp
+// Socket.IO server instance (set in setupSocketHandlers)
+let ioInstance = null;
 // Session timer state - Single source of truth
 let sessionActive = false;
 let sessionTimer = null;
@@ -165,11 +170,11 @@ function resetSessionState() {
         clearInterval(timerBroadcastInterval);
         timerBroadcastInterval = null;
     }
-    // Clean up all users and release their avatars during reset
+    // Clean up all users and release their avatars during reset (releases from all rooms)
     console.log("🔄 Session state manually reset - cleaning up users");
     for (const [socketId, user] of users.entries()) {
         console.log(`🔓 Releasing avatar ${user.avatarId} for user ${user.name}`);
-        (0, avatarManager_1.releaseAvatarByName)(user.name);
+        (0, avatarManager_1.releaseAvatarByName)(user.name); // No roomId = releases from all rooms (reset)
         (0, sessionLogic_1.removeUser)(socketId);
     }
     // Clear all user data
@@ -193,8 +198,40 @@ function getSessionState() {
         hasBroadcast: !!timerBroadcastInterval,
     };
 }
-function getUsers() {
-    return users;
+function getUsers(roomId) {
+    if (!roomId) {
+        // Legacy: return all users
+        return users;
+    }
+    // Phase E: Filter users by room
+    const roomUsers = new Map();
+    if (!ioInstance) {
+        console.warn("[getUsers] ioInstance not initialized, returning empty map");
+        return roomUsers;
+    }
+    for (const [socketId, user] of users.entries()) {
+        const userSocket = ioInstance.sockets.sockets.get(socketId);
+        if (userSocket?.data?.roomId === roomId) {
+            roomUsers.set(socketId, user);
+        }
+    }
+    return roomUsers;
+}
+/**
+ * Get the roomId for a given user by their name
+ */
+function getUserRoomId(userName) {
+    if (!ioInstance) {
+        console.warn("[getUserRoomId] ioInstance not initialized");
+        return null;
+    }
+    for (const [socketId, user] of users.entries()) {
+        if (user.name === userName) {
+            const userSocket = ioInstance.sockets.sockets.get(socketId);
+            return userSocket?.data?.roomId || userSocket?.data?.tableId || null;
+        }
+    }
+    return null;
 }
 // Global broadcast functions for session management
 function globalBroadcastUserList(io) {
@@ -245,13 +282,13 @@ function endSession(io) {
         clearInterval(timerBroadcastInterval);
         timerBroadcastInterval = null;
     }
-    // Clear the gliff log when session ends
-    (0, gliffLogService_1.clearGliffLog)(io);
-    // Clean up all users and release their avatars
+    // Clear the gliff log when session ends (legacy - default room only)
+    (0, gliffLogService_1.clearGliffLog)(io, "default-room");
+    // Clean up all users and release their avatars (legacy - releases from all rooms)
     console.log("🧹 Cleaning up all users and releasing avatars");
     for (const [socketId, user] of users.entries()) {
         console.log(`🔓 Releasing avatar ${user.avatarId} for user ${user.name}`);
-        (0, avatarManager_1.releaseAvatarByName)(user.name);
+        (0, avatarManager_1.releaseAvatarByName)(user.name); // No roomId = releases from all rooms (legacy)
         (0, sessionLogic_1.removeUser)(socketId);
     }
     // Clear all user data
@@ -327,6 +364,8 @@ function startTimerBroadcast(io) {
     }, 1000);
 }
 function setupSocketHandlers(io) {
+    // Store io instance for module-level functions (Phase E multi-table)
+    ioInstance = io;
     // ✨ ENGINE V2: Enable Shadow Mode if environment variable is set
     if (process.env.ENGINE_V2_SHADOW === "true") {
         (0, shadowDispatcher_1.enableShadowMode)();
@@ -336,37 +375,80 @@ function setupSocketHandlers(io) {
         console.log(formatSessionLog(`🪪 New socket connection: ${socket.id}`, "INFO"));
         socket.on("joined-table", ({ name }) => {
             const avatar = users.get(socket.id)?.avatarId;
-            console.log(`[Server] 🔔 'joined-table' received from socket ${socket.id}, name: ${name}`);
+            const roomId = socket.data.roomId || socket.data.tableId;
+            console.log(`[Server] 🔔 'joined-table' received from socket ${socket.id}, name: ${name}, room: ${roomId}`);
             const emoji = avatarManager_1.emojiLookup[avatar || ""] || "";
-            emitSystemLog(`🪑 ${emoji} ${name} has fully entered the table`);
+            emitSystemLog(`🪑 ${emoji} ${name} has fully entered the table`, roomId);
             sendCurrentUserListTo(socket); // send only to this socket
         });
         function sendCurrentUserListTo(socket) {
-            const list = Array.from(users.values());
-            socket.emit("user-list", list);
+            // Get the user's roomId and send room-filtered list
+            const roomId = socket.data.roomId || socket.data.tableId;
+            if (roomId) {
+                const roomUsersMap = getUsers(roomId); // Returns Map<string, UserInfo>
+                const roomUsers = Array.from(roomUsersMap.values());
+                console.log(`🔍 [sendCurrentUserListTo] Sending ${roomUsers.length} users from room ${roomId} to socket ${socket.id}`);
+                socket.emit("user-list", roomUsers);
+            }
+            else {
+                // Fallback to global list if no room assigned (shouldn't happen in multi-table mode)
+                const list = Array.from(users.values());
+                console.warn(`⚠️ [sendCurrentUserListTo] No roomId for socket ${socket.id}, sending global list (${list.length} users)`);
+                socket.emit("user-list", list);
+            }
         }
-        socket.on("request-join", ({ name, avatarId }) => {
-            console.log(formatSessionLog(`📨 Join request: ${name} as ${avatarId} (${socket.id})`, "INFO"));
+        socket.on("request-join", ({ name, avatarId, tableId }) => {
+            console.log(formatSessionLog(`📨 Join request: ${name} as ${avatarId} → table: ${tableId || "default-room"} (${socket.id})`, "INFO"));
+            // ✅ Validate tableId if provided
+            if (tableId && !(0, tableDefinitions_1.isValidTableId)(tableId)) {
+                console.log(formatSessionLog(`🚫 Join rejected: Invalid tableId "${tableId}"`, "ERROR"));
+                socket.emit("join-rejected", {
+                    reason: `Invalid table. Please choose a valid circle.`,
+                });
+                return;
+            }
+            // Store tableId in socket data for room resolution
+            const resolvedTableId = tableId || "default-room";
+            socket.data.roomId = resolvedTableId;
+            socket.data.tableId = resolvedTableId;
+            socket.data.userName = name; // Phase E: Store for disconnect logging
+            socket.data.avatarId = avatarId; // Phase E: Store for disconnect logging
+            console.log(formatSessionLog(`📌 Assigned socket to table: ${resolvedTableId}`, "INFO"));
+            console.log(`🔍 [JOIN DEBUG] Socket ${socket.id} data:`, {
+                roomId: socket.data.roomId,
+                tableId: socket.data.tableId,
+                name: name,
+                avatar: avatarId,
+            });
+            // 🔥 CRITICAL: Join the Socket.IO room for this table
+            socket.join(resolvedTableId);
+            console.log(formatSessionLog(`🚪 Socket joined room: ${resolvedTableId}`, "INFO"));
+            // Verify the join
+            const socketRooms = Array.from(socket.rooms);
+            console.log(`🔍 [JOIN DEBUG] Socket ${socket.id} is now in rooms:`, socketRooms);
             if (!name || name.length > 30) {
                 console.log(formatSessionLog(`🚫 Join rejected: Invalid name "${name}"`, "ERROR"));
                 socket.emit("join-rejected", { reason: "Invalid name." });
                 return;
             }
-            // 🔥 Check for duplicate name
-            const nameAlreadyTaken = Array.from(users.values()).some((user) => user.name.toLowerCase() === name.toLowerCase());
+            // Phase E: Check for duplicate name WITHIN THIS ROOM
+            const roomUsersMap = getUsers(resolvedTableId);
+            console.log(`🔍 [NAME CHECK] Checking name "${name}" in room "${resolvedTableId}"`);
+            console.log(`🔍 [NAME CHECK] Found ${roomUsersMap.size} users in this room:`, Array.from(roomUsersMap.values()).map((u) => u.name));
+            const nameAlreadyTaken = Array.from(roomUsersMap.values()).some((user) => user.name.toLowerCase() === name.toLowerCase());
             if (nameAlreadyTaken) {
-                console.log(formatSessionLog(`🚫 Join rejected: Name "${name}" already taken`, "ERROR"));
+                console.log(formatSessionLog(`🚫 Join rejected: Name "${name}" already taken in room ${resolvedTableId}`, "ERROR"));
                 socket.emit("join-rejected", {
-                    reason: "Name already taken. Please choose another.",
+                    reason: "Name already taken in this table. Please choose another.",
                 });
                 return;
             }
-            // 🔥 Try to claim the avatar
-            const claimed = (0, avatarManager_1.claimAvatar)(avatarId, name);
+            // Phase E: Try to claim the avatar WITHIN THIS ROOM
+            const claimed = (0, avatarManager_1.claimAvatar)(avatarId, name, resolvedTableId);
             if (!claimed) {
-                console.log(formatSessionLog(`🚫 Join rejected: Avatar ${avatarId} already taken`, "ERROR"));
+                console.log(formatSessionLog(`🚫 Join rejected: Avatar ${avatarId} already taken in room ${resolvedTableId}`, "ERROR"));
                 socket.emit("join-rejected", {
-                    reason: "Avatar already taken. Please choose another.",
+                    reason: "Avatar already taken in this table. Please choose another.",
                 });
                 return;
             }
@@ -392,7 +474,7 @@ function setupSocketHandlers(io) {
             (0, sessionLogic_1.addTableUser)(socket.id);
             const emoji = avatarManager_1.emojiLookup[avatarId] || "";
             console.log(formatSessionLog(`✅ ${emoji} ${name} joined table as ${avatarId}`, "JOIN"));
-            emitSystemLog(`👤 ${emoji} ${name} joined table as ${avatarId}`);
+            emitSystemLog(`👤 ${emoji} ${name} joined table as ${avatarId}`, resolvedTableId);
             socket.emit("join-approved", { name, avatarId });
             // Give client time to set up event listeners, then check for session picker
             setTimeout(() => {
@@ -438,10 +520,10 @@ function setupSocketHandlers(io) {
                     });
                 }
             }, 500); // 500ms delay to ensure client is ready
-            broadcastUserList();
-            broadcastAvatarState();
-            sendInitialPointerMap(socket);
-            sendCurrentLiveSpeaker(socket);
+            broadcastUserList(resolvedTableId); // Pass roomId
+            broadcastAvatarState(resolvedTableId); // Phase E: Room-scoped avatar broadcast
+            sendInitialPointerMap(socket, resolvedTableId); // Pass roomId
+            sendCurrentLiveSpeaker(socket, resolvedTableId); // Pass roomId
             // ✨ ENGINE V2: Dispatch with effects
             try {
                 const roomId = (0, actionMapper_1.extractRoomId)(socket, { name, avatarId });
@@ -452,6 +534,9 @@ function setupSocketHandlers(io) {
                     socketId: socket.id,
                 });
                 (0, dispatch_1.dispatchAndRun)(roomId, userId, action, io);
+                // Debug: Print full room state after join
+                const { roomRegistry } = require("./engine-v2/registry/RoomRegistry");
+                roomRegistry.debugPrintAllRooms();
             }
             catch (error) {
                 console.error("[V2] Failed on request-join:", error);
@@ -517,40 +602,52 @@ function setupSocketHandlers(io) {
                 console.warn(`🌀 Invalid ListenerEmit type: ${type}`);
                 return;
             }
+            const roomId = socket.data.roomId || socket.data.tableId || "default-room";
             (0, routeAction_1.routeAction)({ name, type, subType, actionType, targetUser, flavor }, {
                 io,
-                logSystem: emitSystemLog,
-                logAction: emitActionLog,
+                logSystem: (text) => emitSystemLog(text, roomId),
+                logAction: (text) => emitActionLog(text, roomId),
                 pointerMap: getPointerMap(),
                 gestureCatalog: gestureCatalog_1.gestureCatalog,
                 socketId: socket.id,
+                roomId,
                 users,
             });
         });
         socket.on("leave", ({ name }) => {
             const user = users.get(socket.id);
+            const roomId = socket.data.roomId || socket.data.tableId;
             if (user) {
                 const sessionDuration = Math.floor((new Date().getTime() - user.joinedAt.getTime()) / 1000);
                 console.log(formatSessionLog(`👋 ${name} left manually (was in session ${Math.floor(sessionDuration / 60)}m${sessionDuration % 60}s)`, "LEAVE"));
-                emitSystemLog(`👋 ${name} left manually`);
+                emitSystemLog(`👋 ${name} left manually`, roomId);
             }
             else {
                 console.log(formatSessionLog(`👋 ${name} left manually (no session data)`, "LEAVE"));
-                emitSystemLog(`👋 ${name} left manually`);
+                emitSystemLog(`👋 ${name} left manually`, roomId);
             }
             cleanupUser(socket);
         });
         socket.on("disconnect", () => {
+            // Phase E: Get user info from Map first, fallback to socket.data
             const user = users.get(socket.id);
+            const roomId = socket.data.roomId || socket.data.tableId;
+            const userName = user?.name || socket.data.userName || "Unknown";
+            const avatarId = user?.avatarId || socket.data.avatarId;
             if (user) {
                 const sessionDuration = Math.floor((new Date().getTime() - user.joinedAt.getTime()) / 1000);
                 console.log(formatSessionLog(`❌ ${user.name} disconnected unexpectedly (was in session ${Math.floor(sessionDuration / 60)}m${sessionDuration % 60}s)`, "LEAVE"));
-                emitSystemLog(`❌ ${user.name} disconnected`);
+            }
+            else if (socket.data.userName) {
+                // User was already cleaned up, but we have socket.data backup
+                console.log(formatSessionLog(`❌ ${socket.data.userName} disconnected (already cleaned up)`, "LEAVE"));
             }
             else {
                 console.log(formatSessionLog(`❌ Unknown socket ${socket.id} disconnected (no user data)`, "ERROR"));
-                emitSystemLog(`❌ Unknown disconnected`);
             }
+            // Always emit system log with best available name
+            const emoji = avatarId ? avatarManager_1.emojiLookup[avatarId] || "" : "";
+            emitSystemLog(`❌ ${emoji} ${userName} disconnected`, roomId);
             cleanupUser(socket);
             // ✨ ENGINE V2: Dispatch with effects
             try {
@@ -566,6 +663,7 @@ function setupSocketHandlers(io) {
         socket.on("pointing", ({ from, to }) => {
             updateUserActivity(socket.id);
             console.log("[Client] Emitting pointing to:", from, to);
+            const roomIdPointing = socket.data.roomId || socket.data.tableId || "default-room";
             (0, routeAction_1.routeAction)({
                 from,
                 type: "pointing",
@@ -574,11 +672,12 @@ function setupSocketHandlers(io) {
                 to,
             }, {
                 io,
-                logSystem: emitSystemLog,
-                logAction: emitActionLog,
+                logSystem: (text) => emitSystemLog(text, roomIdPointing),
+                logAction: (text) => emitActionLog(text, roomIdPointing),
                 pointerMap: getPointerMap(),
                 gestureCatalog: gestureCatalog_1.gestureCatalog,
                 socketId: socket.id,
+                roomId: roomIdPointing,
                 users,
             });
             // ✨ ENGINE V2: Dispatch with effects
@@ -599,13 +698,14 @@ function setupSocketHandlers(io) {
                 return;
             }
             updateUserActivity(socket.id);
-            const roomId = "default-room";
+            // Phase E: Use actual room ID
+            const roomId = socket.data.roomId || socket.data.tableId || "default-room";
             const currentSpeaker = getLiveSpeaker(roomId);
             if (user.name !== currentSpeaker) {
-                console.log(`🚫 Rejected logBar:update — ${user.name} is not live (liveSpeaker=${currentSpeaker})`);
+                console.log(`🚫 Rejected logBar:update — ${user.name} is not live in room ${roomId} (liveSpeaker=${currentSpeaker})`);
                 return;
             }
-            console.log(`📡 logBar:update from ${user.name}:`, text);
+            console.log(`📡 [Room ${roomId}] logBar:update from ${user.name}:`, text);
             (0, gliffLogService_1.createGliffLog)({
                 userName,
                 message: {
@@ -613,7 +713,7 @@ function setupSocketHandlers(io) {
                     content: text,
                     timestamp: Date.now(),
                 },
-            }, io);
+            }, io, roomId);
         });
         // Optional P2P (currently dormant)
         socket.on("peer-signal", ({ to, from, signal }) => {
@@ -628,6 +728,15 @@ function setupSocketHandlers(io) {
             console.log("[Server] Received request:gestureButtons");
             const buttons = (0, gesture_service_1.getAllGestureButtons)();
             socket.emit("receive:gestureButtons", buttons);
+        });
+        socket.on("request:tableDefinitions", () => {
+            // Reduced logging - only log once per socket
+            if (!socket.data.hasRequestedTableDefs) {
+                console.log(`[Server] First table definitions request from socket ${socket.id}`);
+                socket.data.hasRequestedTableDefs = true;
+            }
+            const tables = (0, tableDefinitions_service_1.getAllTableDefinitions)();
+            socket.emit("receive:tableDefinitions", tables);
         });
         socket.on("request:panelConfig", ({ userName }) => {
             if (!userName) {
@@ -754,53 +863,99 @@ function setupSocketHandlers(io) {
         // ========================================================================
         // END ENGINE V2 Session Registry Handlers
         // ========================================================================
-        // Request: list of avatars
-        socket.on("get-avatars", () => {
-            socket.emit("avatars", (0, avatarManager_1.getAvailableAvatars)());
+        // Request: list of avatars (Phase E: room-scoped)
+        socket.on("get-avatars", (payload) => {
+            // Priority: payload.tableId → socket.data → default
+            const roomId = payload?.tableId ||
+                socket.data?.roomId ||
+                socket.data?.tableId ||
+                "default-room";
+            const roomAvatars = (0, avatarManager_1.getAvailableAvatars)(roomId);
+            console.log(`🎨 [get-avatars] Sending ${roomAvatars.length} avatars for room ${roomId} to socket ${socket.id}`);
+            socket.emit("avatars", roomAvatars);
         });
         function cleanupUser(socket) {
             const user = users.get(socket.id);
             if (!user)
                 return;
+            // Get room ID before cleanup
+            const userRoomId = socket.data?.roomId || socket.data?.tableId || "default-room";
             users.delete(socket.id);
             // Also remove from session logic tracking
             (0, sessionLogic_1.removeUser)(socket.id);
-            clearPointer(user.name);
-            (0, avatarManager_1.releaseAvatarByName)(user.name);
-            setIsSyncPauseMode(false);
-            // Clear any pointers TO this user
-            const currentPointers = getPointerMap();
+            clearPointer(user.name, userRoomId); // Pass roomId
+            (0, avatarManager_1.releaseAvatarByName)(user.name, userRoomId); // Phase E: Release avatar from specific room
+            setIsSyncPauseMode(false, userRoomId); // Pass roomId
+            // Clear any pointers TO this user in their room
+            const currentPointers = getPointerMap(userRoomId);
             for (const [from, to] of currentPointers.entries()) {
                 if (to === user.name)
-                    clearPointer(from);
+                    clearPointer(from, userRoomId);
             }
-            // Reset session timer if all users have left
-            if (users.size === 0 && sessionActive) {
-                console.log("🔄 All users left - resetting session timer");
+            // Count users in this specific room
+            const roomUserCount = Array.from(users.entries()).filter(([socketId, _]) => {
+                const userSocket = io.sockets.sockets.get(socketId);
+                return userSocket?.data?.roomId === userRoomId;
+            }).length;
+            // Reset session timer if all users have left THIS ROOM
+            if (roomUserCount === 0 && sessionActive) {
+                console.log(`🔄 All users left room ${userRoomId} - resetting session timer`);
                 endSession(io);
             }
-            broadcastUserList();
-            broadcastAvatarState();
+            broadcastUserList(userRoomId); // Pass roomId
+            broadcastAvatarState(userRoomId); // Phase E: Room-scoped avatar broadcast
         }
-        function broadcastUserList() {
-            const list = Array.from(users.values()); // now includes avatarId
-            io.emit("user-list", list);
+        function broadcastUserList(roomId) {
+            if (roomId) {
+                // Room-specific broadcast (Phase E multi-table)
+                console.log(`\n🔍 [broadcastUserList] Filtering for room: ${roomId}`);
+                console.log(`   Total users in system: ${users.size}`);
+                const roomUsers = Array.from(users.entries())
+                    .filter(([socketId, user]) => {
+                    const userSocket = io.sockets.sockets.get(socketId);
+                    const userRoomId = userSocket?.data?.roomId;
+                    const matches = userRoomId === roomId;
+                    console.log(`   - ${user.name} (${socketId}): roomId=${userRoomId}, matches=${matches}`);
+                    return matches;
+                })
+                    .map(([_, user]) => user);
+                console.log(`   ✅ Broadcasting ${roomUsers.length} users to room ${roomId}`);
+                console.log(`   Users: ${roomUsers.map((u) => u.name).join(", ")}\n`);
+                io.to(roomId).emit("user-list", roomUsers);
+            }
+            else {
+                // Global broadcast (legacy)
+                const list = Array.from(users.values());
+                console.log(`[broadcastUserList] Global broadcast: ${list.length} users`);
+                io.emit("user-list", list);
+            }
         }
-        function broadcastAvatarState() {
-            io.emit("avatars", (0, avatarManager_1.getAvailableAvatars)());
+        function broadcastAvatarState(roomId) {
+            if (roomId) {
+                // Phase E: Room-scoped broadcast
+                const roomAvatars = (0, avatarManager_1.getAvailableAvatars)(roomId);
+                console.log(`🎨 [broadcastAvatarState] Broadcasting ${roomAvatars.length} avatars to room ${roomId}`);
+                io.to(roomId).emit("avatars", roomAvatars);
+            }
+            else {
+                // Legacy: Global broadcast
+                const allAvatars = (0, avatarManager_1.getAvailableAvatars)("default-room");
+                console.log(`🎨 [broadcastAvatarState] Global broadcast: ${allAvatars.length} avatars`);
+                io.emit("avatars", allAvatars);
+            }
         }
-        function sendInitialPointerMap(socket) {
-            const roomId = "default-room";
-            const currentPointers = getPointerMap(roomId);
+        function sendInitialPointerMap(socket, roomId) {
+            const targetRoomId = roomId || socket.data?.roomId || "default-room";
+            const currentPointers = getPointerMap(targetRoomId);
             const map = Array.from(currentPointers.entries()).map(([from, to]) => ({
                 from,
                 to,
             }));
             socket.emit("initial-pointer-map", map);
         }
-        function sendCurrentLiveSpeaker(socket) {
-            const roomId = "default-room";
-            const currentSpeaker = getLiveSpeaker(roomId);
+        function sendCurrentLiveSpeaker(socket, roomId) {
+            const targetRoomId = roomId || socket.data?.roomId || "default-room";
+            const currentSpeaker = getLiveSpeaker(targetRoomId);
             if (currentSpeaker) {
                 socket.emit("live-speaker", { name: currentSpeaker });
             }
@@ -810,13 +965,26 @@ function setupSocketHandlers(io) {
         //   // io.emit("log-")
         //   console.log(msg);
         // }
-        function emitSystemLog(text) {
-            io.emit("system-log", text);
-            console.log("[SYSTEM]", text);
+        // Phase E: Room-scoped logging functions
+        function emitSystemLog(text, roomId) {
+            if (roomId) {
+                io.to(roomId).emit("system-log", text);
+                console.log(`[SYSTEM][${roomId}]`, text);
+            }
+            else {
+                io.emit("system-log", text); // Legacy global
+                console.log("[SYSTEM]", text);
+            }
         }
-        function emitActionLog(text) {
-            io.emit("action-log", text); // ✅ renamed
-            console.log("[ACTION]", text);
+        function emitActionLog(text, roomId) {
+            if (roomId) {
+                io.to(roomId).emit("action-log", text);
+                console.log(`[ACTION][${roomId}]`, text);
+            }
+            else {
+                io.emit("action-log", text); // Legacy global
+                console.log("[ACTION]", text);
+            }
         }
         function emitTextLog(entry) {
             const payload = { ...entry, timestamp: Date.now() };

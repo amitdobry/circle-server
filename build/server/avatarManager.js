@@ -20,25 +20,51 @@ const avatarPool = [
     { id: "Baby", emoji: "👶" },
 ];
 exports.emojiLookup = Object.fromEntries(avatarPool.map(({ id, emoji }) => [id, emoji]));
-const avatarAssignments = new Map(); // avatarId -> name
-function getAvailableAvatars() {
+// Phase E: Room-scoped avatar assignments
+const avatarAssignmentsByRoom = new Map(); // roomId -> (avatarId -> name)
+/**
+ * Get or create avatar assignments for a room
+ */
+function getAvatarAssignments(roomId) {
+    if (!avatarAssignmentsByRoom.has(roomId)) {
+        avatarAssignmentsByRoom.set(roomId, new Map());
+    }
+    return avatarAssignmentsByRoom.get(roomId);
+}
+function getAvailableAvatars(roomId = "default-room") {
+    const assignments = getAvatarAssignments(roomId);
     return avatarPool.map((avatar) => ({
         ...avatar,
-        takenBy: avatarAssignments.get(avatar.id) || null,
+        takenBy: assignments.get(avatar.id) || null,
     }));
 }
-function claimAvatar(avatarId, name) {
+function claimAvatar(avatarId, name, roomId = "default-room") {
     if (!avatarPool.find((a) => a.id === avatarId))
         return false; // invalid
-    if (avatarAssignments.has(avatarId))
-        return false; // already taken
-    avatarAssignments.set(avatarId, name);
+    const assignments = getAvatarAssignments(roomId);
+    if (assignments.has(avatarId))
+        return false; // already taken in this room
+    assignments.set(avatarId, name);
     return true;
 }
-function releaseAvatarByName(name) {
-    for (const [avatarId, assignedName] of avatarAssignments.entries()) {
-        if (assignedName === name) {
-            avatarAssignments.delete(avatarId);
+function releaseAvatarByName(name, roomId) {
+    if (roomId) {
+        // Release from specific room
+        const assignments = getAvatarAssignments(roomId);
+        for (const [avatarId, assignedName] of assignments.entries()) {
+            if (assignedName === name) {
+                assignments.delete(avatarId);
+            }
+        }
+    }
+    else {
+        // Release from all rooms (for backward compatibility)
+        for (const assignments of avatarAssignmentsByRoom.values()) {
+            for (const [avatarId, assignedName] of assignments.entries()) {
+                if (assignedName === name) {
+                    assignments.delete(avatarId);
+                }
+            }
         }
     }
 }

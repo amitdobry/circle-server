@@ -5,12 +5,15 @@ exports.getPanelConfigFor = getPanelConfigFor;
 const socketHandler_1 = require("./socketHandler");
 const panelBuilderRouter_1 = require("./panelBuilderRouter");
 function collectPanelContext(userName) {
-    const allUsers = (0, socketHandler_1.getUsers)(); // full Map<string, UserInfo>
-    const participantList = Array.from((0, socketHandler_1.getUsers)().values()).map((u) => u.name);
+    // Phase E: Get user's room ID
+    const userRoomId = (0, socketHandler_1.getUserRoomId)(userName) || "default-room";
+    // Get room-filtered data
+    const allUsers = (0, socketHandler_1.getUsers)(userRoomId); // filtered by room
+    const participantList = Array.from(allUsers.values()).map((u) => u.name);
     const userIsParticipant = participantList.includes(userName);
-    const currentLiveSpeaker = (0, socketHandler_1.getLiveSpeaker)();
-    const currentPointerMap = (0, socketHandler_1.getPointerMap)();
-    const isSyncPauseMode = (0, socketHandler_1.getIsSyncPauseMode)();
+    const currentLiveSpeaker = (0, socketHandler_1.getLiveSpeaker)(userRoomId);
+    const currentPointerMap = (0, socketHandler_1.getPointerMap)(userRoomId);
+    const isSyncPauseMode = (0, socketHandler_1.getIsSyncPauseMode)(userRoomId);
     return {
         userName,
         userIsParticipant,

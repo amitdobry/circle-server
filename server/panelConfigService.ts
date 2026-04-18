@@ -1,6 +1,7 @@
 import { PanelConfig } from "./types/blockTypes";
 import {
   getUsers,
+  getUserRoomId,
   getPointerMap,
   getLiveSpeaker,
   getIsSyncPauseMode,
@@ -54,12 +55,16 @@ export type PanelContext = {
 };
 
 export function collectPanelContext(userName: string): PanelContext {
-  const allUsers = getUsers(); // full Map<string, UserInfo>
-  const participantList = Array.from(getUsers().values()).map((u) => u.name);
+  // Phase E: Get user's room ID
+  const userRoomId = getUserRoomId(userName) || "default-room";
+  
+  // Get room-filtered data
+  const allUsers = getUsers(userRoomId); // filtered by room
+  const participantList = Array.from(allUsers.values()).map((u) => u.name);
   const userIsParticipant = participantList.includes(userName);
-  const currentLiveSpeaker = getLiveSpeaker();
-  const currentPointerMap = getPointerMap();
-  const isSyncPauseMode = getIsSyncPauseMode();
+  const currentLiveSpeaker = getLiveSpeaker(userRoomId);
+  const currentPointerMap = getPointerMap(userRoomId);
+  const isSyncPauseMode = getIsSyncPauseMode(userRoomId);
 
   return {
     userName,

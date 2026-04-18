@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleSyncedGesture = handleSyncedGesture;
 function handleSyncedGesture(payload, context) {
     const { name, type, subType } = payload;
-    const { io, gestureCatalog, logAction } = context;
+    const { io, gestureCatalog, logAction, roomId } = context;
     const group = gestureCatalog[type];
     const gesture = group[subType];
     if (!gesture)
@@ -12,5 +12,5 @@ function handleSyncedGesture(payload, context) {
     const emoji = gesture.emoji;
     logAction(`🎧 ${emoji} ${name} says: "${label}"`);
     // context.io.emit("TextBoxUpdate", gesture.getBroadcastPayload(name));
-    gesture.triggerEffect?.(io);
+    gesture.triggerEffect?.(io, name, roomId);
 }

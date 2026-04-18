@@ -6,7 +6,7 @@ export function handleSyncedGesture(
   context: ActionContext
 ) {
   const { name, type, subType } = payload;
-  const { io, gestureCatalog, logAction } = context;
+  const { io, gestureCatalog, logAction, roomId } = context;
 
   const group = gestureCatalog[type as keyof typeof gestureCatalog] as Record<
     string,
@@ -21,5 +21,5 @@ export function handleSyncedGesture(
 
   logAction(`🎧 ${emoji} ${name} says: "${label}"`);
   // context.io.emit("TextBoxUpdate", gesture.getBroadcastPayload(name));
-  gesture.triggerEffect?.(io, name);
+  gesture.triggerEffect?.(io, name, roomId); // Pass roomId for room-scoped gliff
 }

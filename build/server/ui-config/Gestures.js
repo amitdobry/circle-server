@@ -25,7 +25,7 @@ class Gesture {
             flavor: this.flavor, // Include flavor if it exists
         };
     }
-    triggerEffect(io, userName = "") {
+    triggerEffect(io, userName = "", roomId = "default-room") {
         const message = {
             userName,
             message: {
@@ -35,8 +35,8 @@ class Gesture {
                 timestamp: Date.now(),
             },
         };
-        (0, gliffLogService_1.createGliffLog)(message, io);
-        console.log(`🎆 Trigger effect: ${this.label}`);
+        (0, gliffLogService_1.createGliffLog)(message, io, roomId);
+        console.log(`🎆 [Room ${roomId}] Trigger effect: ${this.label}`);
     }
     getUIButtonConfig(type) {
         return {
