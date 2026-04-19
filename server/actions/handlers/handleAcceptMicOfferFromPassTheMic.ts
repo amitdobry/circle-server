@@ -1,4 +1,4 @@
-import { ActionPayload, ActionContext } from "../routeAction";
+import { ActionPayload, ActionContext, filterUsersByRoom } from "../routeAction";
 import { getPanelConfigFor } from "../../panelConfigService";
 import { setPointer } from "../../socketHandler";
 
@@ -7,7 +7,7 @@ export function handleAcceptMicOfferFromPassTheMic(
   context: ActionContext,
 ) {
   const { name } = payload;
-  const { users, io, logAction, logSystem, pointerMap } = context;
+  const { users, io, logAction, logSystem, pointerMap, roomId } = context;
 
   if (!name) {
     logSystem("🚨 Missing name in acceptMicOffer handler.");
@@ -18,12 +18,15 @@ export function handleAcceptMicOfferFromPassTheMic(
 
   let postSpeakerName: string | undefined = undefined;
 
+  // Phase E: Filter users to only this room
+  const roomUsers = filterUsersByRoom(users, roomId, io);
+
   // Step 1: Assign states
-  for (const [socketId, user] of users.entries()) {
+  for (const [socketId, user] of roomUsers.entries()) {
     // 🙋 Target user who accepted
     if (user.name === name) {
       user.state = "wantsToPickUpTheMic";
-      setPointer(user.name, user.name); // ✅ Point to self
+      setPointer(user.name, user.name, roomId); // ✅ Point to self
     }
 
     // 🧘 Speaker who previously offered
@@ -41,7 +44,7 @@ export function handleAcceptMicOfferFromPassTheMic(
   }
 
   // Step 2: Emit updated panels
-  for (const [socketId, user] of users.entries()) {
+  for (const [socketId, user] of roomUsers.entries()) {
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);
   }

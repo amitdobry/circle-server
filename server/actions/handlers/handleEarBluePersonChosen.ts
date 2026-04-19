@@ -2,7 +2,7 @@
 // Called when a listener in "isPickingEarBluePerson" state clicks a participant name.
 // payload.name       = the picker
 // payload.targetUser = the participant they chose to hear from
-import { ActionContext, ActionPayload } from "../routeAction";
+import { ActionContext, ActionPayload, filterUsersByRoom } from "../routeAction";
 import { getPanelConfigFor } from "../../panelConfigService";
 import { createGliffLog } from "../../gliffLogService";
 
@@ -11,7 +11,7 @@ export function handleEarBluePersonChosen(
   context: ActionContext,
 ) {
   const { name, targetUser } = payload;
-  const { users, io, logAction, logSystem } = context;
+  const { users, io, logAction, logSystem, roomId } = context;
 
   if (!name || !targetUser) {
     logSystem("🟦 handleEarBluePersonChosen: missing name or targetUser");
@@ -33,11 +33,14 @@ export function handleEarBluePersonChosen(
       },
     },
     io,
-    "default-room", // Legacy V1 handler - uses default room
+    roomId, // Phase E: Use actual roomId, not hardcoded "default-room"
   );
 
+  // Phase E: Filter users to only this room
+  const roomUsers = filterUsersByRoom(users, roomId, io);
+
   // Reset picker back to regular listener state
-  for (const [socketId, user] of users.entries()) {
+  for (const [socketId, user] of roomUsers.entries()) {
     if (user.name === name) {
       user.state = "regular";
       users.set(socketId, user);

@@ -897,10 +897,18 @@ function setupSocketHandlers(io) {
                 const userSocket = io.sockets.sockets.get(socketId);
                 return userSocket?.data?.roomId === userRoomId;
             }).length;
-            // Reset session timer if all users have left THIS ROOM
+            // Phase E: Only end global session if ALL rooms are empty, not just this one
             if (roomUserCount === 0 && sessionActive) {
-                console.log(`🔄 All users left room ${userRoomId} - resetting session timer`);
-                endSession(io);
+                console.log(`🔄 All users left room ${userRoomId}`);
+                // Check if there are users in ANY other room
+                const totalUsers = users.size;
+                if (totalUsers === 0) {
+                    console.log(`🔄 No users left in ANY room - ending global session`);
+                    endSession(io);
+                }
+                else {
+                    console.log(`ℹ️ ${totalUsers} users still in other rooms - global session continues`);
+                }
             }
             broadcastUserList(userRoomId); // Pass roomId
             broadcastAvatarState(userRoomId); // Phase E: Room-scoped avatar broadcast

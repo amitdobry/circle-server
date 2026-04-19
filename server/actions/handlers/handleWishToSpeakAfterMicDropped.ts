@@ -1,29 +1,33 @@
 import { getPanelConfigFor } from "../../panelConfigService";
 import { setPointer, clearPointer } from "../../socketHandler";
-import { ActionPayload, ActionContext } from "../routeAction";
+import { ActionPayload, ActionContext, filterUsersByRoom } from "../routeAction";
 
 export function handleWishToSpeakAfterMicDropped(
   payload: ActionPayload,
   context: ActionContext
 ) {
   const { name } = payload;
-  const { users, io, logSystem, logAction } = context;
+  const { users, io, logSystem, logAction, roomId } = context;
 
   if (!name) {
     logSystem("🚨 Missing name in handleBreakSync payload.");
     return;
   }
+
+  // Phase E: Filter users to only this room
+  const roomUsers = filterUsersByRoom(users, roomId, io);
+
   // ✅ 1. Set pointing and assign states
-  for (const [socketId, user] of users.entries()) {
+  for (const [socketId, user] of roomUsers.entries()) {
     const isCandidate = user.name === name;
 
     // Use setPointer/clearPointer so SpeakerManager stays in sync
     if (isCandidate) {
-      setPointer(user.name, name);
+      setPointer(user.name, name, roomId);
     } else {
-      clearPointer(user.name);
+      clearPointer(user.name, roomId);
     }
-    io.emit("update-pointing", {
+    io.to(roomId).emit("update-pointing", {
       from: user.name,
       to: isCandidate ? name : null,
     });
@@ -39,8 +43,8 @@ export function handleWishToSpeakAfterMicDropped(
 
   // setIsSyncPauseMode(true);
 
-  // ✅ 2. Refresh UI for all users
-  for (const [socketId, user] of users.entries()) {
+  // Phase E: 2. Refresh UI for users in this room
+  for (const [socketId, user] of roomUsers.entries()) {
     logSystem(`📦 Preparing panel for ${user.name} → ${user.state}`);
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);

@@ -1,13 +1,13 @@
 import { getPanelConfigFor } from "../../panelConfigService";
 import { setIsSyncPauseMode, clearPointer } from "../../socketHandler";
-import { ActionPayload, ActionContext } from "../routeAction";
+import { ActionPayload, ActionContext, filterUsersByRoom } from "../routeAction";
 
 export function handleDeclineToSpeakAfterMicDropped(
   payload: ActionPayload,
   context: ActionContext,
 ) {
   const { name } = payload;
-  const { users, pointerMap, io, logSystem, logAction } = context;
+  const { users, pointerMap, io, logSystem, logAction, roomId } = context;
 
   if (!name) {
     logSystem("🚨 Missing name in handleBreakSync payload.");
@@ -17,10 +17,13 @@ export function handleDeclineToSpeakAfterMicDropped(
   let declinedCount = 1;
   let totalEligibleUsers = 0;
 
-  for (const [socketId, user] of users.entries()) {
+  // Phase E: Filter users to only this room
+  const roomUsers = filterUsersByRoom(users, roomId, io);
+
+  for (const [socketId, user] of roomUsers.entries()) {
     if (user.name === name) {
-      clearPointer(user.name);
-      io.emit("update-pointing", { from: user.name, to: null });
+      clearPointer(user.name, roomId);
+      io.to(roomId).emit("update-pointing", { from: user.name, to: null });
       user.state = "doesNotWantToPickUpTheMic";
     }
     // Count total listeners (exclude whoever dropped the mic)
@@ -43,17 +46,17 @@ export function handleDeclineToSpeakAfterMicDropped(
     );
     setIsSyncPauseMode(false);
 
-    // Optional: reset state and emit new panels
-    for (const [socketId, user] of users.entries()) {
+    // Phase E: Optional: reset state and emit new panels (in this room)
+    for (const [socketId, user] of roomUsers.entries()) {
       user.state = "regular";
-      clearPointer(user.name);
+      clearPointer(user.name, roomId);
       const config = getPanelConfigFor(user.name);
       io.to(socketId).emit("receive:panelConfig", config);
     }
     return;
   }
 
-  for (const [socketId, user] of users.entries()) {
+  for (const [socketId, user] of roomUsers.entries()) {
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);
   }

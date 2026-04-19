@@ -1,5 +1,5 @@
 import { getPanelConfigFor } from "../../panelConfigService";
-import { ActionPayload, ActionContext } from "../routeAction";
+import { ActionPayload, ActionContext, filterUsersByRoom } from "../routeAction";
 import { setPointer } from "../../socketHandler";
 
 export function handleConcentNewSpeakerFromMicDropped(
@@ -7,7 +7,7 @@ export function handleConcentNewSpeakerFromMicDropped(
   context: ActionContext,
 ) {
   const { name } = payload;
-  const { users, pointerMap, io, logAction, logSystem } = context;
+  const { users, pointerMap, io, logAction, logSystem, roomId } = context;
 
   if (!name) {
     logSystem(
@@ -19,8 +19,11 @@ export function handleConcentNewSpeakerFromMicDropped(
   let speakerCandidate: string | null = null;
   let socketIdOfResponder: string | null = null;
 
+  // Phase E: Filter users to only this room
+  const roomUsers = filterUsersByRoom(users, roomId, io);
+
   // 🧠 Find responder socket ID and the first "wantsToPickUpTheMic" user
-  for (const [socketId, user] of users.entries()) {
+  for (const [socketId, user] of roomUsers.entries()) {
     logSystem(`🔍 SCAN [${socketId}] ${user.name} → state: ${user.state}`);
     if (user.name === name) {
       socketIdOfResponder = socketId;
@@ -36,8 +39,8 @@ export function handleConcentNewSpeakerFromMicDropped(
   }
 
   // 👆 Set pointer and update state
-  setPointer(name, speakerCandidate);
-  io.emit("update-pointing", { from: name, to: speakerCandidate });
+  setPointer(name, speakerCandidate, roomId);
+  io.to(roomId).emit("update-pointing", { from: name, to: speakerCandidate });
 
   const responder = users.get(socketIdOfResponder);
   if (responder) {
@@ -49,8 +52,8 @@ export function handleConcentNewSpeakerFromMicDropped(
     `👂 ${name} gave consent for ${speakerCandidate} to pick up the mic`,
   );
 
-  // 🔁 Refresh panels for everyone
-  for (const [socketId, user] of users.entries()) {
+  // Phase E: 🔁 Refresh panels for users in this room
+  for (const [socketId, user] of roomUsers.entries()) {
     logAction(`📦 Preparing panel for ${user.name} → ${user.state}`);
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);

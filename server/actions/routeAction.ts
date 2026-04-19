@@ -58,12 +58,44 @@ type ActionContext = {
   >;
 };
 
+/**
+ * Phase E: Helper to filter users to only those in the specified room
+ * @param users - Global users Map
+ * @param roomId - Room ID to filter by
+ * @param io - Socket.IO server instance (to check socket.data.roomId)
+ * @returns Map of users only in the specified room
+ */
+function filterUsersByRoom(
+  users: Map<
+    string,
+    { name: string; avatarId: string; state: UserState; interruptedBy: string }
+  >,
+  roomId: string,
+  io: Server,
+): Map<
+  string,
+  { name: string; avatarId: string; state: UserState; interruptedBy: string }
+> {
+  const roomUsers = new Map();
+
+  for (const [socketId, user] of users.entries()) {
+    const socket = io.sockets.sockets.get(socketId);
+    const socketRoomId = socket?.data?.roomId || socket?.data?.tableId;
+
+    if (socketRoomId === roomId) {
+      roomUsers.set(socketId, user);
+    }
+  }
+
+  return roomUsers;
+}
+
 function routeAction(payload: ActionPayload, context: ActionContext) {
   const { actionType, type } = payload;
 
   const match = config.find(
     (entry) =>
-      entry.actionType === actionType && (!entry.type || entry.type === type)
+      entry.actionType === actionType && (!entry.type || entry.type === type),
   );
 
   if (!match) {
@@ -81,4 +113,4 @@ function routeAction(payload: ActionPayload, context: ActionContext) {
   handler(payload, context);
 }
 
-export { routeAction, ActionContext, ActionPayload };
+export { routeAction, ActionContext, ActionPayload, filterUsersByRoom };

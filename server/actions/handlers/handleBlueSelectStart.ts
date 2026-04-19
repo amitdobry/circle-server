@@ -1,5 +1,5 @@
 // handlers/handleBlueSelectStart.ts
-import { ActionContext, ActionPayload } from "../routeAction";
+import { ActionContext, ActionPayload, filterUsersByRoom } from "../routeAction";
 import { setIsSyncPauseMode, clearPointer, getLiveSpeaker } from "../../socketHandler";
 import { getPanelConfigFor } from "../../panelConfigService";
 
@@ -8,7 +8,7 @@ export function handleBlueSelectStart(
   context: ActionContext,
 ) {
   const { name, flavor } = payload;
-  const { users, pointerMap, io, logAction, logSystem } = context;
+  const { users, pointerMap, io, logAction, logSystem, roomId } = context;
 
   if (!name) {
     logSystem("🟦 handleBlueSelectStart: missing name in payload");
@@ -20,20 +20,23 @@ export function handleBlueSelectStart(
     return;
   }
 
-  const liveSpeakerName = getLiveSpeaker();
+  // Phase E: Filter users to only this room
+  const roomUsers = filterUsersByRoom(users, roomId, io);
+
+  const liveSpeakerName = getLiveSpeaker(roomId);
   const speaker = liveSpeakerName
-    ? Array.from(users.values()).find((u) => u.name === liveSpeakerName)
+    ? Array.from(roomUsers.values()).find((u) => u.name === liveSpeakerName)
     : null;
   if (!speaker) {
     logSystem(`🟦 handleBlueSelectStart: no current speaker in room`);
     return;
   }
 
-  clearPointer(name);
-  io.emit("update-pointing", { from: name, to: null });
+  clearPointer(name, roomId);
+  io.to(roomId).emit("update-pointing", { from: name, to: null });
 
-  // ✅ Now update all states:
-  for (const [socketId, user] of users.entries()) {
+  // Phase E: Now update states (in this room):
+  for (const [socketId, user] of roomUsers.entries()) {
     if (user.name === name) {
       user.state = "isPickingBlueSpeaker";
     } else if (user.name === speaker.name) {
@@ -50,7 +53,7 @@ export function handleBlueSelectStart(
 
   logAction(`🟦 ${name} started Blue select${flavor ? ` (${flavor})` : ""}`);
 
-  for (const [socketId, user] of users.entries()) {
+  for (const [socketId, user] of roomUsers.entries()) {
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);
   }

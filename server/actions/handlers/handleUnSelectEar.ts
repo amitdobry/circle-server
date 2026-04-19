@@ -1,4 +1,4 @@
-import { ActionContext, ActionPayload } from "../routeAction";
+import { ActionContext, ActionPayload, filterUsersByRoom } from "../routeAction";
 import { getPanelConfigFor } from "../../panelConfigService";
 
 export function handleUnSelectEar(
@@ -6,7 +6,7 @@ export function handleUnSelectEar(
   context: ActionContext
 ) {
   const { name } = payload;
-  const { users, io, logSystem, logAction } = context;
+  const { users, io, logSystem, logAction, roomId } = context;
 
   if (!name) {
     logSystem("🚨 Missing name in unselectEar payload");
@@ -15,8 +15,11 @@ export function handleUnSelectEar(
 
   logAction(`👂❌ ${name} stopped Reflecting`);
 
+  // Phase E: Filter users to only this room
+  const roomUsers = filterUsersByRoom(users, roomId, io);
+
   // 🔁 Only reset the user's own state back to "regular"
-  for (const [socketId, user] of users.entries()) {
+  for (const [socketId, user] of roomUsers.entries()) {
     if (user.name === name) {
       user.state = "regular";
       users.set(socketId, user);
@@ -25,7 +28,7 @@ export function handleUnSelectEar(
   }
 
   // Emit updated config only to the user who unselected
-  const userEntry = Array.from(users.entries()).find(
+  const userEntry = Array.from(roomUsers.entries()).find(
     ([, user]) => user.name === name
   );
   if (userEntry) {

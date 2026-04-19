@@ -4,14 +4,14 @@ import {
   setLiveSpeaker,
   setPointer,
 } from "../../socketHandler";
-import { ActionPayload, ActionContext } from "../routeAction";
+import { ActionPayload, ActionContext, filterUsersByRoom } from "../routeAction";
 
 export function handleOfferMicToUserFromPassTheMic(
   payload: ActionPayload,
   context: ActionContext,
 ) {
   const { name, targetUser } = payload;
-  const { users, pointerMap, io, logSystem, logAction } = context;
+  const { users, pointerMap, io, logSystem, logAction, roomId } = context;
 
   if (!name || !targetUser) {
     logSystem("🚨 Missing name or targetUser in mic pass handler");
@@ -20,8 +20,11 @@ export function handleOfferMicToUserFromPassTheMic(
 
   logAction(`🎤 ${name} offered the mic to ${targetUser}`);
 
+  // Phase E: Filter users to only this room
+  const roomUsers = filterUsersByRoom(users, roomId, io);
+
   // Then use users map to update states accordingly
-  for (const [socketId, user] of users.entries()) {
+  for (const [socketId, user] of roomUsers.entries()) {
     if (user.name === name) {
       user.state = "hasOfferedMicToUserFromPassTheMic";
     } else if (user.name === targetUser) {
@@ -34,18 +37,18 @@ export function handleOfferMicToUserFromPassTheMic(
   }
 
   // 👆 Set pointer and update state
-  setPointer(name, targetUser);
-  io.emit("update-pointing", { from: name, to: targetUser });
+  setPointer(name, targetUser, roomId);
+  io.to(roomId).emit("update-pointing", { from: name, to: targetUser });
 
   setIsSyncPauseMode(true);
 
   // Clear live speaker — the interrupter has chosen a candidate,
   // the previous speaker's authority is suspended from this point.
   // (In V1 this was handled by evaluateSync detecting broken consensus.)
-  setLiveSpeaker(null);
+  setLiveSpeaker(null, roomId);
 
   // Emit updates
-  for (const [socketId, user] of users.entries()) {
+  for (const [socketId, user] of roomUsers.entries()) {
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);
   }

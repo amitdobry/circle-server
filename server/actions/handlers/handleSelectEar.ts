@@ -1,4 +1,4 @@
-import { ActionPayload, ActionContext } from "../routeAction";
+import { ActionPayload, ActionContext, filterUsersByRoom } from "../routeAction";
 import { emojiLookup } from "../../avatarManager"; // adjust path if needed
 import { getPanelConfigFor } from "../../panelConfigService";
 
@@ -7,30 +7,33 @@ export function handleSelectEar(
   context: ActionContext
 ) {
   const { name: earClickerName } = payload;
-  const { users, io, logSystem, logAction } = context;
+  const { users, io, logSystem, logAction, roomId } = context;
 
   if (!earClickerName) {
     logSystem("🚨 Missing 'name' in selectEar payload.");
     return;
   }
 
+  // Phase E: Filter users to only this room
+  const roomUsers = filterUsersByRoom(users, roomId, io);
+
   const avatarId =
-    Array.from(users.values()).find((u) => u.name === earClickerName)
+    Array.from(roomUsers.values()).find((u) => u.name === earClickerName)
       ?.avatarId ?? "";
   const emoji = emojiLookup[avatarId] || "";
 
   logAction(` ${emoji} ${earClickerName} clicked ear — he might relate`);
 
-  // ✅ Now update all states:
-  for (const [socketId, user] of users.entries()) {
+  // Phase E: Now update states (in this room):
+  for (const [socketId, user] of roomUsers.entries()) {
     if (user.name === earClickerName && user.state !== "hasClickedEar") {
       user.state = "hasClickedEar";
       users.set(socketId, user);
     }
   }
 
-  // Emit updated config only to the user who unselected
-  const userEntry = Array.from(users.entries()).find(
+  // Emit updated config only to the user who clicked ear
+  const userEntry = Array.from(roomUsers.entries()).find(
     ([, user]) => user.name === earClickerName
   );
   if (userEntry) {

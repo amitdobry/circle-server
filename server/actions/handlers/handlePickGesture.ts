@@ -1,4 +1,4 @@
-import { ActionContext, ActionPayload } from "../routeAction";
+import { ActionContext, ActionPayload, filterUsersByRoom } from "../routeAction";
 import { getPanelConfigFor } from "../../panelConfigService";
 
 export function handlePickGesture(
@@ -6,7 +6,7 @@ export function handlePickGesture(
   context: ActionContext
 ) {
   const { name, subType } = payload;
-  const { users, io, logAction, logSystem } = context;
+  const { users, io, logAction, logSystem, roomId } = context;
 
   if (!name || !subType) {
     logSystem("🚨 Missing name or subType in pickGesture payload");
@@ -15,8 +15,11 @@ export function handlePickGesture(
 
   logAction(`🎯 ${name} picked gesture: ${subType}`);
 
+  // Phase E: Filter users to only this room
+  const roomUsers = filterUsersByRoom(users, roomId, io);
+
   // Find user and attach subgesture info
-  const userEntry = Array.from(users.entries()).find(
+  const userEntry = Array.from(roomUsers.entries()).find(
     ([, u]) => u.name === name
   );
   if (!userEntry) {

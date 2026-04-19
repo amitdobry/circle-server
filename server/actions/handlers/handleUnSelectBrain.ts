@@ -1,4 +1,4 @@
-import { ActionContext, ActionPayload } from "../routeAction";
+import { ActionContext, ActionPayload, filterUsersByRoom } from "../routeAction";
 import { getPanelConfigFor } from "../../panelConfigService";
 import { getLiveSpeaker } from "../../socketHandler";
 
@@ -7,7 +7,7 @@ export function handleUnSelectBrain(
   context: ActionContext
 ) {
   const { name } = payload;
-  const { users, io, logSystem, logAction } = context;
+  const { users, io, logSystem, logAction, roomId } = context;
 
   if (!name) {
     logSystem("🚨 Missing name in unselect payload");
@@ -16,18 +16,21 @@ export function handleUnSelectBrain(
 
   logAction(`↩️ ${name} unselected Brain gesture`);
 
+  // Phase E: Filter users to only this room
+  const roomUsers = filterUsersByRoom(users, roomId, io);
+
   // Reset all listeners to "regular"
-  for (const [socketId, user] of users.entries()) {
+  for (const [socketId, user] of roomUsers.entries()) {
     if (user.name === name || user.state === "waiting") {
       user.state = "regular";
       users.set(socketId, user);
     }
   }
 
-  // 🔁 Reset speaker's `interruptedBy` field
-  const liveSpeakerName = getLiveSpeaker();
+  // Phase E: Reset speaker's `interruptedBy` field (in this room)
+  const liveSpeakerName = getLiveSpeaker(roomId);
   const speakerEntry = liveSpeakerName
-    ? Array.from(users.entries()).find(([, user]) => user.name === liveSpeakerName)
+    ? Array.from(roomUsers.entries()).find(([, user]) => user.name === liveSpeakerName)
     : undefined;
   if (speakerEntry) {
     const [socketId, speakerUser] = speakerEntry;
@@ -35,8 +38,8 @@ export function handleUnSelectBrain(
     users.set(socketId, speakerUser);
   }
 
-  // Emit updated config to all
-  for (const [socketId, user] of users.entries()) {
+  // Phase E: Emit updated config to users in this room only
+  for (const [socketId, user] of roomUsers.entries()) {
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);
   }

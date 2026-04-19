@@ -1,4 +1,4 @@
-import { ActionPayload, ActionContext } from "../routeAction";
+import { ActionPayload, ActionContext, filterUsersByRoom } from "../routeAction";
 import { getPanelConfigFor } from "../../panelConfigService";
 import { setLiveSpeaker } from "../../socketHandler";
 
@@ -7,7 +7,7 @@ export function handleOpenChooseASpeakerFromPassTheMic(
   context: ActionContext
 ) {
   const { name } = payload;
-  const { users, io, logSystem, logAction } = context;
+  const { users, io, logSystem, logAction, roomId } = context;
 
   if (!name) {
     logSystem(
@@ -20,16 +20,19 @@ export function handleOpenChooseASpeakerFromPassTheMic(
 
   // Speaker is no longer "live" — clear so panelBuilderRouter routes
   // them to buildListenerSyncPanel → state-13 (participant picker)
-  setLiveSpeaker(null);
+  setLiveSpeaker(null, roomId);
 
-  for (const [socketId, user] of users.entries()) {
+  // Phase E: Filter users to only this room
+  const roomUsers = filterUsersByRoom(users, roomId, io);
+
+  for (const [socketId, user] of roomUsers.entries()) {
     if (user.name === name) {
       user.state = "isChoosingUserToPassMic";
       users.set(socketId, user);
     }
   }
 
-  for (const [socketId, user] of users.entries()) {
+  for (const [socketId, user] of roomUsers.entries()) {
     const config = getPanelConfigFor(user.name);
     io.to(socketId).emit("receive:panelConfig", config);
   }

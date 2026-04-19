@@ -1,5 +1,5 @@
 import { getPanelConfigFor } from "../../panelConfigService";
-import { ActionPayload, ActionContext } from "../routeAction";
+import { ActionPayload, ActionContext, filterUsersByRoom } from "../routeAction";
 import { setPointer, setLiveSpeaker, setIsSyncPauseMode } from "../../socketHandler";
 import { dispatchAndRun } from "../../engine-v2/reducer/dispatch";
 import * as ActionTypes from "../../engine-v2/actions/actionTypes";
@@ -9,7 +9,7 @@ export function handleConcentNewSpeakerFromMicDropped(
   context: ActionContext,
 ) {
   const { name } = payload;
-  const { users, pointerMap, io, logAction, logSystem } = context;
+  const { users, pointerMap, io, logAction, logSystem, roomId } = context;
 
   if (!name) {
     logSystem(
@@ -21,8 +21,11 @@ export function handleConcentNewSpeakerFromMicDropped(
   let speakerCandidate: string | null = null;
   let socketIdOfResponder: string | null = null;
 
+  // Phase E: Filter users to only this room
+  const roomUsers = filterUsersByRoom(users, roomId, io);
+
   // 🧠 Find responder socket ID and the first "wantsToPickUpTheMic" user
-  for (const [socketId, user] of users.entries()) {
+  for (const [socketId, user] of roomUsers.entries()) {
     logSystem(`🔍 SCAN [${socketId}] ${user.name} → state: ${user.state}`);
     if (user.name === name) {
       socketIdOfResponder = socketId;
@@ -38,8 +41,8 @@ export function handleConcentNewSpeakerFromMicDropped(
   }
 
   // 👆 Set pointer and update state
-  setPointer(name, speakerCandidate);
-  io.emit("update-pointing", { from: name, to: speakerCandidate });
+  setPointer(name, speakerCandidate, roomId);
+  io.to(roomId).emit("update-pointing", { from: name, to: speakerCandidate });
 
   const responder = users.get(socketIdOfResponder);
   if (responder) {
@@ -54,7 +57,7 @@ export function handleConcentNewSpeakerFromMicDropped(
   // Check if all consenting users have now given consent.
   // Responder state was updated above — if nobody is left in
   // appendingConcentToPickUpTheMic, we have full consensus.
-  const remainingConsenters = Array.from(users.values()).filter(
+  const remainingConsenters = Array.from(roomUsers.values()).filter(
     (u) => u.state === "appendingConcentToPickUpTheMic",
   ).length;
 
@@ -62,21 +65,21 @@ export function handleConcentNewSpeakerFromMicDropped(
     // 🎉 Consensus complete — new speaker goes LIVE
 
     // Reset V1 user states before panel rebuild
-    for (const [sid, user] of users.entries()) {
+    for (const [sid, user] of roomUsers.entries()) {
       user.state = user.name === speakerCandidate ? "speaking" : "regular";
       users.set(sid, user);
     }
 
     // Sync V1 globals so panelBuilderRouter routes correctly
-    setLiveSpeaker(speakerCandidate);
+    setLiveSpeaker(speakerCandidate, roomId);
     setIsSyncPauseMode(false);
 
     // Sync V2 via ACCEPT_MIC → fires REBUILD_ALL_PANELS which emits panels to everyone
     const speakerSocketId =
-      Array.from(users.entries()).find(([, u]) => u.name === speakerCandidate)?.[0] ?? null;
+      Array.from(roomUsers.entries()).find(([, u]) => u.name === speakerCandidate)?.[0] ?? null;
     try {
       dispatchAndRun(
-        "default-room",
+        roomId,
         speakerSocketId,
         { type: ActionTypes.ACCEPT_MIC, payload: {} },
         io,
@@ -84,14 +87,14 @@ export function handleConcentNewSpeakerFromMicDropped(
     } catch (err) {
       logSystem(`🚨 V2 ACCEPT_MIC dispatch failed: ${err}`);
       // Fallback: emit panels via V1
-      for (const [socketId, user] of users.entries()) {
+      for (const [socketId, user] of roomUsers.entries()) {
         const config = getPanelConfigFor(user.name);
         io.to(socketId).emit("receive:panelConfig", config);
       }
     }
   } else {
     // Not yet consensus — emit intermediate panels via V1
-    for (const [socketId, user] of users.entries()) {
+    for (const [socketId, user] of roomUsers.entries()) {
       logAction(`📦 Preparing panel for ${user.name} → ${user.state}`);
       const config = getPanelConfigFor(user.name);
       io.to(socketId).emit("receive:panelConfig", config);
