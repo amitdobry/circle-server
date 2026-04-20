@@ -4,9 +4,10 @@ exports.collectPanelContext = collectPanelContext;
 exports.getPanelConfigFor = getPanelConfigFor;
 const socketHandler_1 = require("./socketHandler");
 const panelBuilderRouter_1 = require("./panelBuilderRouter");
-function collectPanelContext(userName) {
+function collectPanelContext(userName, roomId) {
     // Phase E: Get user's room ID
-    const userRoomId = (0, socketHandler_1.getUserRoomId)(userName) || "default-room";
+    // ✅ FIX: Use provided roomId from REBUILD_ALL_PANELS instead of looking up
+    const userRoomId = roomId || (0, socketHandler_1.getUserRoomId)(userName) || "default-room";
     // Get room-filtered data
     const allUsers = (0, socketHandler_1.getUsers)(userRoomId); // filtered by room
     const participantList = Array.from(allUsers.values()).map((u) => u.name);
@@ -27,8 +28,8 @@ function collectPanelContext(userName) {
         allUsers,
     };
 }
-function getPanelConfigFor(userName) {
-    const context = collectPanelContext(userName);
+function getPanelConfigFor(userName, roomId) {
+    const context = collectPanelContext(userName, roomId);
     const user = Array.from(context.allUsers.values()).find((u) => u.name === userName);
     if (user) {
         console.log(`📦 Preparing panel at panelConfigService for ${user.name} → ${user.state}`);

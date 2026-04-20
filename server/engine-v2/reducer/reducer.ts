@@ -223,7 +223,8 @@ export function reducer(
         return [];
       }
 
-      const participant = tableState.participants.get(userId);
+      // Find participant by socketId (not by Map key) to handle reconnection case
+      const participant = getParticipantBySocketId(tableState, userId);
 
       if (!participant) {
         console.warn(
@@ -232,15 +233,62 @@ export function reducer(
         return [];
       }
 
-      // Set to GHOST (don't remove from participants)
+      //Set to GHOST (don't remove from participants)
       participant.presence = "GHOST";
       participant.socketId = null;
       participant.lastSeen = Date.now();
 
+      // ✅ FIX: Clear ghost's pointer so they don't affect consensus
+      const hadPointer = tableState.pointerMap.has(participant.userId);
+      tableState.pointerMap.delete(participant.userId);
+
       const effects: Effect[] = [];
 
+      // ✅ FIX: Re-evaluate consensus after clearing ghost's pointer
+      // If the ghost was blocking consensus, removing them might create consensus!
+      if (hadPointer) {
+        const consensusUserId = evaluateConsensus(tableState);
+
+        if (consensusUserId && consensusUserId !== tableState.liveSpeaker) {
+          const speaker = tableState.participants.get(consensusUserId);
+
+          // Transition to LIVE_SPEAKER
+          tableState.liveSpeaker = consensusUserId;
+          tableState.syncPause = false;
+          tableState.phase = "LIVE_SPEAKER";
+
+          // Set speaker role, reset all others to listener
+          for (const [, p] of tableState.participants) {
+            p.role = p.userId === consensusUserId ? "speaker" : "listener";
+          }
+
+          console.log(
+            `[V2 Reducer] 🎤 Consensus after ghost disconnect! ${speaker?.displayName} goes LIVE`,
+          );
+
+          effects.push(
+            {
+              type: "SYSTEM_LOG",
+              roomId: tableState.roomId,
+              message: `🎤 ${speaker?.displayName} is now live.`,
+              level: "info",
+            },
+            {
+              type: "SOCKET_EMIT_ROOM",
+              roomId: tableState.roomId,
+              event: "live-speaker",
+              data: { name: speaker?.displayName, userId: consensusUserId },
+            },
+            {
+              type: "REBUILD_ALL_PANELS",
+              roomId: tableState.roomId,
+            },
+          );
+        }
+      }
+
       // Check if this was the live speaker
-      if (tableState.liveSpeaker === userId) {
+      if (tableState.liveSpeaker === participant.userId) {
         console.log(
           `[V2 Reducer] 🎤 Speaker ${participant.displayName} went ghost`,
         );
@@ -315,7 +363,7 @@ export function reducer(
         roomId: tableState.roomId,
         event: "v2:user-ghosted",
         data: {
-          userId,
+          userId: participant.userId,
           displayName: participant.displayName,
         },
       });
@@ -327,7 +375,7 @@ export function reducer(
         delayMs: 180000, // 3 minutes
         action: {
           type: ActionTypes.PURGE_GHOST,
-          payload: { userId },
+          payload: { userId: participant.userId },
         },
       });
 
@@ -372,11 +420,52 @@ export function reducer(
       ghost.socketId = userId; // userId = new socketId in shadow dispatch
       ghost.lastSeen = Date.now();
 
+      // ✅ RECONNECT = FRESH PARTICIPATION (not state restoration)
+      // Reset role to listener (ghost was observer, now fresh participant)
+      ghost.role = "listener";
+
+      // Clear attentionTarget (fresh entry)
+      ghost.attentionTarget = null;
+
+      const effects: Effect[] = [];
+
+      // If this ghost was the live speaker, clear liveSpeaker and transition
+      if (tableState.liveSpeaker === ghost.userId) {
+        console.log(
+          `[V2 Reducer] 🎤 Reconnected ghost was speaker, clearing liveSpeaker`,
+        );
+        tableState.liveSpeaker = null;
+
+        // If we're in LIVE_SPEAKER phase, transition back to ATTENTION_SELECTION
+        if (tableState.phase === "LIVE_SPEAKER") {
+          tableState.phase = "ATTENTION_SELECTION";
+        }
+
+        effects.push({
+          type: "SOCKET_EMIT_ROOM",
+          roomId: tableState.roomId,
+          event: "live-speaker-cleared",
+          data: {},
+        });
+      }
+
+      // Check if we need to transition from ENDING back to active
+      const connectedCount = Array.from(
+        tableState.participants.values(),
+      ).filter((p) => p.presence === "CONNECTED").length;
+
+      if (tableState.phase === "ENDING" && connectedCount > 0) {
+        console.log(
+          `[V2 Reducer] 🔄 Transitioning from ENDING → ATTENTION_SELECTION (${connectedCount} connected)`,
+        );
+        tableState.phase = "ATTENTION_SELECTION";
+      }
+
       console.log(
-        `[V2 Reducer] ✅ ${ghost.displayName} reconnected | socketId updated`,
+        `[V2 Reducer] ✅ ${ghost.displayName} reconnected | Fresh participation (role: listener)`,
       );
 
-      return [
+      effects.push(
         {
           type: "SYSTEM_LOG",
           roomId: tableState.roomId,
@@ -399,27 +488,33 @@ export function reducer(
           type: "REBUILD_ALL_PANELS",
           roomId: tableState.roomId,
         },
-      ];
+      );
+
+      return effects;
     }
 
     case ActionTypes.PURGE_GHOST: {
       // =====================================================================
       // PURGE_GHOST: Remove ghost user after timeout (if still ghost)
       // =====================================================================
+
+      // Get userId from payload (not from dispatch parameter)
+      const ghostUserId = action.payload?.userId;
+
       console.log(
-        `[V2 Reducer] 🧹 PURGE_GHOST | Room: ${tableState.roomId} | User: ${userId}`,
+        `[V2 Reducer] 🧹 PURGE_GHOST | Room: ${tableState.roomId} | User: ${ghostUserId ?? userId}`,
       );
 
-      if (!userId) {
-        console.error(`[V2 Reducer] ❌ PURGE_GHOST requires userId`);
+      if (!ghostUserId) {
+        console.error(`[V2 Reducer] ❌ PURGE_GHOST requires userId in payload`);
         return [];
       }
 
-      const participant = tableState.participants.get(userId);
+      const participant = tableState.participants.get(ghostUserId);
 
       if (!participant) {
         console.log(
-          `[V2 Reducer] ⚠️ PURGE_GHOST: User ${userId} already removed`,
+          `[V2 Reducer] ⚠️ PURGE_GHOST: User ${ghostUserId} already removed`,
         );
         return [];
       }
@@ -440,8 +535,20 @@ export function reducer(
         `[V2 Reducer] 🧹 Purging ghost ${participant.displayName} (ghosted for ${ghostMinutes}m)`,
       );
 
-      // Remove from participants
-      tableState.participants.delete(userId);
+      // Clean up all references to this ghost
+      tableState.participants.delete(ghostUserId);
+      tableState.pointerMap.delete(ghostUserId);
+
+      // Clear any pointers TO this ghost
+      for (const [from, to] of tableState.pointerMap.entries()) {
+        if (to === ghostUserId) {
+          tableState.pointerMap.delete(from);
+        }
+      }
+
+      console.log(
+        `[V2 Reducer] ✅ Ghost ${participant.displayName} completely purged`,
+      );
 
       return [
         {
@@ -455,7 +562,7 @@ export function reducer(
           roomId: tableState.roomId,
           event: "v2:ghost-purged",
           data: {
-            userId,
+            userId: ghostUserId,
             displayName: participant.displayName,
             avatarId: participant.avatarId,
             ghostDuration: ghostDuration,

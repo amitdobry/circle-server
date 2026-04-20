@@ -21,7 +21,10 @@
  */
 
 import { describe, test, expect } from "@jest/globals";
-import { TestHarness, createSessionWithActiveSpeaker } from "../harness/TestHarness";
+import {
+  TestHarness,
+  createSessionWithActiveSpeaker,
+} from "../harness/TestHarness";
 import * as ActionTypes from "../../actions/actionTypes";
 
 // ============================================================================
@@ -150,7 +153,7 @@ describe("RECONNECT", () => {
     h.teardown();
   });
 
-  test("live speaker reconnects — mic still held", () => {
+  test("live speaker reconnects — mic released (fresh participation)", () => {
     const { h, speakerUserId } = createSessionWithActiveSpeaker(2);
     const speakerP = h.getParticipantById(speakerUserId)!;
     const speakerName = speakerP.displayName;
@@ -167,9 +170,9 @@ describe("RECONNECT", () => {
       payload: { displayName: speakerName },
     });
 
-    // Should still be live speaker
-    expect(h.liveSpeaker).toBe(speakerUserId);
-    expect(h.phase).toBe("LIVE_SPEAKER");
+    // Reconnect = fresh participation → mic released
+    expect(h.liveSpeaker).toBeNull();
+    expect(h.phase).toBe("ATTENTION_SELECTION");
     h.teardown();
   });
 

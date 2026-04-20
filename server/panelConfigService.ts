@@ -54,9 +54,10 @@ export type PanelContext = {
   allUsers: Map<string, UserInfo>; // ✅ Add this line
 };
 
-export function collectPanelContext(userName: string): PanelContext {
+export function collectPanelContext(userName: string, roomId?: string): PanelContext {
   // Phase E: Get user's room ID
-  const userRoomId = getUserRoomId(userName) || "default-room";
+  // ✅ FIX: Use provided roomId from REBUILD_ALL_PANELS instead of looking up
+  const userRoomId = roomId || getUserRoomId(userName) || "default-room";
   
   // Get room-filtered data
   const allUsers = getUsers(userRoomId); // filtered by room
@@ -80,8 +81,8 @@ export function collectPanelContext(userName: string): PanelContext {
   };
 }
 
-export function getPanelConfigFor(userName: string): PanelConfig {
-  const context = collectPanelContext(userName);
+export function getPanelConfigFor(userName: string, roomId?: string): PanelConfig {
+  const context = collectPanelContext(userName, roomId);
   const user = Array.from(context.allUsers.values()).find(
     (u) => u.name === userName
   );

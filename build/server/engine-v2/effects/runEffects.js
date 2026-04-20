@@ -74,6 +74,33 @@ function scheduleDelayedAction(roomId, delayMs, action, io) {
         const effects = (0, dispatch_1.dispatch)(roomId, userId, action);
         // Run resulting effects
         runEffects(effects, io);
+        // ✅ FIX: After PURGE_GHOST, trigger user list and avatar broadcasts
+        // This is needed because PURGE_GHOST removes participant from V2,
+        // and avatarManager checks V2 ghosts to lock avatars
+        if (action.type === "PURGE_GHOST") {
+            console.log(`[DelayedAction] Ghost purged, triggering broadcasts for room ${roomId}`);
+            // Emit user-list update to room (includes remaining ghosts + connected users)
+            const { roomRegistry } = require("../registry/RoomRegistry");
+            const roomState = roomRegistry.getRoom(roomId);
+            if (roomState && roomState.participants.size > 0) {
+                const roomUsers = Array.from(roomState.participants.values()).map((participant) => ({
+                    name: participant.displayName,
+                    avatarId: participant.avatarId,
+                    state: participant.presence === "GHOST" ? "ghost" : "regular",
+                    presence: participant.presence,
+                    interruptedBy: "",
+                    joinedAt: new Date(participant.lastSeen || Date.now()),
+                    lastActivity: new Date(participant.lastSeen || Date.now()),
+                }));
+                io.to(roomId).emit("user-list", roomUsers);
+                console.log(`[DelayedAction] Broadcast ${roomUsers.length} users to room ${roomId}`);
+            }
+            // Broadcast updated avatar state (purged ghost's avatar is now available)
+            const { getAvailableAvatars } = require("../../avatarManager");
+            const roomAvatars = getAvailableAvatars(roomId);
+            io.to(roomId).emit("avatars", roomAvatars);
+            console.log(`[DelayedAction] Broadcast ${roomAvatars.length} avatars to room ${roomId}`);
+        }
     }, delayMs);
     delayedActionTimers.set(timerKey, timer);
 }
@@ -296,14 +323,19 @@ function executeEffect(effect, io) {
                 console.log(`[PANEL-SNAPSHOT][V2] room=${effect.roomId} phase=${tableState.phase} liveSpeaker=${tableState.liveSpeaker ?? "none"} connected=[${connected}] pointerMap={${pointerEntries}}`);
                 // Sync V2 liveSpeaker into SpeakerManager so panelConfigService reads the correct value
                 const { setLiveSpeaker } = require("../../socketHandler");
-                const speakerSocketId = tableState.liveSpeaker;
+                const speakerUserId = tableState.liveSpeaker;
                 let syncedSpeakerName = null;
-                if (speakerSocketId) {
+                console.log(`[REBUILD_ALL_PANELS] 🔍 Looking for speaker with userId: ${speakerUserId ?? "none"}`);
+                if (speakerUserId) {
                     for (const [, p] of tableState.participants) {
-                        if (p.socketId === speakerSocketId) {
+                        if (p.userId === speakerUserId) {
                             syncedSpeakerName = p.displayName;
+                            console.log(`[REBUILD_ALL_PANELS] ✅ Found speaker: ${p.displayName} (userId: ${p.userId})`);
                             break;
                         }
+                    }
+                    if (!syncedSpeakerName) {
+                        console.warn(`[REBUILD_ALL_PANELS] ⚠️ Speaker userId ${speakerUserId} not found in participants`);
                     }
                 }
                 setLiveSpeaker(syncedSpeakerName, effect.roomId);
@@ -314,7 +346,8 @@ function executeEffect(effect, io) {
                     if (participant.presence !== "CONNECTED" || !participant.socketId)
                         continue;
                     try {
-                        const config = getPanelConfigFor(participant.displayName);
+                        // ✅ FIX: Pass roomId so panel uses correct liveSpeaker and context
+                        const config = getPanelConfigFor(participant.displayName, effect.roomId);
                         io.to(participant.socketId).emit("receive:panelConfig", config);
                         console.log(`[REBUILD_ALL_PANELS] ✅ Sent panel to ${participant.displayName} (${participant.socketId})`);
                         emitCount++;

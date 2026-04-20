@@ -514,10 +514,31 @@ function setupSocketHandlers(io) {
             // Get the user's roomId and send room-filtered list
             const roomId = socket.data.roomId || socket.data.tableId;
             if (roomId) {
-                const roomUsersMap = getUsers(roomId); // Returns Map<string, UserInfo>
-                const roomUsers = Array.from(roomUsersMap.values());
-                console.log(`🔍 [sendCurrentUserListTo] Sending ${roomUsers.length} users from room ${roomId} to socket ${socket.id}`);
-                socket.emit("user-list", roomUsers);
+                // ✅ FIX: Read from V2 to include ghosts (same as broadcastUserList)
+                const { roomRegistry } = require("./engine-v2/registry/RoomRegistry");
+                const roomState = roomRegistry.getRoom(roomId);
+                if (roomState && roomState.participants.size > 0) {
+                    // Build user list from V2 participants (includes CONNECTED + GHOST)
+                    const roomUsers = Array.from(roomState.participants.values()).map((participant) => ({
+                        name: participant.displayName,
+                        avatarId: participant.avatarId,
+                        state: participant.presence === "GHOST" ? "ghost" : "regular",
+                        presence: participant.presence,
+                        interruptedBy: "",
+                        joinedAt: new Date(participant.lastSeen || Date.now()),
+                        lastActivity: new Date(participant.lastSeen || Date.now()),
+                    }));
+                    console.log(`🔍 [sendCurrentUserListTo] Sending ${roomUsers.length} users (V2) from room ${roomId} to socket ${socket.id}`);
+                    console.log(`   Including: ${roomUsers.map((u) => `${u.name}${u.presence === "GHOST" ? "👻" : ""}`).join(", ")}`);
+                    socket.emit("user-list", roomUsers);
+                }
+                else {
+                    // Fallback to V1 if no V2 state
+                    const roomUsersMap = getUsers(roomId);
+                    const roomUsers = Array.from(roomUsersMap.values());
+                    console.log(`🔍 [sendCurrentUserListTo] Sending ${roomUsers.length} users (V1 fallback) from room ${roomId} to socket ${socket.id}`);
+                    socket.emit("user-list", roomUsers);
+                }
             }
             else {
                 // Fallback to global list if no room assigned (shouldn't happen in multi-table mode)

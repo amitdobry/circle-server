@@ -94,8 +94,13 @@ function getPointersToTarget(tableState, targetUserId) {
 function getVoteCounts(tableState) {
     const votes = new Map();
     const connected = getConnectedParticipants(tableState);
+    console.log(`[getVoteCounts] 🗳️ Counting votes | Connected: ${connected.length}`);
     for (const participant of connected) {
         const target = tableState.pointerMap.get(participant.userId);
+        const targetParticipant = target
+            ? tableState.participants.get(target)
+            : null;
+        console.log(`[getVoteCounts]   ${participant.displayName} → ${targetParticipant?.displayName ?? "(no pointer)"}`);
         if (target) {
             votes.set(target, (votes.get(target) || 0) + 1);
         }
@@ -111,16 +116,31 @@ function getVoteCounts(tableState) {
  */
 function evaluateConsensus(tableState) {
     const connected = getConnectedParticipants(tableState);
+    console.log(`[evaluateConsensus] 🔍 Evaluating in room ${tableState.roomId} | ` +
+        `Connected: ${connected.length} | Phase: ${tableState.phase}`);
     // No connected users = no consensus
-    if (connected.length === 0)
+    if (connected.length === 0) {
+        console.log(`[evaluateConsensus] ⚠️ No connected users`);
         return null;
+    }
     const votes = getVoteCounts(tableState);
+    // Log vote details
+    const voteEntries = Array.from(votes.entries())
+        .map(([userId, count]) => {
+        const participant = tableState.participants.get(userId);
+        return `${participant?.displayName ?? userId}: ${count} vote(s)`;
+    })
+        .join(", ");
+    console.log(`[evaluateConsensus] 📊 Votes: ${voteEntries || "(no votes)"}`);
     // Find candidate with unanimous vote
     for (const [candidate, count] of votes.entries()) {
         if (count === connected.length) {
+            const winner = tableState.participants.get(candidate);
+            console.log(`[evaluateConsensus] ✅ CONSENSUS! ${winner?.displayName} (${count}/${connected.length})`);
             return candidate; // Unanimous
         }
     }
+    console.log(`[evaluateConsensus] ❌ No consensus (need ${connected.length} votes)`);
     return null; // No consensus
 }
 /**

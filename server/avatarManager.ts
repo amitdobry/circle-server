@@ -35,21 +35,25 @@ function getAvatarAssignments(roomId: string): Map<string, string> {
 export function getAvailableAvatars(roomId: string = "default-room") {
   const assignments = getAvatarAssignments(roomId);
 
+  // ✅ FIX: Build combined view WITHOUT mutating V1 assignments
+  // Create a temporary combined map (V1 + V2 ghosts)
+  const combinedAssignments = new Map(assignments);
+
   // Also check V2 ghost participants to keep their avatars locked
   try {
     const { roomRegistry } = require("./engine-v2/registry/RoomRegistry");
     const roomState = roomRegistry.getRoom(roomId);
 
     if (roomState && roomState.participants) {
-      // Add ghost participants' avatars to the taken list
+      // Add ghost participants' avatars to the TEMPORARY combined view
       for (const [, participant] of roomState.participants as Map<
         string,
         any
       >) {
         if (participant.presence === "GHOST" && participant.avatarId) {
           // Only add if not already assigned (avoid duplicates)
-          if (!assignments.has(participant.avatarId)) {
-            assignments.set(participant.avatarId, participant.displayName);
+          if (!combinedAssignments.has(participant.avatarId)) {
+            combinedAssignments.set(participant.avatarId, participant.displayName);
           }
         }
       }
@@ -60,7 +64,7 @@ export function getAvailableAvatars(roomId: string = "default-room") {
 
   return avatarPool.map((avatar) => ({
     ...avatar,
-    takenBy: assignments.get(avatar.id) || null,
+    takenBy: combinedAssignments.get(avatar.id) || null,
   }));
 }
 
