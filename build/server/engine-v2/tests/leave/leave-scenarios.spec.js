@@ -514,7 +514,9 @@ const ActionTypes = __importStar(require("../../actions/actionTypes"));
         h.dispatch(aliceP.socketId, { type: ActionTypes.LEAVE_SESSION });
         (0, globals_1.expect)(h.getParticipant("Alice")).toBeUndefined();
         // Second LEAVE (should be handled gracefully)
-        const effects = h.dispatch(aliceP.socketId, { type: ActionTypes.LEAVE_SESSION });
+        const effects = h.dispatch(aliceP.socketId, {
+            type: ActionTypes.LEAVE_SESSION,
+        });
         (0, globals_1.expect)(effects).toEqual([]); // No effects for non-existent user
         h.teardown();
     });

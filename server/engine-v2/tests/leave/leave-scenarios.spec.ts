@@ -92,9 +92,7 @@ describe("Basic LEAVE_SESSION Behavior", () => {
     });
 
     // Should log system message
-    const logEvent = effects.find(
-      (e) => e.type === "SYSTEM_LOG"
-    );
+    const logEvent = effects.find((e) => e.type === "SYSTEM_LOG");
     expect(logEvent).toBeDefined();
     if (logEvent && logEvent.type === "SYSTEM_LOG") {
       expect(logEvent.message).toContain("Alice");
@@ -161,7 +159,7 @@ describe("LEAVE_SESSION vs DISCONNECT Distinction", () => {
     h.dispatch(bobP.socketId!, { type: ActionTypes.LEAVE_SESSION });
     expect(h.getParticipant("Bob")).toBeUndefined();
     expect(h.state.participants.size).toBe(1); // Only Alice ghost remains
-    
+
     // Phase should be ENDING (all connected users gone)
     expect(h.phase).toBe("ENDING");
 
@@ -230,7 +228,7 @@ describe("LEAVE_SESSION vs DISCONNECT Distinction", () => {
     // Bob leaves → seat removed
     h.dispatch(bobP.socketId!, { type: ActionTypes.LEAVE_SESSION });
     expect(h.getParticipantById(bobUserId)).toBeUndefined();
-    
+
     // Phase should be ENDING (only ghost remains)
     expect(h.phase).toBe("ENDING");
 
@@ -283,7 +281,7 @@ describe("LEAVE_SESSION Clears Speaker", () => {
 
     // Find a non-speaker
     const nonSpeaker = Array.from(h.state.participants.values()).find(
-      (p) => p.userId !== speakerUserId
+      (p) => p.userId !== speakerUserId,
     )!;
 
     // Non-speaker leaves
@@ -636,7 +634,9 @@ describe("LEAVE_SESSION Edge Cases", () => {
     expect(h.getParticipant("Alice")).toBeUndefined();
 
     // Second LEAVE (should be handled gracefully)
-    const effects = h.dispatch(aliceP.socketId!, { type: ActionTypes.LEAVE_SESSION });
+    const effects = h.dispatch(aliceP.socketId!, {
+      type: ActionTypes.LEAVE_SESSION,
+    });
     expect(effects).toEqual([]); // No effects for non-existent user
 
     h.teardown();

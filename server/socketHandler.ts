@@ -1162,7 +1162,7 @@ export function setupSocketHandlers(io: Server) {
     socket.on("leave", ({ name }) => {
       const user = users.get(socket.id);
       const roomId = socket.data.roomId || socket.data.tableId;
-      
+
       if (user) {
         const sessionDuration = Math.floor(
           (new Date().getTime() - user.joinedAt.getTime()) / 1000,
