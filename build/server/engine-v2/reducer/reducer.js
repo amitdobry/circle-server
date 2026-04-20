@@ -176,6 +176,13 @@ function reducer(tableState, userId, action) {
                 tableState.phase = "ATTENTION_SELECTION";
                 tableState.syncPause = false;
             }
+            // Check if all remaining participants are ghosts
+            const connectedCount = Array.from(tableState.participants.values()).filter((p) => p.presence === "CONNECTED").length;
+            if (connectedCount === 0 && tableState.participants.size > 0) {
+                // All remaining users are ghosts → ENDING
+                tableState.phase = "ENDING";
+                console.log(`[V2 Reducer] ⚠️ All participants are ghosts → phase = ENDING`);
+            }
             console.log(`[V2 Reducer] ✅ ${leaverName} left | Remaining: ${tableState.participants.size}`);
             return [
                 {
@@ -362,8 +369,7 @@ function reducer(tableState, userId, action) {
                 });
             }
             // Check if we need to transition from ENDING back to active
-            const connectedCount = Array.from(tableState.participants.values())
-                .filter((p) => p.presence === "CONNECTED").length;
+            const connectedCount = Array.from(tableState.participants.values()).filter((p) => p.presence === "CONNECTED").length;
             if (tableState.phase === "ENDING" && connectedCount > 0) {
                 console.log(`[V2 Reducer] 🔄 Transitioning from ENDING → ATTENTION_SELECTION (${connectedCount} connected)`);
                 tableState.phase = "ATTENTION_SELECTION";

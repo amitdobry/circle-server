@@ -157,7 +157,7 @@ const ActionTypes = __importStar(require("../../actions/actionTypes"));
         (0, globals_1.expect)(h.getParticipant("Alice").socketId).toBe(newSocket);
         h.teardown();
     });
-    (0, globals_1.test)("live speaker reconnects — mic still held", () => {
+    (0, globals_1.test)("live speaker reconnects — mic released (fresh participation)", () => {
         const { h, speakerUserId } = (0, TestHarness_1.createSessionWithActiveSpeaker)(2);
         const speakerP = h.getParticipantById(speakerUserId);
         const speakerName = speakerP.displayName;
@@ -171,9 +171,9 @@ const ActionTypes = __importStar(require("../../actions/actionTypes"));
             type: ActionTypes.RECONNECT,
             payload: { displayName: speakerName },
         });
-        // Should still be live speaker
-        (0, globals_1.expect)(h.liveSpeaker).toBe(speakerUserId);
-        (0, globals_1.expect)(h.phase).toBe("LIVE_SPEAKER");
+        // Reconnect = fresh participation → mic released
+        (0, globals_1.expect)(h.liveSpeaker).toBeNull();
+        (0, globals_1.expect)(h.phase).toBe("ATTENTION_SELECTION");
         h.teardown();
     });
     (0, globals_1.test)("reconnect emits v2:reconnect-state event", () => {

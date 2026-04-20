@@ -1162,6 +1162,7 @@ export function setupSocketHandlers(io: Server) {
     socket.on("leave", ({ name }) => {
       const user = users.get(socket.id);
       const roomId = socket.data.roomId || socket.data.tableId;
+      
       if (user) {
         const sessionDuration = Math.floor(
           (new Date().getTime() - user.joinedAt.getTime()) / 1000,
@@ -1174,7 +1175,6 @@ export function setupSocketHandlers(io: Server) {
             "LEAVE",
           ),
         );
-        emitSystemLog(`👋 ${name} left manually`, roomId);
       } else {
         console.log(
           formatSessionLog(
@@ -1182,8 +1182,24 @@ export function setupSocketHandlers(io: Server) {
             "LEAVE",
           ),
         );
-        emitSystemLog(`👋 ${name} left manually`, roomId);
       }
+
+      // ✨ ENGINE V2: Dispatch LEAVE_SESSION with effects
+      try {
+        const userId = socket.data.userId || socket.id;
+        const action = mapLegacyToV2Action("leave", { name });
+        dispatchAndRun(roomId, userId, action, io);
+
+        // ✅ Broadcast updated user list
+        if (roomId) {
+          broadcastUserList(roomId);
+          broadcastAvatarState(roomId);
+        }
+      } catch (error) {
+        console.error("[V2] Failed on leave:", error);
+      }
+
+      // 📜 V1 fallback cleanup (for any V1 state)
       cleanupUser(socket);
     });
 

@@ -192,6 +192,19 @@ export function reducer(
         tableState.syncPause = false;
       }
 
+      // Check if all remaining participants are ghosts
+      const connectedCount = Array.from(tableState.participants.values()).filter(
+        (p) => p.presence === "CONNECTED"
+      ).length;
+
+      if (connectedCount === 0 && tableState.participants.size > 0) {
+        // All remaining users are ghosts → ENDING
+        tableState.phase = "ENDING";
+        console.log(
+          `[V2 Reducer] ⚠️ All participants are ghosts → phase = ENDING`
+        );
+      }
+
       console.log(
         `[V2 Reducer] ✅ ${leaverName} left | Remaining: ${tableState.participants.size}`,
       );

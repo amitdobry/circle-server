@@ -898,12 +898,25 @@ function setupSocketHandlers(io) {
             if (user) {
                 const sessionDuration = Math.floor((new Date().getTime() - user.joinedAt.getTime()) / 1000);
                 console.log(formatSessionLog(`👋 ${name} left manually (was in session ${Math.floor(sessionDuration / 60)}m${sessionDuration % 60}s)`, "LEAVE"));
-                emitSystemLog(`👋 ${name} left manually`, roomId);
             }
             else {
                 console.log(formatSessionLog(`👋 ${name} left manually (no session data)`, "LEAVE"));
-                emitSystemLog(`👋 ${name} left manually`, roomId);
             }
+            // ✨ ENGINE V2: Dispatch LEAVE_SESSION with effects
+            try {
+                const userId = socket.data.userId || socket.id;
+                const action = (0, actionMapper_1.mapLegacyToV2Action)("leave", { name });
+                (0, dispatch_1.dispatchAndRun)(roomId, userId, action, io);
+                // ✅ Broadcast updated user list
+                if (roomId) {
+                    broadcastUserList(roomId);
+                    broadcastAvatarState(roomId);
+                }
+            }
+            catch (error) {
+                console.error("[V2] Failed on leave:", error);
+            }
+            // 📜 V1 fallback cleanup (for any V1 state)
             cleanupUser(socket);
         });
         socket.on("disconnect", () => {
