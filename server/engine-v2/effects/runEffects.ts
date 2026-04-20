@@ -82,37 +82,66 @@ function scheduleDelayedAction(
   action: any,
   io: Server,
 ): void {
-  // Cancel existing delayed action for this room
-  cancelDelayedAction(roomId);
+  // For ghost-related actions, use composite key to allow multiple independent timers per room
+  const userId = action.payload?.userId;
+  const timerKey = userId ? `${roomId}:${userId}` : roomId;
+
+  // Cancel existing delayed action for this specific key (not the whole room)
+  cancelDelayedAction(timerKey);
 
   console.log(
-    `[DelayedAction] Scheduling ${action.type} in ${delayMs}ms for room ${roomId}`,
+    `[DelayedAction] Scheduling ${action.type} in ${delayMs}ms for ${timerKey}`,
   );
 
   const timer = setTimeout(() => {
-    console.log(
-      `[DelayedAction] 🕐 Executing ${action.type} for room ${roomId}`,
-    );
+    console.log(`[DelayedAction] 🕐 Executing ${action.type} for ${timerKey}`);
 
     // Dispatch the delayed action
-    const effects = dispatch(roomId, null, action);
+    const effects = dispatch(roomId, userId, action);
 
     // Run resulting effects
     runEffects(effects, io);
   }, delayMs);
 
-  delayedActionTimers.set(roomId, timer);
+  delayedActionTimers.set(timerKey, timer);
 }
 
 /**
- * Cancel a delayed action
+ * Cancel a delayed action by timer key (roomId or roomId:userId)
  */
-function cancelDelayedAction(roomId: string): void {
-  const timer = delayedActionTimers.get(roomId);
+function cancelDelayedAction(timerKey: string): void {
+  const timer = delayedActionTimers.get(timerKey);
   if (timer) {
     clearTimeout(timer);
-    delayedActionTimers.delete(roomId);
-    console.log(`[DelayedAction] Cancelled delayed action for room ${roomId}`);
+    delayedActionTimers.delete(timerKey);
+    console.log(`[DelayedAction] Cancelled delayed action: ${timerKey}`);
+  }
+}
+
+/**
+ * Cancel all delayed actions for a specific room
+ * Used during room cleanup to prevent orphaned timers
+ */
+function cancelAllDelayedActionsForRoom(roomId: string): void {
+  let cancelledCount = 0;
+
+  // Iterate all timer keys and cancel those belonging to this room
+  for (const [timerKey, timer] of delayedActionTimers.entries()) {
+    // Match both "roomId" and "roomId:userId" patterns
+    if (timerKey === roomId || timerKey.startsWith(`${roomId}:`)) {
+      clearTimeout(timer);
+      delayedActionTimers.delete(timerKey);
+      cancelledCount++;
+      console.log(
+        `[DelayedAction] Cancelled timer for room cleanup: ${timerKey}`,
+      );
+    }
+  }
+
+  if (cancelledCount > 0) {
+    console.log(
+      `[DelayedAction] Cancelled ${cancelledCount} delayed action(s) for room ${roomId}`,
+    );
   }
 }
 
@@ -211,11 +240,11 @@ function executeEffect(effect: Effect, io: Server): void {
       // Send phase + speaker state to a reconnecting user
       if (effect.userId && effect.snapshot) {
         io.to(effect.userId).emit("v2:full-state", effect.snapshot);
-        console.log(
-          `[runEffects] EMIT_FULL_STATE_TO_USER → ${effect.userId}`,
-        );
+        console.log(`[runEffects] EMIT_FULL_STATE_TO_USER → ${effect.userId}`);
       } else {
-        console.warn("[runEffects] EMIT_FULL_STATE_TO_USER: missing userId or snapshot");
+        console.warn(
+          "[runEffects] EMIT_FULL_STATE_TO_USER: missing userId or snapshot",
+        );
       }
       break;
     }
@@ -224,11 +253,11 @@ function executeEffect(effect: Effect, io: Server): void {
       // Send a pre-built panel config to a specific user
       if (effect.userId && effect.config) {
         io.to(effect.userId).emit("receive:panelConfig", effect.config);
-        console.log(
-          `[runEffects] EMIT_PANEL_CONFIG → ${effect.userId}`,
-        );
+        console.log(`[runEffects] EMIT_PANEL_CONFIG → ${effect.userId}`);
       } else {
-        console.warn("[runEffects] EMIT_PANEL_CONFIG: missing userId or config");
+        console.warn(
+          "[runEffects] EMIT_PANEL_CONFIG: missing userId or config",
+        );
       }
       break;
     }
@@ -324,7 +353,7 @@ function executeEffect(effect: Effect, io: Server): void {
 
       // Clear all timers for this room
       cancelSessionTimer(effect.roomId);
-      cancelDelayedAction(effect.roomId);
+      cancelAllDelayedActionsForRoom(effect.roomId); // Cancel ALL delayed actions (ghosts, etc.)
       cancelCleanup(effect.roomId);
 
       console.log(
@@ -352,12 +381,11 @@ function executeEffect(effect: Effect, io: Server): void {
           Array.from((tableState.pointerMap as Map<string, string>).entries())
             .map(([k, v]) => `${k}→${v}`)
             .join(", ") || "(empty)";
-        const connected = Array.from(
-          (tableState.participants as Map<string, any>).values(),
-        )
-          .filter((p) => p.presence === "CONNECTED")
-          .map((p) => p.displayName)
-          .join(", ") || "(none)";
+        const connected =
+          Array.from((tableState.participants as Map<string, any>).values())
+            .filter((p) => p.presence === "CONNECTED")
+            .map((p) => p.displayName)
+            .join(", ") || "(none)";
         console.log(
           `[PANEL-SNAPSHOT][V2] room=${effect.roomId} phase=${tableState.phase} liveSpeaker=${
             tableState.liveSpeaker ?? "none"
@@ -383,8 +411,12 @@ function executeEffect(effect: Effect, io: Server): void {
 
         // ✅ Emit panel configs to all connected users
         let emitCount = 0;
-        for (const [, participant] of tableState.participants as Map<string, any>) {
-          if (participant.presence !== "CONNECTED" || !participant.socketId) continue;
+        for (const [, participant] of tableState.participants as Map<
+          string,
+          any
+        >) {
+          if (participant.presence !== "CONNECTED" || !participant.socketId)
+            continue;
           try {
             const config = getPanelConfigFor(participant.displayName);
             io.to(participant.socketId).emit("receive:panelConfig", config);

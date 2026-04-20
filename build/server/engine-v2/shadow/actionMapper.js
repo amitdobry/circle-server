@@ -141,10 +141,17 @@ function mapLegacyToV2Action(legacyEvent, legacyPayload) {
                     durationMinutes: legacyPayload.durationMinutes || 60,
                 },
             };
+        case ActionTypes.RECONNECT:
+            return {
+                type: actionType,
+                payload: {
+                    displayName: legacyPayload.displayName,
+                    socketId: legacyPayload.socketId,
+                },
+            };
         // Actions with no payload
         case ActionTypes.LEAVE_SESSION:
         case ActionTypes.DISCONNECT:
-        case ActionTypes.RECONNECT:
         case ActionTypes.DROP_MIC:
         case ActionTypes.ACCEPT_MIC:
         case ActionTypes.DECLINE_MIC:

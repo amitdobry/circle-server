@@ -85,7 +85,7 @@ export function mapLegacyToV2Action(
       return {
         type: actionType,
         payload: {
-          from: legacyPayload.from,  // display name of pointer
+          from: legacyPayload.from, // display name of pointer
           targetUserId: legacyPayload.to, // display name of target
         },
       };
@@ -124,10 +124,18 @@ export function mapLegacyToV2Action(
         },
       };
 
+    case ActionTypes.RECONNECT:
+      return {
+        type: actionType,
+        payload: {
+          displayName: legacyPayload.displayName,
+          socketId: legacyPayload.socketId,
+        },
+      };
+
     // Actions with no payload
     case ActionTypes.LEAVE_SESSION:
     case ActionTypes.DISCONNECT:
-    case ActionTypes.RECONNECT:
     case ActionTypes.DROP_MIC:
     case ActionTypes.ACCEPT_MIC:
     case ActionTypes.DECLINE_MIC:

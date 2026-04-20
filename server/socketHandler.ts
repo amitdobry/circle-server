@@ -65,13 +65,23 @@ const lastPanelRequest = new Map<string, number>(); // userName -> timestamp
 // Socket.IO server instance (set in setupSocketHandlers)
 let ioInstance: Server | null = null;
 
-// Session timer state - Single source of truth
-let sessionActive = false;
-let sessionTimer: NodeJS.Timeout | null = null;
-let sessionStartTime: Date | null = null;
-let sessionDurationMinutes: number = 60; // Default to 60 minutes
-let timerBroadcastInterval: NodeJS.Timeout | null = null;
-let sessionId: string | null = null; // Unique session identifier
+// ============================================================================
+// ❌ DEPRECATED GLOBAL SESSION STATE (Replaced by Engine V2 per-room sessions)
+// ============================================================================
+// These variables are no longer used. Session state is now managed per-room by:
+// - Engine V2 TableState.timer (per-room timer state)
+// - Engine V2 TableState.phase (session phase)
+// - Engine V2 TableState.sessionId (unique session ID per room)
+//
+// Left here temporarily for compatibility with legacy code. Will be removed soon.
+// ============================================================================
+
+// let sessionActive = false;
+// let sessionTimer: NodeJS.Timeout | null = null;
+// let sessionStartTime: Date | null = null;
+// let sessionDurationMinutes: number = 60; // Default to 60 minutes
+// let timerBroadcastInterval: NodeJS.Timeout | null = null;
+// let sessionId: string | null = null; // Unique session identifier
 
 // Session utilities
 function getSimpleSessionStats() {
@@ -197,7 +207,7 @@ export function setLiveSpeaker(
 }
 
 // ============================================================================
-// SESSION STATS
+// SESSION STATS (✅ Updated for Engine V2 per-room sessions)
 // ============================================================================
 
 export function getSessionStats() {
@@ -211,17 +221,34 @@ export function getSessionStats() {
     lastActivity: u.lastActivity,
   }));
 
+  // ✅ Get active rooms from Engine V2
+  let activeRoomsCount = 0;
+  try {
+    const { roomRegistry } = require("./engine-v2/registry/RoomRegistry");
+    const allRooms = roomRegistry.getAllRooms();
+    activeRoomsCount = Array.from(allRooms.values()).filter(
+      (room: any) => room.phase !== "LOBBY" && room.phase !== "ENDED",
+    ).length;
+  } catch (error) {
+    // Non-fatal
+  }
+
   return {
     userCount,
     activeUsers,
-    sessionActive,
+    sessionActive: activeRoomsCount > 0, // For backward compatibility
+    activeRoomsCount,
   };
 }
 
 // ============================================================================
-// SESSION RESET
+// ❌ DEPRECATED SESSION RESET/STATE (Replaced by Engine V2)
+// ============================================================================
+// These functions are no longer used. Session state is managed by Engine V2.
+// Use RoomRegistry to query/reset room state instead.
 // ============================================================================
 
+/*
 // Debug function to reset session state
 export function resetSessionState() {
   sessionActive = false;
@@ -268,6 +295,68 @@ export function getSessionState() {
     hasTimer: !!sessionTimer,
     hasBroadcast: !!timerBroadcastInterval,
   };
+}
+*/
+
+// ✅ NEW: Engine V2 compatible reset function
+export function resetSessionState() {
+  console.log("🔄 Resetting all session state (Engine V2)");
+
+  // Clean up all users
+  for (const [socketId, user] of users.entries()) {
+    console.log(`🔓 Releasing avatar ${user.avatarId} for user ${user.name}`);
+    releaseAvatarByName(user.name);
+    removeUserFromBL(socketId);
+  }
+  users.clear();
+
+  // Reset all rooms in Engine V2
+  try {
+    const { roomRegistry } = require("./engine-v2/registry/RoomRegistry");
+    const allRooms = roomRegistry.getAllRooms();
+    for (const [roomId] of allRooms) {
+      roomRegistry.destroyRoom(roomId);
+      console.log(`🔄 Room ${roomId} reset`);
+    }
+  } catch (error) {
+    console.error("[V2] Failed to reset rooms:", error);
+  }
+
+  console.log("✅ Session state reset complete");
+}
+
+// ✅ NEW: Engine V2 compatible state getter
+export function getSessionState() {
+  try {
+    const { roomRegistry } = require("./engine-v2/registry/RoomRegistry");
+    const allRooms = roomRegistry.getAllRooms();
+    const roomEntries = Array.from(allRooms.entries());
+    const rooms = roomEntries.map((entry: any) => {
+      const [roomId, room] = entry;
+      return {
+        roomId,
+        sessionId: room.sessionId,
+        phase: room.phase,
+        participantCount: room.participants.size,
+        timerActive: room.timer.active,
+        timerStartTime: room.timer.startTime,
+        timerDurationMs: room.timer.durationMs,
+      };
+    });
+
+    return {
+      userCount: users.size,
+      roomCount: rooms.length,
+      rooms,
+    };
+  } catch (error) {
+    return {
+      userCount: users.size,
+      roomCount: 0,
+      rooms: [],
+      error: "Failed to query Engine V2 state",
+    };
+  }
 }
 
 export function getUsers(roomId?: string) {
@@ -320,6 +409,18 @@ export function globalBroadcastAvatarState(io: Server) {
   io.emit("avatars", getAvailableAvatars());
 }
 
+// ============================================================================
+// ❌ DEPRECATED SESSION FUNCTIONS (Replaced by Engine V2)
+// ============================================================================
+// These functions are no longer used. Session management is now handled by:
+// - Engine V2 reducer (state transitions)
+// - Engine V2 effects (timer management)
+// - Per-room session isolation (not global)
+//
+// Left here for reference only. Will be removed in future cleanup.
+// ============================================================================
+
+/*
 // Session start function with configurable duration
 function startSessionWithDuration(io: Server, durationMinutes: number = 60) {
   if (sessionActive) {
@@ -472,6 +573,7 @@ function startTimerBroadcast(io: Server) {
     }
   }, 1000);
 }
+*/
 
 export function setupSocketHandlers(io: Server) {
   // Store io instance for module-level functions (Phase E multi-table)
@@ -521,10 +623,13 @@ export function setupSocketHandlers(io: Server) {
       }
     }
 
-    socket.on("request-join", ({ name, avatarId, tableId }) => {
+    socket.on("request-join", ({ userId, name, avatarId, tableId }) => {
+      // Use client-provided userId (stable UUID) or fallback to socket.id for legacy clients
+      const effectiveUserId = userId || socket.id;
+
       console.log(
         formatSessionLog(
-          `📨 Join request: ${name} as ${avatarId} → table: ${tableId || "default-room"} (${socket.id})`,
+          `📨 Join request: ${name} as ${avatarId} → table: ${tableId || "default-room"} (socket: ${socket.id}, userId: ${effectiveUserId})`,
           "INFO",
         ),
       );
@@ -543,12 +648,13 @@ export function setupSocketHandlers(io: Server) {
         return;
       }
 
-      // Store tableId in socket data for room resolution
+      // Store user data in socket for disconnect handling and V2
       const resolvedTableId = tableId || "default-room";
       socket.data.roomId = resolvedTableId;
       socket.data.tableId = resolvedTableId;
       socket.data.userName = name; // Phase E: Store for disconnect logging
       socket.data.avatarId = avatarId; // Phase E: Store for disconnect logging
+      socket.data.userId = effectiveUserId; // Ghost Mode: Store stable userId
       console.log(
         formatSessionLog(
           `📌 Assigned socket to table: ${resolvedTableId}`,
@@ -583,7 +689,7 @@ export function setupSocketHandlers(io: Server) {
         return;
       }
 
-      // Phase E: Check for duplicate name WITHIN THIS ROOM
+      // Phase E: Check for duplicate name WITHIN THIS ROOM (V1 + V2 ghosts)
       const roomUsersMap = getUsers(resolvedTableId);
       console.log(
         `🔍 [NAME CHECK] Checking name "${name}" in room "${resolvedTableId}"`,
@@ -592,9 +698,37 @@ export function setupSocketHandlers(io: Server) {
         `🔍 [NAME CHECK] Found ${roomUsersMap.size} users in this room:`,
         Array.from(roomUsersMap.values()).map((u) => u.name),
       );
-      const nameAlreadyTaken = Array.from(roomUsersMap.values()).some(
+
+      let nameAlreadyTaken = Array.from(roomUsersMap.values()).some(
         (user) => user.name.toLowerCase() === name.toLowerCase(),
       );
+
+      // Also check V2 ghost participants (keep their names locked)
+      if (!nameAlreadyTaken) {
+        try {
+          const { roomRegistry } = require("./engine-v2/registry/RoomRegistry");
+          const roomState = roomRegistry.getRoom(resolvedTableId);
+          if (roomState && roomState.participants) {
+            for (const [, participant] of roomState.participants as Map<
+              string,
+              any
+            >) {
+              if (
+                participant.presence === "GHOST" &&
+                participant.displayName.toLowerCase() === name.toLowerCase()
+              ) {
+                nameAlreadyTaken = true;
+                console.log(
+                  `🔍 [NAME CHECK] Name "${name}" is taken by a GHOST user`,
+                );
+                break;
+              }
+            }
+          }
+        } catch (error) {
+          // V2 not available, continue with V1 only
+        }
+      }
 
       if (nameAlreadyTaken) {
         console.log(
@@ -662,73 +796,90 @@ export function setupSocketHandlers(io: Server) {
 
       // Give client time to set up event listeners, then check for session picker
       setTimeout(() => {
-        // Critical: Show session picker to first user if no session is active
-        const isFirstUser = users.size === 1;
-        const noActiveSession = !sessionActive;
+        // ✅ Check room-specific session state (not global)
+        try {
+          const { roomRegistry } = require("./engine-v2/registry/RoomRegistry");
+          const roomState = roomRegistry.getOrCreateRoom(resolvedTableId);
 
-        console.log(`🔍 Session check for ${name} (after delay):`);
-        console.log(
-          `  - isFirstUser: ${isFirstUser} (users.size: ${users.size})`,
-        );
-        console.log(
-          `  - noActiveSession: ${noActiveSession} (sessionActive: ${sessionActive})`,
-        );
-        console.log(`  - sessionId: ${sessionId || "none"}`);
-        console.log(`  - socket.connected: ${socket.connected}`);
-
-        if (isFirstUser && noActiveSession) {
-          console.log(`🎯 TRIGGERING session picker for first user: ${name}`);
-
-          // Send session picker to this specific user
-          socket.emit("show-session-picker", {
-            message: "As the first user, please choose the session length.",
-            options: [60, 30, 15, 5], // Available durations in minutes
-            allowCustom: true, // Allow free pick
-            isFirstUser: true,
-            timestamp: new Date().toISOString(),
+          // Count users in THIS ROOM only
+          const roomUsers = Array.from(users.values()).filter((u) => {
+            const userSocket = io.sockets.sockets.get(
+              Array.from(users.entries()).find(([, val]) => val === u)?.[0] ||
+                "",
+            );
+            return userSocket?.data?.roomId === resolvedTableId;
           });
+          const isFirstUserInRoom = roomUsers.length === 1;
+          const noActiveSession = roomState.phase === "LOBBY";
 
           console.log(
-            `📤 Session picker sent to ${name} (socket: ${socket.id})`,
+            `🔍 Session check for ${name} in room ${resolvedTableId} (after delay):`,
           );
+          console.log(
+            `  - isFirstUserInRoom: ${isFirstUserInRoom} (room users: ${roomUsers.length})`,
+          );
+          console.log(
+            `  - noActiveSession: ${noActiveSession} (phase: ${roomState.phase})`,
+          );
+          console.log(`  - sessionId: ${roomState.sessionId}`);
+          console.log(`  - socket.connected: ${socket.connected}`);
 
-          // Also emit to all sockets as a fallback
-          io.emit("debug-session-picker-status", {
-            target: name,
-            triggered: true,
-            reason: "First user joined, no active session",
-          });
-        } else {
-          console.log(`🚫 Session picker NOT shown for ${name}:`);
-          if (!isFirstUser)
+          if (isFirstUserInRoom && noActiveSession) {
             console.log(
-              `  - Reason: Not first user (${users.size} users total)`,
-            );
-          if (!noActiveSession)
-            console.log(
-              `  - Reason: Session already active (ID: ${sessionId})`,
+              `🎯 TRIGGERING session picker for first user in room ${resolvedTableId}: ${name}`,
             );
 
-          // Emit debug info
-          io.emit("debug-session-picker-status", {
-            target: name,
-            triggered: false,
-            reason: !isFirstUser
-              ? `Not first user (${users.size} total)`
-              : `Session already active (${sessionId})`,
-          });
+            // Send session picker to this specific user
+            socket.emit("show-session-picker", {
+              message: "As the first user, please choose the session length.",
+              options: [60, 30, 15, 5], // Available durations in minutes
+              allowCustom: true, // Allow free pick
+              isFirstUser: true,
+              timestamp: new Date().toISOString(),
+            });
+
+            console.log(
+              `📤 Session picker sent to ${name} (socket: ${socket.id})`,
+            );
+
+            // Also emit to room as a fallback
+            io.to(resolvedTableId).emit("debug-session-picker-status", {
+              target: name,
+              triggered: true,
+              reason: "First user joined room, no active session",
+            });
+          } else {
+            console.log(`🚫 Session picker NOT shown for ${name}:`);
+            if (!isFirstUserInRoom)
+              console.log(
+                `  - Reason: Not first user in room (${roomUsers.length} users in ${resolvedTableId})`,
+              );
+            if (!noActiveSession)
+              console.log(
+                `  - Reason: Session already active in room (ID: ${roomState.sessionId})`,
+              );
+
+            // Emit debug info to room
+            io.to(resolvedTableId).emit("debug-session-picker-status", {
+              target: name,
+              triggered: false,
+              reason: !isFirstUserInRoom
+                ? `Not first user in room (${roomUsers.length} total)`
+                : `Session already active (${roomState.sessionId})`,
+            });
+          }
+        } catch (error) {
+          console.error(
+            "[V2] Failed to check session state for picker:",
+            error,
+          );
         }
       }, 500); // 500ms delay to ensure client is ready
 
-      broadcastUserList(resolvedTableId); // Pass roomId
-      broadcastAvatarState(resolvedTableId); // Phase E: Room-scoped avatar broadcast
-      sendInitialPointerMap(socket, resolvedTableId); // Pass roomId
-      sendCurrentLiveSpeaker(socket, resolvedTableId); // Pass roomId
-
-      // ✨ ENGINE V2: Dispatch with effects
+      // ✨ ENGINE V2: Dispatch with effects FIRST
       try {
         const roomId = extractRoomId(socket, { name, avatarId });
-        const userId = socket.id; // Use socketId consistently
+        const userId = effectiveUserId; // Use stable userId from client or socket.id
         const action = mapLegacyToV2Action("request-join", {
           name,
           avatarId,
@@ -742,9 +893,157 @@ export function setupSocketHandlers(io: Server) {
       } catch (error) {
         console.error("[V2] Failed on request-join:", error);
       }
+
+      // ✅ Now broadcast AFTER V2 is updated
+      broadcastUserList(resolvedTableId); // Pass roomId
+      broadcastAvatarState(resolvedTableId); // Phase E: Room-scoped avatar broadcast
+      sendInitialPointerMap(socket, resolvedTableId); // Pass roomId
+      sendCurrentLiveSpeaker(socket, resolvedTableId); // Pass roomId
     });
 
-    // Handle session start request from first user
+    // 🔄 Handle Ghost Mode reconnection
+    socket.on("request-reconnect", ({ userId, tableId }) => {
+      console.log(
+        formatSessionLog(
+          `🔄 Reconnect request: userId=${userId}, table=${tableId} (socket: ${socket.id})`,
+          "INFO",
+        ),
+      );
+
+      if (!userId || !tableId) {
+        socket.emit("reconnect-failed", {
+          reason: "Missing userId or tableId",
+        });
+        return;
+      }
+
+      try {
+        const { roomRegistry } = require("./engine-v2/registry/RoomRegistry");
+        const roomState = roomRegistry.getRoom(tableId);
+
+        if (!roomState) {
+          console.log(
+            formatSessionLog(
+              `🚫 Reconnect failed: Room ${tableId} not found`,
+              "ERROR",
+            ),
+          );
+          socket.emit("reconnect-failed", {
+            reason: "Table not found or session expired",
+          });
+          return;
+        }
+
+        const participant = roomState.participants.get(userId);
+
+        if (!participant) {
+          console.log(
+            formatSessionLog(
+              `🚫 Reconnect failed: User ${userId} not found in room ${tableId}`,
+              "ERROR",
+            ),
+          );
+          socket.emit("reconnect-failed", {
+            reason: "Session expired. Please join again.",
+          });
+          return;
+        }
+
+        if (participant.presence !== "GHOST") {
+          console.log(
+            formatSessionLog(
+              `🚫 Reconnect failed: User ${userId} is ${participant.presence}, not GHOST`,
+              "ERROR",
+            ),
+          );
+          socket.emit("reconnect-failed", {
+            reason: "Already connected from another tab",
+          });
+          return;
+        }
+
+        // ✅ Use V2 reducer to handle reconnection (no direct mutation!)
+        const reconnectAction = mapLegacyToV2Action("reconnect", {
+          displayName: participant.displayName,
+          socketId: socket.id,
+        });
+
+        dispatchAndRun(tableId, userId, reconnectAction, io);
+
+        // Update socket data
+        socket.data.userId = userId;
+        socket.data.roomId = tableId;
+        socket.data.tableId = tableId;
+        socket.data.userName = participant.displayName;
+        socket.data.avatarId = participant.avatarId;
+
+        // Join socket room
+        socket.join(tableId);
+
+        // Update V1 state for backward compatibility
+        users.set(socket.id, {
+          name: participant.displayName,
+          avatarId: participant.avatarId,
+          state: "regular",
+          interruptedBy: "",
+          joinedAt: new Date(),
+          lastActivity: new Date(),
+        });
+
+        console.log(
+          formatSessionLog(
+            `✅ Reconnect successful: ${participant.displayName} (${userId}) back in ${tableId}`,
+            "INFO",
+          ),
+        );
+
+        // Re-fetch room state after dispatch (reducer updated it)
+        const updatedRoomState = roomRegistry.getRoom(tableId);
+
+        // Send success with snapshot
+        socket.emit("reconnect-success", {
+          roomId: tableId,
+          tableId: tableId,
+          phase: updatedRoomState.phase,
+          me: {
+            userId,
+            displayName: participant.displayName,
+            avatarId: participant.avatarId,
+            presence: "CONNECTED",
+          },
+          participants: (
+            Array.from(updatedRoomState.participants.entries()) as Array<
+              [string, any]
+            >
+          ).map(([id, p]) => ({
+            userId: id,
+            displayName: p.displayName,
+            avatarId: p.avatarId,
+            presence: p.presence,
+          })),
+          liveSpeakerUserId: roomState.liveSpeaker,
+        });
+
+        // Broadcast updates
+        broadcastUserList(tableId);
+        broadcastAvatarState(tableId);
+        sendCurrentLiveSpeaker(socket, tableId);
+        sendInitialPointerMap(socket, tableId);
+
+        // Rebuild panels for everyone
+        const { rebuildAllPanels } = require("./panelConfigService");
+        rebuildAllPanels(tableId);
+
+        emitSystemLog(`🔄 ${participant.displayName} reconnected`, tableId);
+      } catch (error) {
+        console.error("[V2] Failed on reconnect:", error);
+        socket.emit("reconnect-failed", {
+          reason: "Server error during reconnection",
+        });
+      }
+    });
+
+    // Handle session start request from first user (✅ Engine V2 per-room sessions)
     socket.on("start-session", ({ durationMinutes }) => {
       const user = users.get(socket.id);
       if (!user) {
@@ -754,45 +1053,45 @@ export function setupSocketHandlers(io: Server) {
         return;
       }
 
-      // Only allow first user to start session when no session is active
-      if (users.size >= 1 && !sessionActive) {
-        if (!durationMinutes || durationMinutes <= 0 || durationMinutes > 120) {
+      // Validate duration
+      if (!durationMinutes || durationMinutes <= 0 || durationMinutes > 120) {
+        socket.emit("session-start-rejected", {
+          reason: "Invalid duration. Please choose between 1-120 minutes.",
+        });
+        return;
+      }
+
+      // ✅ Get room ID from socket data
+      const roomId =
+        socket.data.roomId || socket.data.tableId || "default-room";
+
+      // ✅ Check if session is already active in THIS ROOM (not global)
+      try {
+        const { roomRegistry } = require("./engine-v2/registry/RoomRegistry");
+        const roomState = roomRegistry.getOrCreateRoom(roomId);
+
+        // Check if session already active in this room
+        if (roomState.phase !== "LOBBY") {
           socket.emit("session-start-rejected", {
-            reason: "Invalid duration. Please choose between 1-120 minutes.",
+            reason: "Session already active in this table",
           });
           return;
         }
 
         console.log(
-          `🎯 ${user.name} started ${durationMinutes}-minute session`,
+          `🎯 ${user.name} started ${durationMinutes}-minute session in room ${roomId}`,
         );
-        startSessionWithDuration(io, durationMinutes);
 
-        // Notify all users that session has started
-        io.emit("session-started", {
+        // ✅ Dispatch to Engine V2 (this handles everything)
+        const userId = socket.data.userId || socket.id; // Use stored userId
+        const action = mapLegacyToV2Action("start-session", {
           durationMinutes,
-          startedBy: user.name,
-          message: `${user.name} started a ${durationMinutes}-minute session`,
         });
-
-        // ✨ ENGINE V2: Dispatch with effects
-        try {
-          const roomId = extractRoomId(socket, { durationMinutes });
-          const userId = socket.id; // Use socketId consistently
-          const action = mapLegacyToV2Action("start-session", {
-            durationMinutes,
-          });
-          dispatchAndRun(roomId, userId, action, io);
-        } catch (error) {
-          console.error("[V2] Failed on start-session:", error);
-        }
-      } else if (sessionActive) {
+        dispatchAndRun(roomId, userId, action, io);
+      } catch (error) {
+        console.error("[V2] Failed on start-session:", error);
         socket.emit("session-start-rejected", {
-          reason: "Session already active",
-        });
-      } else {
-        socket.emit("session-start-rejected", {
-          reason: "Not authorized to start session",
+          reason: "Internal error starting session",
         });
       }
     });
@@ -907,9 +1206,15 @@ export function setupSocketHandlers(io: Server) {
       // ✨ ENGINE V2: Dispatch with effects
       try {
         const roomId = extractRoomId(socket, {});
-        const userId = socket.id; // Use socketId consistently
+        const userId = socket.data.userId || socket.id; // Use stored userId or fallback to socket.id
         const action = mapLegacyToV2Action("disconnect", {});
         dispatchAndRun(roomId, userId, action, io);
+
+        // ✅ Broadcast updated user list (includes ghosts)
+        if (roomId) {
+          broadcastUserList(roomId);
+          broadcastAvatarState(roomId);
+        }
       } catch (error) {
         console.error("[V2] Failed on disconnect:", error);
       }
@@ -943,7 +1248,7 @@ export function setupSocketHandlers(io: Server) {
       // ✨ ENGINE V2: Dispatch with effects
       try {
         const roomId = extractRoomId(socket, { from, to });
-        const userId = socket.id; // Use socketId consistently
+        const userId = socket.data.userId || socket.id; // Use stored userId
         const action = mapLegacyToV2Action("pointing", { from, to });
         dispatchAndRun(roomId, userId, action, io);
       } catch (error) {
@@ -1228,19 +1533,42 @@ export function setupSocketHandlers(io: Server) {
         },
       ).length;
 
-      // Phase E: Only end global session if ALL rooms are empty, not just this one
-      if (roomUserCount === 0 && sessionActive) {
-        console.log(`🔄 All users left room ${userRoomId}`);
+      // ✅ Phase E: End session for THIS ROOM ONLY if last user left
+      if (roomUserCount === 0) {
+        console.log(`🔄 Last user left room ${userRoomId}`);
 
-        // Check if there are users in ANY other room
-        const totalUsers = users.size;
-        if (totalUsers === 0) {
-          console.log(`🔄 No users left in ANY room - ending global session`);
-          endSession(io);
-        } else {
-          console.log(
-            `ℹ️ ${totalUsers} users still in other rooms - global session continues`,
-          );
+        try {
+          const { roomRegistry } = require("./engine-v2/registry/RoomRegistry");
+          const roomState = roomRegistry.getRoom(userRoomId);
+
+          // Only end session if one was active in this room
+          if (
+            roomState &&
+            roomState.phase !== "LOBBY" &&
+            roomState.phase !== "ENDED"
+          ) {
+            console.log(
+              `🔄 Ending session for room ${userRoomId} (all users left)`,
+            );
+
+            // ✅ Dispatch END_SESSION for THIS ROOM ONLY
+            const { ActionTypes } = require("./engine-v2/actions/actionTypes");
+            dispatchAndRun(
+              userRoomId,
+              null,
+              {
+                type: ActionTypes.END_SESSION,
+                payload: { reason: "all-users-left" },
+              },
+              io,
+            );
+          } else {
+            console.log(
+              `ℹ️ Room ${userRoomId} empty but no active session to end`,
+            );
+          }
+        } catch (error) {
+          console.error("[V2] Failed to end session for empty room:", error);
         }
       }
 
@@ -1250,27 +1578,53 @@ export function setupSocketHandlers(io: Server) {
 
     function broadcastUserList(roomId?: string) {
       if (roomId) {
-        // Room-specific broadcast (Phase E multi-table)
-        console.log(`\n🔍 [broadcastUserList] Filtering for room: ${roomId}`);
-        console.log(`   Total users in system: ${users.size}`);
-
-        const roomUsers = Array.from(users.entries())
-          .filter(([socketId, user]) => {
-            const userSocket = io.sockets.sockets.get(socketId);
-            const userRoomId = userSocket?.data?.roomId;
-            const matches = userRoomId === roomId;
-            console.log(
-              `   - ${user.name} (${socketId}): roomId=${userRoomId}, matches=${matches}`,
-            );
-            return matches;
-          })
-          .map(([_, user]) => user);
-
+        // Room-specific broadcast - use V2 participants (includes ghosts)
         console.log(
-          `   ✅ Broadcasting ${roomUsers.length} users to room ${roomId}`,
+          `\n🔍 [broadcastUserList] Fetching from V2 for room: ${roomId}`,
         );
-        console.log(`   Users: ${roomUsers.map((u) => u.name).join(", ")}\n`);
-        io.to(roomId).emit("user-list", roomUsers);
+
+        const { roomRegistry } = require("./engine-v2/registry/RoomRegistry");
+        const roomState = roomRegistry.getRoom(roomId);
+
+        if (roomState && roomState.participants.size > 0) {
+          // Build user list from V2 participants (includes CONNECTED + GHOST)
+          const roomUsers = Array.from(roomState.participants.values()).map(
+            (participant: any) => ({
+              name: participant.displayName,
+              avatarId: participant.avatarId, // ✅ Keep original avatar, UI derives ghost appearance from presence
+              state: participant.presence === "GHOST" ? "ghost" : "regular",
+              presence: participant.presence, // UI uses this to show ghost avatar
+              interruptedBy: "",
+              joinedAt: new Date(participant.lastSeen || Date.now()),
+              lastActivity: new Date(participant.lastSeen || Date.now()),
+            }),
+          );
+
+          console.log(
+            `   ✅ Broadcasting ${roomUsers.length} users (V2) to room ${roomId}`,
+          );
+          console.log(
+            `   Users: ${roomUsers.map((u) => `${u.name}${u.presence === "GHOST" ? "👻" : ""}`).join(", ")}\n`,
+          );
+          io.to(roomId).emit("user-list", roomUsers);
+        } else {
+          // Fallback to V1 if no V2 state
+          console.log(
+            `   ⚠️ No V2 state for room ${roomId}, using V1 fallback`,
+          );
+          const roomUsers = Array.from(users.entries())
+            .filter(([socketId, user]) => {
+              const userSocket = io.sockets.sockets.get(socketId);
+              const userRoomId = userSocket?.data?.roomId;
+              return userRoomId === roomId;
+            })
+            .map(([_, user]) => user);
+
+          console.log(
+            `   ✅ Broadcasting ${roomUsers.length} users (V1) to room ${roomId}`,
+          );
+          io.to(roomId).emit("user-list", roomUsers);
+        }
       } else {
         // Global broadcast (legacy)
         const list = Array.from(users.values());

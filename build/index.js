@@ -22,9 +22,18 @@ function writeToFile(level, args) {
     const line = `[${new Date().toISOString()}] [${level}] ${args.map(String).join(" ")}\n`;
     logFile.write(line);
 }
-console.log = (...args) => { origLog(...args); writeToFile("LOG", args); };
-console.error = (...args) => { origError(...args); writeToFile("ERR", args); };
-console.warn = (...args) => { origWarn(...args); writeToFile("WRN", args); };
+console.log = (...args) => {
+    origLog(...args);
+    writeToFile("LOG", args);
+};
+console.error = (...args) => {
+    origError(...args);
+    writeToFile("ERR", args);
+};
+console.warn = (...args) => {
+    origWarn(...args);
+    writeToFile("WRN", args);
+};
 // ============================================================
 // Debug environment variables
 console.log("🔧 Environment check:");
@@ -95,24 +104,28 @@ app.get("/isAlive", (_req, res) => {
     </div>
   `);
 });
-// 📊 Session status route
+// 📊 Session status route (✅ Updated for Engine V2 per-room sessions)
 app.get("/api/session/status", (_req, res) => {
     const stats = (0, socketHandler_1.getSessionStats)();
     res.json({
         status: "active",
         buildTime,
         ...stats,
+        message: "Session stats now per-room. Use /api/rooms/active for room details.",
     });
 });
-// Session stats route (for timer updates)
+// Session stats route (for timer updates) - ✅ Updated for Engine V2
 app.get("/api/session/stats", (_req, res) => {
     const stats = (0, socketHandler_1.getSessionStats)();
     res.json(stats);
 });
-// Check if session is active
+// Check if session is active - ✅ Updated for Engine V2 (returns true if ANY room active)
 app.get("/api/session/active", (_req, res) => {
     const stats = (0, socketHandler_1.getSessionStats)();
-    res.json({ active: stats.sessionActive });
+    res.json({
+        active: stats.sessionActive,
+        activeRoomsCount: stats.activeRoomsCount,
+    });
 });
 // Get all active rooms (Engine V2 Registry)
 app.get("/api/rooms/active", (_req, res) => {

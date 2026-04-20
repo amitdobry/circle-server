@@ -62,27 +62,50 @@ function cancelSessionTimer(roomId) {
  * Schedule a delayed action dispatch
  */
 function scheduleDelayedAction(roomId, delayMs, action, io) {
-    // Cancel existing delayed action for this room
-    cancelDelayedAction(roomId);
-    console.log(`[DelayedAction] Scheduling ${action.type} in ${delayMs}ms for room ${roomId}`);
+    // For ghost-related actions, use composite key to allow multiple independent timers per room
+    const userId = action.payload?.userId;
+    const timerKey = userId ? `${roomId}:${userId}` : roomId;
+    // Cancel existing delayed action for this specific key (not the whole room)
+    cancelDelayedAction(timerKey);
+    console.log(`[DelayedAction] Scheduling ${action.type} in ${delayMs}ms for ${timerKey}`);
     const timer = setTimeout(() => {
-        console.log(`[DelayedAction] 🕐 Executing ${action.type} for room ${roomId}`);
+        console.log(`[DelayedAction] 🕐 Executing ${action.type} for ${timerKey}`);
         // Dispatch the delayed action
-        const effects = (0, dispatch_1.dispatch)(roomId, null, action);
+        const effects = (0, dispatch_1.dispatch)(roomId, userId, action);
         // Run resulting effects
         runEffects(effects, io);
     }, delayMs);
-    delayedActionTimers.set(roomId, timer);
+    delayedActionTimers.set(timerKey, timer);
 }
 /**
- * Cancel a delayed action
+ * Cancel a delayed action by timer key (roomId or roomId:userId)
  */
-function cancelDelayedAction(roomId) {
-    const timer = delayedActionTimers.get(roomId);
+function cancelDelayedAction(timerKey) {
+    const timer = delayedActionTimers.get(timerKey);
     if (timer) {
         clearTimeout(timer);
-        delayedActionTimers.delete(roomId);
-        console.log(`[DelayedAction] Cancelled delayed action for room ${roomId}`);
+        delayedActionTimers.delete(timerKey);
+        console.log(`[DelayedAction] Cancelled delayed action: ${timerKey}`);
+    }
+}
+/**
+ * Cancel all delayed actions for a specific room
+ * Used during room cleanup to prevent orphaned timers
+ */
+function cancelAllDelayedActionsForRoom(roomId) {
+    let cancelledCount = 0;
+    // Iterate all timer keys and cancel those belonging to this room
+    for (const [timerKey, timer] of delayedActionTimers.entries()) {
+        // Match both "roomId" and "roomId:userId" patterns
+        if (timerKey === roomId || timerKey.startsWith(`${roomId}:`)) {
+            clearTimeout(timer);
+            delayedActionTimers.delete(timerKey);
+            cancelledCount++;
+            console.log(`[DelayedAction] Cancelled timer for room cleanup: ${timerKey}`);
+        }
+    }
+    if (cancelledCount > 0) {
+        console.log(`[DelayedAction] Cancelled ${cancelledCount} delayed action(s) for room ${roomId}`);
     }
 }
 /**
@@ -245,7 +268,7 @@ function executeEffect(effect, io) {
             roomRegistry.destroyRoom(effect.roomId);
             // Clear all timers for this room
             cancelSessionTimer(effect.roomId);
-            cancelDelayedAction(effect.roomId);
+            cancelAllDelayedActionsForRoom(effect.roomId); // Cancel ALL delayed actions (ghosts, etc.)
             cancelCleanup(effect.roomId);
             console.log(`[runEffects] ✅ Room ${effect.roomId} cleaned up and deleted`);
             break;

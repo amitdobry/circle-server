@@ -16,7 +16,7 @@ const avatarPool = [
 ];
 
 export const emojiLookup: Record<string, string> = Object.fromEntries(
-  avatarPool.map(({ id, emoji }) => [id, emoji])
+  avatarPool.map(({ id, emoji }) => [id, emoji]),
 );
 
 // Phase E: Room-scoped avatar assignments
@@ -34,6 +34,30 @@ function getAvatarAssignments(roomId: string): Map<string, string> {
 
 export function getAvailableAvatars(roomId: string = "default-room") {
   const assignments = getAvatarAssignments(roomId);
+
+  // Also check V2 ghost participants to keep their avatars locked
+  try {
+    const { roomRegistry } = require("./engine-v2/registry/RoomRegistry");
+    const roomState = roomRegistry.getRoom(roomId);
+
+    if (roomState && roomState.participants) {
+      // Add ghost participants' avatars to the taken list
+      for (const [, participant] of roomState.participants as Map<
+        string,
+        any
+      >) {
+        if (participant.presence === "GHOST" && participant.avatarId) {
+          // Only add if not already assigned (avoid duplicates)
+          if (!assignments.has(participant.avatarId)) {
+            assignments.set(participant.avatarId, participant.displayName);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    // V2 not available or room doesn't exist, continue with V1 only
+  }
+
   return avatarPool.map((avatar) => ({
     ...avatar,
     takenBy: assignments.get(avatar.id) || null,

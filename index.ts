@@ -13,7 +13,7 @@ if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
 
 const logFile = fs.createWriteStream(
   path.join(logsDir, `server-${new Date().toISOString().slice(0, 10)}.log`),
-  { flags: "a" }
+  { flags: "a" },
 );
 
 const origLog = console.log.bind(console);
@@ -25,9 +25,18 @@ function writeToFile(level: string, args: any[]) {
   logFile.write(line);
 }
 
-console.log = (...args: any[]) => { origLog(...args); writeToFile("LOG", args); };
-console.error = (...args: any[]) => { origError(...args); writeToFile("ERR", args); };
-console.warn = (...args: any[]) => { origWarn(...args); writeToFile("WRN", args); };
+console.log = (...args: any[]) => {
+  origLog(...args);
+  writeToFile("LOG", args);
+};
+console.error = (...args: any[]) => {
+  origError(...args);
+  writeToFile("ERR", args);
+};
+console.warn = (...args: any[]) => {
+  origWarn(...args);
+  writeToFile("WRN", args);
+};
 // ============================================================
 
 // Debug environment variables
@@ -117,26 +126,31 @@ app.get("/isAlive", (_req, res) => {
   `);
 });
 
-// 📊 Session status route
+// 📊 Session status route (✅ Updated for Engine V2 per-room sessions)
 app.get("/api/session/status", (_req, res) => {
   const stats = getSessionStats();
   res.json({
     status: "active",
     buildTime,
     ...stats,
+    message:
+      "Session stats now per-room. Use /api/rooms/active for room details.",
   });
 });
 
-// Session stats route (for timer updates)
+// Session stats route (for timer updates) - ✅ Updated for Engine V2
 app.get("/api/session/stats", (_req, res) => {
   const stats = getSessionStats();
   res.json(stats);
 });
 
-// Check if session is active
+// Check if session is active - ✅ Updated for Engine V2 (returns true if ANY room active)
 app.get("/api/session/active", (_req, res) => {
   const stats = getSessionStats();
-  res.json({ active: stats.sessionActive });
+  res.json({
+    active: stats.sessionActive,
+    activeRoomsCount: stats.activeRoomsCount,
+  });
 });
 
 // Get all active rooms (Engine V2 Registry)
@@ -155,7 +169,7 @@ app.get("/api/rooms/active", (_req, res) => {
     const timerElapsed = room.timer.active
       ? Math.floor((now - room.timer.startTime) / 1000)
       : 0;
-    
+
     // Calculate speaker time (for now, same as session time - can be enhanced later)
     const speakerTime = room.liveSpeaker ? timerElapsed : 0;
 

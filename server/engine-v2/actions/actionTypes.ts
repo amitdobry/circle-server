@@ -13,6 +13,7 @@ export const JOIN_SESSION = "JOIN_SESSION";
 export const LEAVE_SESSION = "LEAVE_SESSION";
 export const DISCONNECT = "DISCONNECT";
 export const RECONNECT = "RECONNECT";
+export const PURGE_GHOST = "PURGE_GHOST"; // Remove ghost after timeout
 
 // ============================================================================
 // ATTENTION & CONSENSUS
