@@ -425,6 +425,120 @@ describe("Ghost Purge After Timeout", () => {
 
     h.teardown();
   });
+
+  test("PURGE_GHOST clears liveSpeaker if ghost was speaking", () => {
+    const h = new TestHarness();
+    const [alice, bob] = h.addUsers(2);
+    h.startSession(alice.userId);
+
+    const aliceP = h.getParticipant("Alice")!;
+    const bobP = h.getParticipant("Bob")!;
+
+    // Start consensus (Alice speaks)
+    h.dispatch(bobP.socketId!, {
+      type: ActionTypes.POINT_TO_USER,
+      payload: { from: "Bob", targetUserId: aliceP.userId },
+    });
+    h.dispatch(aliceP.socketId!, {
+      type: ActionTypes.POINT_TO_USER,
+      payload: { from: "Alice", targetUserId: aliceP.userId },
+    });
+
+    // Alice should be liveSpeaker
+    expect(h.state.liveSpeaker).toBe(aliceP.userId);
+
+    // Alice disconnects (becomes ghost, liveSpeaker stays set)
+    h.dispatch(aliceP.socketId!, { type: ActionTypes.DISCONNECT });
+    expect(h.getParticipant("Alice")!.presence).toBe("GHOST");
+    expect(h.state.liveSpeaker).toBe(aliceP.userId); // Still set!
+
+    // Execute purge - should clear liveSpeaker
+    h.dispatch(null, {
+      type: ActionTypes.PURGE_GHOST,
+      payload: { userId: aliceP.userId },
+    });
+
+    // Alice removed, liveSpeaker cleared
+    expect(h.state.participants.has(aliceP.userId)).toBe(false);
+    expect(h.state.liveSpeaker).toBeNull();
+
+    // Invariants should pass (no crash)
+    expect(() => {
+      const { assertInvariantsIfDev } = require("../../state/invariants");
+      assertInvariantsIfDev(h.state, "TEST");
+    }).not.toThrow();
+
+    h.teardown();
+  });
+
+  test("🔥 PURGE_GHOST multi-user: speaker purged, listener remains eligible", () => {
+    const h = new TestHarness();
+    const [alice, bob] = h.addUsers(2);
+    h.startSession(alice.userId);
+
+    const aliceP = h.getParticipant("Alice")!;
+    const bobP = h.getParticipant("Bob")!;
+
+    // Alice becomes speaker via consensus
+    h.dispatch(bobP.socketId!, {
+      type: ActionTypes.POINT_TO_USER,
+      payload: { from: "Bob", targetUserId: aliceP.userId },
+    });
+    h.dispatch(aliceP.socketId!, {
+      type: ActionTypes.POINT_TO_USER,
+      payload: { from: "Alice", targetUserId: aliceP.userId },
+    });
+
+    expect(h.state.liveSpeaker).toBe(aliceP.userId);
+    expect(h.state.phase).toBe("LIVE_SPEAKER");
+    expect(aliceP.role).toBe("speaker");
+
+    // Alice disconnects → ghost (Bob still connected)
+    h.dispatch(aliceP.socketId!, { type: ActionTypes.DISCONNECT });
+    expect(h.getParticipant("Alice")!.presence).toBe("GHOST");
+    expect(bobP.presence).toBe("CONNECTED");
+
+    // Purge Alice
+    h.dispatch(null, {
+      type: ActionTypes.PURGE_GHOST,
+      payload: { userId: aliceP.userId },
+    });
+
+    // ✅ After purge:
+    // - Alice removed
+    expect(h.state.participants.has(aliceP.userId)).toBe(false);
+    expect(h.getParticipant("Alice")).toBeUndefined();
+
+    // - liveSpeaker cleared
+    expect(h.state.liveSpeaker).toBeNull();
+
+    // - Phase reset to ATTENTION_SELECTION
+    expect(h.state.phase).toBe("ATTENTION_SELECTION");
+    expect(h.state.syncPause).toBe(true);
+
+    // - Pointers cleared (fresh selection needed)
+    expect(h.state.pointerMap.size).toBe(0);
+
+    // - Bob still connected and role reset to listener
+    expect(h.state.participants.has(bobP.userId)).toBe(true);
+    expect(bobP.presence).toBe("CONNECTED");
+    expect(bobP.role).toBe("listener");
+
+    // - Bob is eligible for new selection
+    const connectedUsers = Array.from(h.state.participants.values()).filter(
+      (p) => p.presence === "CONNECTED",
+    );
+    expect(connectedUsers.length).toBe(1);
+    expect(connectedUsers[0].displayName).toBe("Bob");
+
+    // - System transitions cleanly (no crash)
+    expect(() => {
+      const { assertInvariantsIfDev } = require("../../state/invariants");
+      assertInvariantsIfDev(h.state, "TEST");
+    }).not.toThrow();
+
+    h.teardown();
+  });
 });
 
 // ============================================================================

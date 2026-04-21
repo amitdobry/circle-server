@@ -548,16 +548,36 @@ export function reducer(
         `[V2 Reducer] 🧹 Purging ghost ${participant.displayName} (ghosted for ${ghostMinutes}m)`,
       );
 
-      // Clean up all references to this ghost
-      tableState.participants.delete(ghostUserId);
-      tableState.pointerMap.delete(ghostUserId);
+      // ✅ FIX: Clear liveSpeaker if this ghost was speaking
+      if (tableState.liveSpeaker === ghostUserId) {
+        console.log(
+          `[V2 Reducer] 🔇 Clearing liveSpeaker (was ${participant.displayName})`,
+        );
+        tableState.liveSpeaker = null;
+        tableState.phase = "ATTENTION_SELECTION";
+        tableState.syncPause = true;
 
-      // Clear any pointers TO this ghost
-      for (const [from, to] of tableState.pointerMap.entries()) {
-        if (to === ghostUserId) {
-          tableState.pointerMap.delete(from);
+        // Clear all pointers (new selection needed)
+        tableState.pointerMap.clear();
+
+        // Reset all remaining participants to listener
+        for (const [, p] of tableState.participants) {
+          if (p.userId !== ghostUserId) {
+            p.role = "listener";
+          }
+        }
+      } else {
+        // Clear any pointers FROM or TO this ghost
+        tableState.pointerMap.delete(ghostUserId);
+        for (const [from, to] of tableState.pointerMap.entries()) {
+          if (to === ghostUserId) {
+            tableState.pointerMap.delete(from);
+          }
         }
       }
+
+      // Clean up all references to this ghost
+      tableState.participants.delete(ghostUserId);
 
       console.log(
         `[V2 Reducer] ✅ Ghost ${participant.displayName} completely purged`,

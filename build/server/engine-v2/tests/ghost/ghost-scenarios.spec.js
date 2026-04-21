@@ -364,6 +364,95 @@ const ActionTypes = __importStar(require("../../actions/actionTypes"));
         (0, globals_1.expect)(h.getParticipant("Alice").presence).toBe("CONNECTED");
         h.teardown();
     });
+    (0, globals_1.test)("PURGE_GHOST clears liveSpeaker if ghost was speaking", () => {
+        const h = new TestHarness_1.TestHarness();
+        const [alice, bob] = h.addUsers(2);
+        h.startSession(alice.userId);
+        const aliceP = h.getParticipant("Alice");
+        const bobP = h.getParticipant("Bob");
+        // Start consensus (Alice speaks)
+        h.dispatch(bobP.socketId, {
+            type: ActionTypes.POINT_TO_USER,
+            payload: { from: "Bob", targetUserId: aliceP.userId },
+        });
+        h.dispatch(aliceP.socketId, {
+            type: ActionTypes.POINT_TO_USER,
+            payload: { from: "Alice", targetUserId: aliceP.userId },
+        });
+        // Alice should be liveSpeaker
+        (0, globals_1.expect)(h.state.liveSpeaker).toBe(aliceP.userId);
+        // Alice disconnects (becomes ghost, liveSpeaker stays set)
+        h.dispatch(aliceP.socketId, { type: ActionTypes.DISCONNECT });
+        (0, globals_1.expect)(h.getParticipant("Alice").presence).toBe("GHOST");
+        (0, globals_1.expect)(h.state.liveSpeaker).toBe(aliceP.userId); // Still set!
+        // Execute purge - should clear liveSpeaker
+        h.dispatch(null, {
+            type: ActionTypes.PURGE_GHOST,
+            payload: { userId: aliceP.userId },
+        });
+        // Alice removed, liveSpeaker cleared
+        (0, globals_1.expect)(h.state.participants.has(aliceP.userId)).toBe(false);
+        (0, globals_1.expect)(h.state.liveSpeaker).toBeNull();
+        // Invariants should pass (no crash)
+        (0, globals_1.expect)(() => {
+            const { assertInvariantsIfDev } = require("../../state/invariants");
+            assertInvariantsIfDev(h.state, "TEST");
+        }).not.toThrow();
+        h.teardown();
+    });
+    (0, globals_1.test)("🔥 PURGE_GHOST multi-user: speaker purged, listener remains eligible", () => {
+        const h = new TestHarness_1.TestHarness();
+        const [alice, bob] = h.addUsers(2);
+        h.startSession(alice.userId);
+        const aliceP = h.getParticipant("Alice");
+        const bobP = h.getParticipant("Bob");
+        // Alice becomes speaker via consensus
+        h.dispatch(bobP.socketId, {
+            type: ActionTypes.POINT_TO_USER,
+            payload: { from: "Bob", targetUserId: aliceP.userId },
+        });
+        h.dispatch(aliceP.socketId, {
+            type: ActionTypes.POINT_TO_USER,
+            payload: { from: "Alice", targetUserId: aliceP.userId },
+        });
+        (0, globals_1.expect)(h.state.liveSpeaker).toBe(aliceP.userId);
+        (0, globals_1.expect)(h.state.phase).toBe("LIVE_SPEAKER");
+        (0, globals_1.expect)(aliceP.role).toBe("speaker");
+        // Alice disconnects → ghost (Bob still connected)
+        h.dispatch(aliceP.socketId, { type: ActionTypes.DISCONNECT });
+        (0, globals_1.expect)(h.getParticipant("Alice").presence).toBe("GHOST");
+        (0, globals_1.expect)(bobP.presence).toBe("CONNECTED");
+        // Purge Alice
+        h.dispatch(null, {
+            type: ActionTypes.PURGE_GHOST,
+            payload: { userId: aliceP.userId },
+        });
+        // ✅ After purge:
+        // - Alice removed
+        (0, globals_1.expect)(h.state.participants.has(aliceP.userId)).toBe(false);
+        (0, globals_1.expect)(h.getParticipant("Alice")).toBeUndefined();
+        // - liveSpeaker cleared
+        (0, globals_1.expect)(h.state.liveSpeaker).toBeNull();
+        // - Phase reset to ATTENTION_SELECTION
+        (0, globals_1.expect)(h.state.phase).toBe("ATTENTION_SELECTION");
+        (0, globals_1.expect)(h.state.syncPause).toBe(true);
+        // - Pointers cleared (fresh selection needed)
+        (0, globals_1.expect)(h.state.pointerMap.size).toBe(0);
+        // - Bob still connected and role reset to listener
+        (0, globals_1.expect)(h.state.participants.has(bobP.userId)).toBe(true);
+        (0, globals_1.expect)(bobP.presence).toBe("CONNECTED");
+        (0, globals_1.expect)(bobP.role).toBe("listener");
+        // - Bob is eligible for new selection
+        const connectedUsers = Array.from(h.state.participants.values()).filter((p) => p.presence === "CONNECTED");
+        (0, globals_1.expect)(connectedUsers.length).toBe(1);
+        (0, globals_1.expect)(connectedUsers[0].displayName).toBe("Bob");
+        // - System transitions cleanly (no crash)
+        (0, globals_1.expect)(() => {
+            const { assertInvariantsIfDev } = require("../../state/invariants");
+            assertInvariantsIfDev(h.state, "TEST");
+        }).not.toThrow();
+        h.teardown();
+    });
 });
 // ============================================================================
 // 4. MULTI-GHOST SCENARIOS
