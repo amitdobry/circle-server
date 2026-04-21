@@ -996,7 +996,8 @@ export function setupSocketHandlers(io: Server) {
           socketId: socket.id,
         });
 
-        dispatchAndRun(tableId, userId, reconnectAction, io);
+        // ✅ Pass socket.id (not userId) - reducer updates participant.socketId
+        dispatchAndRun(tableId, socket.id, reconnectAction, io);
 
         // Update socket data
         socket.data.userId = userId;
@@ -1017,6 +1018,9 @@ export function setupSocketHandlers(io: Server) {
           joinedAt: new Date(),
           lastActivity: new Date(),
         });
+
+        // ✅ Reclaim avatar in V1 assignments
+        claimAvatar(participant.avatarId, participant.displayName, tableId);
 
         console.log(
           formatSessionLog(
@@ -1058,9 +1062,8 @@ export function setupSocketHandlers(io: Server) {
         sendCurrentLiveSpeaker(socket, tableId);
         sendInitialPointerMap(socket, tableId);
 
-        // Rebuild panels for everyone
-        const { rebuildAllPanels } = require("./panelConfigService");
-        rebuildAllPanels(tableId);
+        // ✅ REBUILD_ALL_PANELS effect is already returned by reducer
+        // No need to call manually here
 
         emitSystemLog(`🔄 ${participant.displayName} reconnected`, tableId);
       } catch (error) {
@@ -1159,9 +1162,9 @@ export function setupSocketHandlers(io: Server) {
       },
     );
 
-    socket.on("leave", ({ name }) => {
+    socket.on("leave", ({ name, tableId }, callback) => {
       const user = users.get(socket.id);
-      const roomId = socket.data.roomId || socket.data.tableId;
+      const roomId = tableId || socket.data.roomId || socket.data.tableId;
 
       if (user) {
         const sessionDuration = Math.floor(
@@ -1186,21 +1189,26 @@ export function setupSocketHandlers(io: Server) {
 
       // ✨ ENGINE V2: Dispatch LEAVE_SESSION with effects
       try {
-        const userId = socket.data.userId || socket.id;
+        // ✅ Pass socket.id (not userId) - reducer searches by socketId
         const action = mapLegacyToV2Action("leave", { name });
-        dispatchAndRun(roomId, userId, action, io);
+        dispatchAndRun(roomId, socket.id, action, io);
 
         // ✅ Broadcast updated user list
         if (roomId) {
           broadcastUserList(roomId);
           broadcastAvatarState(roomId);
         }
+
+        // 📜 V1 fallback cleanup (for any V1 state)
+        cleanupUser(socket);
+
+        // ✅ Send acknowledgment to client
+        callback?.({ success: true });
       } catch (error) {
         console.error("[V2] Failed on leave:", error);
+        // ❌ Send error acknowledgment
+        callback?.({ success: false, error: String(error) });
       }
-
-      // 📜 V1 fallback cleanup (for any V1 state)
-      cleanupUser(socket);
     });
 
     socket.on("disconnect", () => {
@@ -1245,23 +1253,28 @@ export function setupSocketHandlers(io: Server) {
       const emoji = avatarId ? emojiLookup[avatarId] || "" : "";
       emitSystemLog(`❌ ${emoji} ${userName} disconnected`, roomId);
 
-      cleanupUser(socket);
-
-      // ✨ ENGINE V2: Dispatch with effects
+      // ✨ ENGINE V2: Dispatch FIRST (before cleanup destroys state)
       try {
-        const roomId = extractRoomId(socket, {});
-        const userId = socket.data.userId || socket.id; // Use stored userId or fallback to socket.id
-        const action = mapLegacyToV2Action("disconnect", {});
-        dispatchAndRun(roomId, userId, action, io);
+        const extractedRoomId = extractRoomId(socket, {});
 
-        // ✅ Broadcast updated user list (includes ghosts)
-        if (roomId) {
-          broadcastUserList(roomId);
-          broadcastAvatarState(roomId);
+        // Only process V2 disconnect if user was actually in a real table
+        // Skip "default-room" to prevent ghost tables
+        if (extractedRoomId && extractedRoomId !== "default-room" && user) {
+          const action = mapLegacyToV2Action("disconnect", {});
+          // Pass socket.id as userId parameter - reducer expects current socketId
+          dispatchAndRun(extractedRoomId, socket.id, action, io);
+
+          // ✅ Broadcast updated user list (includes ghosts)
+          broadcastUserList(extractedRoomId);
+          broadcastAvatarState(extractedRoomId);
         }
       } catch (error) {
         console.error("[V2] Failed on disconnect:", error);
       }
+
+      // 📜 V1 fallback cleanup (AFTER V2 processes)
+      // This only cleans V1 state, V2 state is managed by reducer
+      cleanupUser(socket);
     });
 
     socket.on("pointing", ({ from, to }) => {

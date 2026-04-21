@@ -36,14 +36,15 @@ function getAvailableAvatars(roomId = "default-room") {
     // ✅ FIX: Build combined view WITHOUT mutating V1 assignments
     // Create a temporary combined map (V1 + V2 ghosts)
     const combinedAssignments = new Map(assignments);
-    // Also check V2 ghost participants to keep their avatars locked
+    // Also check V2 participants (both CONNECTED and GHOST) to keep their avatars locked
     try {
         const { roomRegistry } = require("./engine-v2/registry/RoomRegistry");
         const roomState = roomRegistry.getRoom(roomId);
         if (roomState && roomState.participants) {
-            // Add ghost participants' avatars to the TEMPORARY combined view
+            // Add ALL participants' avatars to the TEMPORARY combined view
             for (const [, participant] of roomState.participants) {
-                if (participant.presence === "GHOST" && participant.avatarId) {
+                // Lock avatars for both CONNECTED and GHOST users
+                if (participant.avatarId) {
                     // Only add if not already assigned (avoid duplicates)
                     if (!combinedAssignments.has(participant.avatarId)) {
                         combinedAssignments.set(participant.avatarId, participant.displayName);

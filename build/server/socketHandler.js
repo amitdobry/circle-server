@@ -768,7 +768,8 @@ function setupSocketHandlers(io) {
                     displayName: participant.displayName,
                     socketId: socket.id,
                 });
-                (0, dispatch_1.dispatchAndRun)(tableId, userId, reconnectAction, io);
+                // ✅ Pass socket.id (not userId) - reducer updates participant.socketId
+                (0, dispatch_1.dispatchAndRun)(tableId, socket.id, reconnectAction, io);
                 // Update socket data
                 socket.data.userId = userId;
                 socket.data.roomId = tableId;
@@ -786,6 +787,8 @@ function setupSocketHandlers(io) {
                     joinedAt: new Date(),
                     lastActivity: new Date(),
                 });
+                // ✅ Reclaim avatar in V1 assignments
+                (0, avatarManager_1.claimAvatar)(participant.avatarId, participant.displayName, tableId);
                 console.log(formatSessionLog(`✅ Reconnect successful: ${participant.displayName} (${userId}) back in ${tableId}`, "INFO"));
                 // Re-fetch room state after dispatch (reducer updated it)
                 const updatedRoomState = roomRegistry.getRoom(tableId);
@@ -813,9 +816,8 @@ function setupSocketHandlers(io) {
                 broadcastAvatarState(tableId);
                 sendCurrentLiveSpeaker(socket, tableId);
                 sendInitialPointerMap(socket, tableId);
-                // Rebuild panels for everyone
-                const { rebuildAllPanels } = require("./panelConfigService");
-                rebuildAllPanels(tableId);
+                // ✅ REBUILD_ALL_PANELS effect is already returned by reducer
+                // No need to call manually here
                 emitSystemLog(`🔄 ${participant.displayName} reconnected`, tableId);
             }
             catch (error) {
@@ -892,9 +894,9 @@ function setupSocketHandlers(io) {
                 users,
             });
         });
-        socket.on("leave", ({ name }) => {
+        socket.on("leave", ({ name, tableId }, callback) => {
             const user = users.get(socket.id);
-            const roomId = socket.data.roomId || socket.data.tableId;
+            const roomId = tableId || socket.data.roomId || socket.data.tableId;
             if (user) {
                 const sessionDuration = Math.floor((new Date().getTime() - user.joinedAt.getTime()) / 1000);
                 console.log(formatSessionLog(`👋 ${name} left manually (was in session ${Math.floor(sessionDuration / 60)}m${sessionDuration % 60}s)`, "LEAVE"));
@@ -904,20 +906,24 @@ function setupSocketHandlers(io) {
             }
             // ✨ ENGINE V2: Dispatch LEAVE_SESSION with effects
             try {
-                const userId = socket.data.userId || socket.id;
+                // ✅ Pass socket.id (not userId) - reducer searches by socketId
                 const action = (0, actionMapper_1.mapLegacyToV2Action)("leave", { name });
-                (0, dispatch_1.dispatchAndRun)(roomId, userId, action, io);
+                (0, dispatch_1.dispatchAndRun)(roomId, socket.id, action, io);
                 // ✅ Broadcast updated user list
                 if (roomId) {
                     broadcastUserList(roomId);
                     broadcastAvatarState(roomId);
                 }
+                // 📜 V1 fallback cleanup (for any V1 state)
+                cleanupUser(socket);
+                // ✅ Send acknowledgment to client
+                callback?.({ success: true });
             }
             catch (error) {
                 console.error("[V2] Failed on leave:", error);
+                // ❌ Send error acknowledgment
+                callback?.({ success: false, error: String(error) });
             }
-            // 📜 V1 fallback cleanup (for any V1 state)
-            cleanupUser(socket);
         });
         socket.on("disconnect", () => {
             // Phase E: Get user info from Map first, fallback to socket.data
@@ -939,22 +945,26 @@ function setupSocketHandlers(io) {
             // Always emit system log with best available name
             const emoji = avatarId ? avatarManager_1.emojiLookup[avatarId] || "" : "";
             emitSystemLog(`❌ ${emoji} ${userName} disconnected`, roomId);
-            cleanupUser(socket);
-            // ✨ ENGINE V2: Dispatch with effects
+            // ✨ ENGINE V2: Dispatch FIRST (before cleanup destroys state)
             try {
-                const roomId = (0, actionMapper_1.extractRoomId)(socket, {});
-                const userId = socket.data.userId || socket.id; // Use stored userId or fallback to socket.id
-                const action = (0, actionMapper_1.mapLegacyToV2Action)("disconnect", {});
-                (0, dispatch_1.dispatchAndRun)(roomId, userId, action, io);
-                // ✅ Broadcast updated user list (includes ghosts)
-                if (roomId) {
-                    broadcastUserList(roomId);
-                    broadcastAvatarState(roomId);
+                const extractedRoomId = (0, actionMapper_1.extractRoomId)(socket, {});
+                // Only process V2 disconnect if user was actually in a real table
+                // Skip "default-room" to prevent ghost tables
+                if (extractedRoomId && extractedRoomId !== "default-room" && user) {
+                    const action = (0, actionMapper_1.mapLegacyToV2Action)("disconnect", {});
+                    // Pass socket.id as userId parameter - reducer expects current socketId
+                    (0, dispatch_1.dispatchAndRun)(extractedRoomId, socket.id, action, io);
+                    // ✅ Broadcast updated user list (includes ghosts)
+                    broadcastUserList(extractedRoomId);
+                    broadcastAvatarState(extractedRoomId);
                 }
             }
             catch (error) {
                 console.error("[V2] Failed on disconnect:", error);
             }
+            // 📜 V1 fallback cleanup (AFTER V2 processes)
+            // This only cleans V1 state, V2 state is managed by reducer
+            cleanupUser(socket);
         });
         socket.on("pointing", ({ from, to }) => {
             updateUserActivity(socket.id);
