@@ -158,7 +158,7 @@ export type Effect =
     }
   // Delayed action (schedules future dispatch)
   | {
-      type: "DELAYED_ACTION";
+      type: "DELAYED_ACTION"; key?: string;
       roomId: string;
       delayMs: number;
       action: Action;

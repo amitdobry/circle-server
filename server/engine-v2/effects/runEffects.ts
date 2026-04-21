@@ -464,6 +464,24 @@ function executeEffect(effect: Effect, io: Server): void {
           `[REBUILD_ALL_PANELS] Synced liveSpeaker → ${syncedSpeakerName ?? "none"} in room ${effect.roomId}`,
         );
 
+        // ⚠️ TRANSITIONAL: Sync V2 pointerMap into V1 SpeakerManager (cache layer)
+        // V1 is CACHE ONLY - never authoritative, always derived from V2
+        // TODO: Remove once client consumes pointer state directly from panelConfig
+        const { clearAllPointers, setPointer } = require("../../socketHandler");
+        clearAllPointers(effect.roomId);
+
+        let pointerSyncCount = 0;
+        for (const [fromUserId, toUserId] of tableState.pointerMap as Map<
+          string,
+          string
+        >) {
+          setPointer(fromUserId, toUserId, effect.roomId);
+          pointerSyncCount++;
+        }
+        console.log(
+          `[REBUILD_ALL_PANELS] Synced ${pointerSyncCount} pointers from V2 → V1 (cache) in room ${effect.roomId}`,
+        );
+
         // ✅ Emit panel configs to all connected users
         let emitCount = 0;
         for (const [, participant] of tableState.participants as Map<

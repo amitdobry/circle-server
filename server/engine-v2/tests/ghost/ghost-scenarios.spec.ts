@@ -209,11 +209,12 @@ describe("Reconnect State Reset", () => {
     const { h, speakerUserId } = createSessionWithActiveSpeaker(2);
     const speakerP = h.getParticipantById(speakerUserId)!;
 
-    // Speaker disconnects
+    // ✅ NEW BEHAVIOR: Speaker disconnects → mic drops immediately
     h.dispatch(speakerP.socketId!, { type: ActionTypes.DISCONNECT });
 
-    // liveSpeaker preserved (others still connected)
-    expect(h.liveSpeaker).toBe(speakerUserId);
+    // liveSpeaker already cleared (speaker invalidation on disconnect)
+    expect(h.liveSpeaker).toBeNull();
+    expect(h.phase).toBe("ATTENTION_SELECTION");
 
     // Speaker reconnects
     h.dispatch("speaker-new-socket", {
@@ -221,7 +222,7 @@ describe("Reconnect State Reset", () => {
       payload: { displayName: speakerP.displayName },
     });
 
-    // liveSpeaker should be cleared (reconnect = fresh entry)
+    // liveSpeaker still null (reconnect doesn't restore speaker status)
     expect(h.liveSpeaker).toBeNull();
     expect(h.phase).toBe("ATTENTION_SELECTION");
 
@@ -446,19 +447,21 @@ describe("Ghost Purge After Timeout", () => {
 
     // Alice should be liveSpeaker
     expect(h.state.liveSpeaker).toBe(aliceP.userId);
+    expect(h.state.phase).toBe("LIVE_SPEAKER");
 
-    // Alice disconnects (becomes ghost, liveSpeaker stays set)
+    // ✅ NEW BEHAVIOR: Speaker disconnect immediately invalidates speaker
     h.dispatch(aliceP.socketId!, { type: ActionTypes.DISCONNECT });
     expect(h.getParticipant("Alice")!.presence).toBe("GHOST");
-    expect(h.state.liveSpeaker).toBe(aliceP.userId); // Still set!
+    expect(h.state.liveSpeaker).toBeNull(); // ✅ Mic dropped immediately!
+    expect(h.state.phase).toBe("ATTENTION_SELECTION");
 
-    // Execute purge - should clear liveSpeaker
+    // Execute purge - should be a no-op for speaker (already invalidated)
     h.dispatch(null, {
       type: ActionTypes.PURGE_GHOST,
       payload: { userId: aliceP.userId },
     });
 
-    // Alice removed, liveSpeaker cleared
+    // Alice removed
     expect(h.state.participants.has(aliceP.userId)).toBe(false);
     expect(h.state.liveSpeaker).toBeNull();
 
@@ -493,12 +496,17 @@ describe("Ghost Purge After Timeout", () => {
     expect(h.state.phase).toBe("LIVE_SPEAKER");
     expect(aliceP.role).toBe("speaker");
 
-    // Alice disconnects → ghost (Bob still connected)
+    // ✅ NEW BEHAVIOR: Speaker disconnect immediately invalidates speaker
     h.dispatch(aliceP.socketId!, { type: ActionTypes.DISCONNECT });
     expect(h.getParticipant("Alice")!.presence).toBe("GHOST");
     expect(bobP.presence).toBe("CONNECTED");
 
-    // Purge Alice
+    // Mic dropped immediately
+    expect(h.state.liveSpeaker).toBeNull();
+    expect(h.state.phase).toBe("ATTENTION_SELECTION");
+    expect(h.state.pointerMap.size).toBe(0); // Pointers cleared
+
+    // Purge Alice (already not speaker)
     h.dispatch(null, {
       type: ActionTypes.PURGE_GHOST,
       payload: { userId: aliceP.userId },
@@ -509,20 +517,15 @@ describe("Ghost Purge After Timeout", () => {
     expect(h.state.participants.has(aliceP.userId)).toBe(false);
     expect(h.getParticipant("Alice")).toBeUndefined();
 
-    // - liveSpeaker cleared
+    // - liveSpeaker still null (was already cleared on disconnect)
     expect(h.state.liveSpeaker).toBeNull();
 
-    // - Phase reset to ATTENTION_SELECTION
+    // - Phase still ATTENTION_SELECTION
     expect(h.state.phase).toBe("ATTENTION_SELECTION");
-    expect(h.state.syncPause).toBe(true);
 
-    // - Pointers cleared (fresh selection needed)
-    expect(h.state.pointerMap.size).toBe(0);
-
-    // - Bob still connected and role reset to listener
+    // - Bob still connected (role doesn't matter in ATTENTION_SELECTION)
     expect(h.state.participants.has(bobP.userId)).toBe(true);
     expect(bobP.presence).toBe("CONNECTED");
-    expect(bobP.role).toBe("listener");
 
     // - Bob is eligible for new selection
     const connectedUsers = Array.from(h.state.participants.values()).filter(

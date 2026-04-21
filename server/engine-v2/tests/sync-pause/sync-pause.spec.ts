@@ -15,7 +15,11 @@
  */
 
 import { describe, test, expect } from "@jest/globals";
-import { TestHarness, createSessionWithUsers, createSessionWithActiveSpeaker } from "../harness/TestHarness";
+import {
+  TestHarness,
+  createSessionWithUsers,
+  createSessionWithActiveSpeaker,
+} from "../harness/TestHarness";
 import { assertInvariants } from "../../state/invariants";
 import * as ActionTypes from "../../actions/actionTypes";
 
@@ -23,7 +27,12 @@ import * as ActionTypes from "../../actions/actionTypes";
 // ASSERTION HELPERS
 // ============================================================================
 
-function expectActiveSpeakerRoom(state: ReturnType<TestHarness["state"]["participants"]["get"]> extends infer P ? any : any, h: TestHarness) {
+function expectActiveSpeakerRoom(
+  state: ReturnType<TestHarness["state"]["participants"]["get"]> extends infer P
+    ? any
+    : any,
+  h: TestHarness,
+) {
   expect(h.state.liveSpeaker).not.toBeNull();
   expect(h.state.phase).toBe("LIVE_SPEAKER");
   expect(h.state.syncPause).toBe(false);
@@ -197,19 +206,18 @@ describe("sync pause behavior", () => {
   // ==========================================================================
 
   describe("disconnect", () => {
-    test("8. speaker disconnect with others connected — no contradictory syncPause", () => {
+    test("8. speaker disconnect — mic drops immediately (speaker invalidation)", () => {
       const { h, speakerUserId } = createSessionWithActiveSpeaker(3);
       const speakerP = h.getParticipantById(speakerUserId)!;
 
       h.dispatch(speakerP.socketId!, { type: ActionTypes.DISCONNECT });
 
-      // Mic is still held by the ghost speaker
-      expect(h.liveSpeaker).toBe(speakerUserId);
-      expect(h.phase).toBe("LIVE_SPEAKER");
-      // syncPause must NOT be true — this is a ghost-held active room
+      // ✅ NEW BEHAVIOR: Mic drops immediately when speaker disconnects
+      expect(h.liveSpeaker).toBeNull();
+      expect(h.phase).toBe("ATTENTION_SELECTION");
       expect(h.state.syncPause).toBe(false);
 
-      // No contradiction: LIVE_SPEAKER + syncPause=false is valid
+      // No contradiction: ATTENTION_SELECTION + syncPause=false is valid
       expect(() => assertInvariants(h.state)).not.toThrow();
       h.teardown();
     });

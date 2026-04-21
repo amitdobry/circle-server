@@ -202,16 +202,17 @@ const ActionTypes = __importStar(require("../../actions/actionTypes"));
     (0, globals_1.test)("reconnected speaker loses liveSpeaker status", () => {
         const { h, speakerUserId } = (0, TestHarness_1.createSessionWithActiveSpeaker)(2);
         const speakerP = h.getParticipantById(speakerUserId);
-        // Speaker disconnects
+        // ✅ NEW BEHAVIOR: Speaker disconnects → mic drops immediately
         h.dispatch(speakerP.socketId, { type: ActionTypes.DISCONNECT });
-        // liveSpeaker preserved (others still connected)
-        (0, globals_1.expect)(h.liveSpeaker).toBe(speakerUserId);
+        // liveSpeaker already cleared (speaker invalidation on disconnect)
+        (0, globals_1.expect)(h.liveSpeaker).toBeNull();
+        (0, globals_1.expect)(h.phase).toBe("ATTENTION_SELECTION");
         // Speaker reconnects
         h.dispatch("speaker-new-socket", {
             type: ActionTypes.RECONNECT,
             payload: { displayName: speakerP.displayName },
         });
-        // liveSpeaker should be cleared (reconnect = fresh entry)
+        // liveSpeaker still null (reconnect doesn't restore speaker status)
         (0, globals_1.expect)(h.liveSpeaker).toBeNull();
         (0, globals_1.expect)(h.phase).toBe("ATTENTION_SELECTION");
         h.teardown();
@@ -381,16 +382,18 @@ const ActionTypes = __importStar(require("../../actions/actionTypes"));
         });
         // Alice should be liveSpeaker
         (0, globals_1.expect)(h.state.liveSpeaker).toBe(aliceP.userId);
-        // Alice disconnects (becomes ghost, liveSpeaker stays set)
+        (0, globals_1.expect)(h.state.phase).toBe("LIVE_SPEAKER");
+        // ✅ NEW BEHAVIOR: Speaker disconnect immediately invalidates speaker
         h.dispatch(aliceP.socketId, { type: ActionTypes.DISCONNECT });
         (0, globals_1.expect)(h.getParticipant("Alice").presence).toBe("GHOST");
-        (0, globals_1.expect)(h.state.liveSpeaker).toBe(aliceP.userId); // Still set!
-        // Execute purge - should clear liveSpeaker
+        (0, globals_1.expect)(h.state.liveSpeaker).toBeNull(); // ✅ Mic dropped immediately!
+        (0, globals_1.expect)(h.state.phase).toBe("ATTENTION_SELECTION");
+        // Execute purge - should be a no-op for speaker (already invalidated)
         h.dispatch(null, {
             type: ActionTypes.PURGE_GHOST,
             payload: { userId: aliceP.userId },
         });
-        // Alice removed, liveSpeaker cleared
+        // Alice removed
         (0, globals_1.expect)(h.state.participants.has(aliceP.userId)).toBe(false);
         (0, globals_1.expect)(h.state.liveSpeaker).toBeNull();
         // Invariants should pass (no crash)
@@ -418,11 +421,15 @@ const ActionTypes = __importStar(require("../../actions/actionTypes"));
         (0, globals_1.expect)(h.state.liveSpeaker).toBe(aliceP.userId);
         (0, globals_1.expect)(h.state.phase).toBe("LIVE_SPEAKER");
         (0, globals_1.expect)(aliceP.role).toBe("speaker");
-        // Alice disconnects → ghost (Bob still connected)
+        // ✅ NEW BEHAVIOR: Speaker disconnect immediately invalidates speaker
         h.dispatch(aliceP.socketId, { type: ActionTypes.DISCONNECT });
         (0, globals_1.expect)(h.getParticipant("Alice").presence).toBe("GHOST");
         (0, globals_1.expect)(bobP.presence).toBe("CONNECTED");
-        // Purge Alice
+        // Mic dropped immediately
+        (0, globals_1.expect)(h.state.liveSpeaker).toBeNull();
+        (0, globals_1.expect)(h.state.phase).toBe("ATTENTION_SELECTION");
+        (0, globals_1.expect)(h.state.pointerMap.size).toBe(0); // Pointers cleared
+        // Purge Alice (already not speaker)
         h.dispatch(null, {
             type: ActionTypes.PURGE_GHOST,
             payload: { userId: aliceP.userId },
@@ -431,17 +438,13 @@ const ActionTypes = __importStar(require("../../actions/actionTypes"));
         // - Alice removed
         (0, globals_1.expect)(h.state.participants.has(aliceP.userId)).toBe(false);
         (0, globals_1.expect)(h.getParticipant("Alice")).toBeUndefined();
-        // - liveSpeaker cleared
+        // - liveSpeaker still null (was already cleared on disconnect)
         (0, globals_1.expect)(h.state.liveSpeaker).toBeNull();
-        // - Phase reset to ATTENTION_SELECTION
+        // - Phase still ATTENTION_SELECTION
         (0, globals_1.expect)(h.state.phase).toBe("ATTENTION_SELECTION");
-        (0, globals_1.expect)(h.state.syncPause).toBe(true);
-        // - Pointers cleared (fresh selection needed)
-        (0, globals_1.expect)(h.state.pointerMap.size).toBe(0);
-        // - Bob still connected and role reset to listener
+        // - Bob still connected (role doesn't matter in ATTENTION_SELECTION)
         (0, globals_1.expect)(h.state.participants.has(bobP.userId)).toBe(true);
         (0, globals_1.expect)(bobP.presence).toBe("CONNECTED");
-        (0, globals_1.expect)(bobP.role).toBe("listener");
         // - Bob is eligible for new selection
         const connectedUsers = Array.from(h.state.participants.values()).filter((p) => p.presence === "CONNECTED");
         (0, globals_1.expect)(connectedUsers.length).toBe(1);

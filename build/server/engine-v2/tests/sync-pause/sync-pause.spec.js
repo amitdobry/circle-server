@@ -188,16 +188,15 @@ function expectNoLiveSpeaker(h) {
     // GROUP 4 — DISCONNECT EDGE CASES
     // ==========================================================================
     (0, globals_1.describe)("disconnect", () => {
-        (0, globals_1.test)("8. speaker disconnect with others connected — no contradictory syncPause", () => {
+        (0, globals_1.test)("8. speaker disconnect — mic drops immediately (speaker invalidation)", () => {
             const { h, speakerUserId } = (0, TestHarness_1.createSessionWithActiveSpeaker)(3);
             const speakerP = h.getParticipantById(speakerUserId);
             h.dispatch(speakerP.socketId, { type: ActionTypes.DISCONNECT });
-            // Mic is still held by the ghost speaker
-            (0, globals_1.expect)(h.liveSpeaker).toBe(speakerUserId);
-            (0, globals_1.expect)(h.phase).toBe("LIVE_SPEAKER");
-            // syncPause must NOT be true — this is a ghost-held active room
+            // ✅ NEW BEHAVIOR: Mic drops immediately when speaker disconnects
+            (0, globals_1.expect)(h.liveSpeaker).toBeNull();
+            (0, globals_1.expect)(h.phase).toBe("ATTENTION_SELECTION");
             (0, globals_1.expect)(h.state.syncPause).toBe(false);
-            // No contradiction: LIVE_SPEAKER + syncPause=false is valid
+            // No contradiction: ATTENTION_SELECTION + syncPause=false is valid
             (0, globals_1.expect)(() => (0, invariants_1.assertInvariants)(h.state)).not.toThrow();
             h.teardown();
         });

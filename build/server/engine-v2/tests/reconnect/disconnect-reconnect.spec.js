@@ -82,13 +82,13 @@ const ActionTypes = __importStar(require("../../actions/actionTypes"));
         (0, globals_1.expect)(h.getParticipant("Alice").socketId).toBeNull();
         h.teardown();
     });
-    (0, globals_1.test)("speaker disconnects — others still connected — mic held (liveSpeaker preserved)", () => {
+    (0, globals_1.test)("speaker disconnects — mic drops immediately (speaker invalidation)", () => {
         const { h, speakerUserId } = (0, TestHarness_1.createSessionWithActiveSpeaker)(3);
         const speakerP = h.getParticipantById(speakerUserId);
         h.dispatch(speakerP.socketId, { type: ActionTypes.DISCONNECT });
-        // Speaker is gone but liveSpeaker is preserved while others are connected
-        (0, globals_1.expect)(h.liveSpeaker).toBe(speakerUserId);
-        (0, globals_1.expect)(h.phase).toBe("LIVE_SPEAKER");
+        // ✅ NEW BEHAVIOR: Speaker disconnect invalidates speaking moment immediately
+        (0, globals_1.expect)(h.liveSpeaker).toBeNull();
+        (0, globals_1.expect)(h.phase).toBe("ATTENTION_SELECTION");
         h.teardown();
     });
     (0, globals_1.test)("speaker disconnects — all users gone — liveSpeaker cleared", () => {
@@ -161,17 +161,17 @@ const ActionTypes = __importStar(require("../../actions/actionTypes"));
         const { h, speakerUserId } = (0, TestHarness_1.createSessionWithActiveSpeaker)(2);
         const speakerP = h.getParticipantById(speakerUserId);
         const speakerName = speakerP.displayName;
-        // Speaker disconnects
+        // ✅ NEW BEHAVIOR: Speaker disconnects → mic drops immediately
         h.dispatch(speakerP.socketId, { type: ActionTypes.DISCONNECT });
-        // Mic still held (others connected)
-        (0, globals_1.expect)(h.liveSpeaker).toBe(speakerUserId);
+        (0, globals_1.expect)(h.liveSpeaker).toBeNull(); // Mic already dropped
+        (0, globals_1.expect)(h.phase).toBe("ATTENTION_SELECTION");
         // Speaker reconnects
         const newSocket = "speaker-socket-v2";
         h.dispatch(newSocket, {
             type: ActionTypes.RECONNECT,
             payload: { displayName: speakerName },
         });
-        // Reconnect = fresh participation → mic released
+        // Reconnect = fresh participation → still no speaker
         (0, globals_1.expect)(h.liveSpeaker).toBeNull();
         (0, globals_1.expect)(h.phase).toBe("ATTENTION_SELECTION");
         h.teardown();

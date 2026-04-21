@@ -59,15 +59,15 @@ describe("DISCONNECT", () => {
     h.teardown();
   });
 
-  test("speaker disconnects — others still connected — mic held (liveSpeaker preserved)", () => {
+  test("speaker disconnects — mic drops immediately (speaker invalidation)", () => {
     const { h, speakerUserId } = createSessionWithActiveSpeaker(3);
 
     const speakerP = h.getParticipantById(speakerUserId)!;
     h.dispatch(speakerP.socketId!, { type: ActionTypes.DISCONNECT });
 
-    // Speaker is gone but liveSpeaker is preserved while others are connected
-    expect(h.liveSpeaker).toBe(speakerUserId);
-    expect(h.phase).toBe("LIVE_SPEAKER");
+    // ✅ NEW BEHAVIOR: Speaker disconnect invalidates speaking moment immediately
+    expect(h.liveSpeaker).toBeNull();
+    expect(h.phase).toBe("ATTENTION_SELECTION");
     h.teardown();
   });
 
@@ -158,10 +158,10 @@ describe("RECONNECT", () => {
     const speakerP = h.getParticipantById(speakerUserId)!;
     const speakerName = speakerP.displayName;
 
-    // Speaker disconnects
+    // ✅ NEW BEHAVIOR: Speaker disconnects → mic drops immediately
     h.dispatch(speakerP.socketId!, { type: ActionTypes.DISCONNECT });
-    // Mic still held (others connected)
-    expect(h.liveSpeaker).toBe(speakerUserId);
+    expect(h.liveSpeaker).toBeNull(); // Mic already dropped
+    expect(h.phase).toBe("ATTENTION_SELECTION");
 
     // Speaker reconnects
     const newSocket = "speaker-socket-v2";
@@ -170,7 +170,7 @@ describe("RECONNECT", () => {
       payload: { displayName: speakerName },
     });
 
-    // Reconnect = fresh participation → mic released
+    // Reconnect = fresh participation → still no speaker
     expect(h.liveSpeaker).toBeNull();
     expect(h.phase).toBe("ATTENTION_SELECTION");
     h.teardown();
