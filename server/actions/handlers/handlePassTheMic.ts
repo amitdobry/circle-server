@@ -5,7 +5,11 @@ import {
   setPointer,
   clearPointer,
 } from "../../socketHandler";
-import { ActionPayload, ActionContext, filterUsersByRoom } from "../routeAction";
+import {
+  ActionPayload,
+  ActionContext,
+  filterUsersByRoom,
+} from "../routeAction";
 
 export function handlePassTheMic(
   payload: ActionPayload,
@@ -36,12 +40,12 @@ export function handlePassTheMic(
     users.set(socketId, user);
   }
 
-  logAction(`👄 ${name} is going to pass the mic (breakSync)`);
-  setLiveSpeaker(null, roomId);
-  setIsSyncPauseMode(true);
+  logAction(`👄 ${name} is passing the mic (entering handoff)`);
+  // Don't clear liveSpeaker - they're still speaker during handoff
+  setIsSyncPauseMode(true, roomId);
 
   for (const [socketId, user] of roomUsers.entries()) {
-    const config = getPanelConfigFor(user.name);
+    const config = getPanelConfigFor(user.name, roomId);
     io.to(socketId).emit("receive:panelConfig", config);
   }
 }

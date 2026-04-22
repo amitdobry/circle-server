@@ -4,7 +4,11 @@ import {
   setLiveSpeaker,
   setPointer,
 } from "../../socketHandler";
-import { ActionPayload, ActionContext, filterUsersByRoom } from "../routeAction";
+import {
+  ActionPayload,
+  ActionContext,
+  filterUsersByRoom,
+} from "../routeAction";
 
 export function handleOfferMicToUserFromPassTheMic(
   payload: ActionPayload,
@@ -40,7 +44,7 @@ export function handleOfferMicToUserFromPassTheMic(
   setPointer(name, targetUser, roomId);
   io.to(roomId).emit("update-pointing", { from: name, to: targetUser });
 
-  setIsSyncPauseMode(true);
+  setIsSyncPauseMode(true, roomId);
 
   // Clear live speaker — the interrupter has chosen a candidate,
   // the previous speaker's authority is suspended from this point.
@@ -49,7 +53,7 @@ export function handleOfferMicToUserFromPassTheMic(
 
   // Emit updates
   for (const [socketId, user] of roomUsers.entries()) {
-    const config = getPanelConfigFor(user.name);
+    const config = getPanelConfigFor(user.name, roomId);
     io.to(socketId).emit("receive:panelConfig", config);
   }
 }

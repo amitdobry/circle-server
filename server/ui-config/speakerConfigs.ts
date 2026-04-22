@@ -150,7 +150,7 @@ export const panelSpeakerStateStartPassingMic: PanelConfig = [
   {
     id: "pass-mic-button-panel",
     layout: "row",
-    panelType: "speakerPanel",
+    panelType: "speakerPanelAction",
     label: "Mic Passing Options",
     panelStyle: "flex flex-row justify-center gap-4 flex-wrap",
     blocks: [

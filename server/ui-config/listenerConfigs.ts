@@ -601,7 +601,7 @@ export const testPanelListenerState13: PanelConfig = [
   {
     id: "choose-user-button-panel",
     layout: "row",
-    panelType: "speakerPanel",
+    panelType: "speakerPanelAction",
     label: "Participants",
     panelStyle: "flex flex-row justify-center gap-4 flex-wrap",
     blocks: [
