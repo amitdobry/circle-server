@@ -27,11 +27,11 @@ function handlePassTheMic(payload, context) {
         }
         users.set(socketId, user);
     }
-    logAction(`👄 ${name} is going to pass the mic (breakSync)`);
-    (0, socketHandler_1.setLiveSpeaker)(null, roomId);
-    (0, socketHandler_1.setIsSyncPauseMode)(true);
+    logAction(`👄 ${name} is passing the mic (entering handoff)`);
+    // Don't clear liveSpeaker - they're still speaker during handoff
+    (0, socketHandler_1.setIsSyncPauseMode)(true, roomId);
     for (const [socketId, user] of roomUsers.entries()) {
-        const config = (0, panelConfigService_1.getPanelConfigFor)(user.name);
+        const config = (0, panelConfigService_1.getPanelConfigFor)(user.name, roomId);
         io.to(socketId).emit("receive:panelConfig", config);
     }
 }

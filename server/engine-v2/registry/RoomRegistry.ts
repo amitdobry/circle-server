@@ -9,6 +9,7 @@
 
 import { TableState } from "../state/types";
 import { createInitialTableState } from "../state/defaults";
+import { isValidTableId } from "../../ui-config/tableDefinitions";
 
 // ============================================================================
 // ROOM REGISTRY (Singleton)
@@ -28,16 +29,33 @@ class RoomRegistry {
   /**
    * Create a new room with initial state.
    * Throws if room already exists.
+   *
+   * 🆕 CRITICAL: Extracts tableId from roomId (format: "tableId" or "tableId-variant")
    */
   createRoom(roomId: string): TableState {
     if (this.rooms.has(roomId)) {
       throw new Error(`Room '${roomId}' already exists`);
     }
 
-    const tableState = createInitialTableState(roomId);
+    // Extract tableId from roomId (e.g., "hearth" or "hearth-1" → "hearth")
+    const tableId = roomId.split("-")[0];
+
+    if (!isValidTableId(tableId)) {
+      console.warn(
+        `[RoomRegistry] ⚠️ Invalid tableId extracted from roomId: ${roomId} → ${tableId}, defaulting to 'hearth'`,
+      );
+      // For safety, default to hearth if invalid
+      const tableState = createInitialTableState(roomId, "hearth");
+      this.rooms.set(roomId, tableState);
+      return tableState;
+    }
+
+    const tableState = createInitialTableState(roomId, tableId);
     this.rooms.set(roomId, tableState);
 
-    console.log(`[RoomRegistry] Room '${roomId}' created`);
+    console.log(
+      `[RoomRegistry] Room '${roomId}' created for table '${tableId}'`,
+    );
     return tableState;
   }
 
@@ -48,7 +66,9 @@ class RoomRegistry {
   getOrCreateRoom(roomId: string): TableState {
     const existing = this.rooms.get(roomId);
     if (existing) {
-      console.log(`[RoomRegistry] ✅ Room '${roomId}' exists - ${existing.participants.size} participants`);
+      console.log(
+        `[RoomRegistry] ✅ Room '${roomId}' exists - ${existing.participants.size} participants`,
+      );
       return existing;
     }
 
@@ -77,7 +97,7 @@ class RoomRegistry {
   listRooms(): string[] {
     return Array.from(this.rooms.keys());
   }
-  
+
   /**
    * Debug: Print full room state
    */
@@ -88,10 +108,12 @@ class RoomRegistry {
       console.log(`   📍 Room: ${roomId}`);
       console.log(`      - Participants: ${room.participants.size}`);
       for (const [userId, participant] of room.participants.entries()) {
-        console.log(`        • ${participant.displayName} (${userId}) - ${participant.presence}`);
+        console.log(
+          `        • ${participant.displayName} (${userId}) - ${participant.presence}`,
+        );
       }
       console.log(`      - Phase: ${room.phase}`);
-      console.log(`      - Session: ${room.sessionId || 'none'}`);
+      console.log(`      - Session: ${room.sessionId || "none"}`);
     }
     console.log(`   ================================\n`);
   }

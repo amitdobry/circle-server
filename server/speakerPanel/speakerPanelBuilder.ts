@@ -3,11 +3,11 @@ import { speakerCatalog } from "../ui-config/speakerCatalog";
 
 export function buildSpeakerPanel(ctx: PanelContext) {
   const currentUser = Array.from(ctx.allUsers.values()).find(
-    (u) => u.name === ctx.userName
+    (u) => u.name === ctx.userName,
   );
 
   const interrupter = Array.from(ctx.allUsers.values()).find(
-    (u) => u.state === "hasClickedMouth" || u.state === "hasClickedBrain"
+    (u) => u.state === "hasClickedMouth" || u.state === "hasClickedBrain",
   );
 
   let stateId: keyof typeof speakerCatalog = "state-live";
@@ -31,7 +31,7 @@ export function buildSpeakerPanel(ctx: PanelContext) {
     if (currentUser?.state === "postSpeakerWaitingOnBlue") {
       config.forEach((block) => {
         block.blocks.forEach((b) => {
-          if (b.id === "thinking-wait-text") {
+          if (b.id === "thinking-wait-text" && b.type === "text") {
             b.content = `Please wait while ${interrupterName} is deciding to offer the mic to someone...`;
           }
         });
@@ -39,7 +39,7 @@ export function buildSpeakerPanel(ctx: PanelContext) {
     } else {
       config.forEach((block) => {
         block.blocks.forEach((b) => {
-          if (b.id === "thinking-wait-text") {
+          if (b.id === "thinking-wait-text" && b.type === "text") {
             b.content = `Please wait while ${interrupterName} is thinking...`;
           }
         });

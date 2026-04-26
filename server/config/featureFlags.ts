@@ -101,11 +101,26 @@ const FEATURE_FLAGS: Record<FeatureFlag, FeatureFlagConfig> = {
 
 /**
  * Speaker Manager: Room-scoped speaker state (Phase B)
+  console.log(`Content Phase:     ${FEATURE_CONTENT_PHASE ? "ENABLED" : "DISABLED"}`);
  * When enabled, uses SpeakerManager instead of global variables
  */
 export const ENGINE_V2_SPEAKER_MANAGER = parseEnvBoolean(
   "ENGINE_V2_SPEAKER_MANAGER",
   false,
+);
+
+// ============================================================================
+// CONTENT PHASE FEATURE FLAG (🆕)
+// ============================================================================
+
+/**
+ * Content Phase & Round System
+ * When enabled, allows users to vote on philosophical subjects and creates
+ * multi-round sessions with Glyphs. Defaults to FALSE for safe deployment.
+ */
+export const FEATURE_CONTENT_PHASE = parseEnvBoolean(
+  "FEATURE_CONTENT_PHASE",
+  false, // 🔥 Defaults to OFF for production safety
 );
 
 // ============================================================================
@@ -219,6 +234,7 @@ export function logConfigSummary(): void {
   console.log(`Shadow Active:     ${summary.shadowActive}`);
   console.log(`Execute Effects:   ${summary.executeEffects}`);
   console.log(`Speaker Manager:   ${ENGINE_V2_SPEAKER_MANAGER ? "V2" : "V1"}`);
+  console.log(`Content Phase:     ${FEATURE_CONTENT_PHASE ? "ENABLED" : "DISABLED"}`);
   console.log(
     `Enabled Features:  ${summary.enabledFeatures.length > 0 ? "" : "None"}`,
   );

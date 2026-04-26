@@ -68,8 +68,11 @@ function handlePurgeGhost(tableState, ghostUserId) {
         for (const [fromUserId, toUserId] of tableState.pointerMap.entries()) {
             const fromP = tableState.participants.get(fromUserId);
             const toP = tableState.participants.get(toUserId);
-            if (fromP && toP && fromUserId !== ghostUserId && toUserId !== ghostUserId) {
-                if (!pointersToCleared.some(p => p.from === fromP.displayName && p.to === toP.displayName)) {
+            if (fromP &&
+                toP &&
+                fromUserId !== ghostUserId &&
+                toUserId !== ghostUserId) {
+                if (!pointersToCleared.some((p) => p.from === fromP.displayName && p.to === toP.displayName)) {
                     pointersToCleared.push({
                         from: fromP.displayName,
                         to: toP.displayName,

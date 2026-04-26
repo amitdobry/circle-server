@@ -67,9 +67,12 @@ function handleLeaveSession(tableState, userId, displayName) {
         for (const [fromUserId, toUserId] of tableState.pointerMap.entries()) {
             const fromP = tableState.participants.get(fromUserId);
             const toP = tableState.participants.get(toUserId);
-            if (fromP && toP && fromUserId !== leaver.userId && toUserId !== leaver.userId) {
+            if (fromP &&
+                toP &&
+                fromUserId !== leaver.userId &&
+                toUserId !== leaver.userId) {
                 // Don't duplicate pointers we already collected
-                if (!pointersToCleared.some(p => p.from === fromP.displayName && p.to === toP.displayName)) {
+                if (!pointersToCleared.some((p) => p.from === fromP.displayName && p.to === toP.displayName)) {
                     pointersToCleared.push({
                         from: fromP.displayName,
                         to: toP.displayName,

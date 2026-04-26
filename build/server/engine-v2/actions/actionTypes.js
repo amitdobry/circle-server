@@ -6,7 +6,7 @@
  * These represent user intent and trigger state transitions.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NO_OP = exports.ADMIN_END_SESSION = exports.END_SESSION = exports.TIMER_EXPIRED = exports.TEXT_INPUT = exports.SEND_GESTURE = exports.DECLINE_MIC = exports.ACCEPT_MIC = exports.PASS_MIC = exports.DROP_MIC = exports.SET_LIVE_SPEAKER = exports.EVALUATE_SYNC = exports.CLICK_READY_TO_GLOW = exports.POINT_TO_USER = exports.PURGE_GHOST = exports.RECONNECT = exports.DISCONNECT = exports.LEAVE_SESSION = exports.JOIN_SESSION = void 0;
+exports.NO_OP = exports.ROUND_UNMARK_READY = exports.ROUND_MARK_READY = exports.END_ROUND = exports.START_ROUND = exports.RESOLVE_CONTENT_PHASE = exports.VOTE_CONTENT_SUBJECT = exports.START_CONTENT_PHASE = exports.ADMIN_END_SESSION = exports.END_SESSION = exports.TIMER_EXPIRED = exports.TEXT_INPUT = exports.SEND_GESTURE = exports.DECLINE_MIC = exports.ACCEPT_MIC = exports.PASS_MIC = exports.DROP_MIC = exports.SET_LIVE_SPEAKER = exports.EVALUATE_SYNC = exports.CLICK_READY_TO_GLOW = exports.POINT_TO_USER = exports.PURGE_GHOST = exports.RECONNECT = exports.DISCONNECT = exports.LEAVE_SESSION = exports.JOIN_SESSION = void 0;
 // ============================================================================
 // SESSION LIFECYCLE
 // ============================================================================
@@ -40,6 +40,16 @@ exports.TEXT_INPUT = "TEXT_INPUT";
 exports.TIMER_EXPIRED = "TIMER_EXPIRED";
 exports.END_SESSION = "END_SESSION";
 exports.ADMIN_END_SESSION = "ADMIN_END_SESSION"; // Admin manually ends session
+// ============================================================================
+// CONTENT PHASE & ROUNDS (🆕 Feature)
+// ============================================================================
+exports.START_CONTENT_PHASE = "START_CONTENT_PHASE";
+exports.VOTE_CONTENT_SUBJECT = "VOTE_CONTENT_SUBJECT";
+exports.RESOLVE_CONTENT_PHASE = "RESOLVE_CONTENT_PHASE";
+exports.START_ROUND = "START_ROUND";
+exports.END_ROUND = "END_ROUND";
+exports.ROUND_MARK_READY = "ROUND_MARK_READY";
+exports.ROUND_UNMARK_READY = "ROUND_UNMARK_READY";
 // ============================================================================
 // SYSTEM ACTIONS (Internal)
 // ============================================================================

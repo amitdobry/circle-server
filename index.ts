@@ -289,6 +289,13 @@ app.post("/api/session/start", (req: any, res: any) => {
 
 setupSocketHandlers(io);
 
+// 🆕 Initialize Content Configuration (Content Phase Feature)
+console.log("📖 Initializing content configurations...");
+const {
+  contentConfigLoader,
+} = require("./server/config/content/ContentConfigLoader");
+contentConfigLoader.initialize();
+
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`🌐 SoulCircle server running on http://localhost:${PORT}`);

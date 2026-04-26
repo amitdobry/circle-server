@@ -30,6 +30,12 @@ import {
   serializePointerMap,
 } from "../state/selectors";
 import { invalidateSpeaker, isSpeaker } from "../state/speakerLifecycle";
+import { removeVote, allUsersVoted } from "../content/contentPhaseLogic";
+import {
+  removeReadinessFromUser,
+  allUsersReady,
+} from "../round/roundLifecycle";
+import * as ActionTypes from "../actions/actionTypes";
 
 export function handleDisconnect(
   tableState: TableState,
@@ -57,6 +63,61 @@ export function handleDisconnect(
   participant.presence = "GHOST";
   participant.socketId = null;
   participant.lastSeen = Date.now();
+
+  // ========================================================================
+  // STEP 1.5: Remove vote if in content phase (🆕 Content Phase Feature)
+  // ========================================================================
+  if (tableState.contentPhase && tableState.phase === "CONTENT_PHASE") {
+    removeVote(tableState.contentPhase, participant.userId);
+
+    // Check if remaining users all voted
+    if (allUsersVoted(tableState.contentPhase, tableState.participants)) {
+      console.log(
+        `[handleDisconnect] ✅ All remaining users voted after ghost disconnect`,
+      );
+
+      effects.push({
+        type: "DELAYED_ACTION",
+        roomId: tableState.roomId,
+        delayMs: 1000,
+        action: {
+          type: ActionTypes.RESOLVE_CONTENT_PHASE,
+        },
+      });
+    }
+  }
+
+  // ========================================================================
+  // STEP 1.6: Remove readiness if in active round (🆕 CRITICAL BUG FIX)
+  // ========================================================================
+  if (tableState.currentRound && tableState.currentRound.status === "active") {
+    removeReadinessFromUser(tableState.currentRound, participant.userId);
+    console.log(
+      `[handleDisconnect] Removed readiness from user: ${participant.userId}`,
+    );
+
+    // Re-check consensus after removal
+    if (allUsersReady(tableState.currentRound, tableState.participants)) {
+      console.log(
+        "[handleDisconnect] All remaining users ready - triggering new round",
+      );
+
+      effects.push({
+        type: "DELAYED_ACTION",
+        roomId: tableState.roomId,
+        delayMs: 1500,
+        action: {
+          type: ActionTypes.START_CONTENT_PHASE,
+        },
+      });
+    }
+
+    // Emit updated readiness state
+    effects.push({
+      type: "EMIT_READINESS_UPDATE",
+      roomId: tableState.roomId,
+    });
+  }
 
   // ========================================================================
   // STEP 2: Clear pointer (they can't point while disconnected)

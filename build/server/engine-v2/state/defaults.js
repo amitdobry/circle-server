@@ -10,6 +10,8 @@ exports.ORPHAN_THRESHOLD_MS = exports.FORCE_CLEANUP_AFTER_MS = exports.SYNC_PAUS
 exports.createInitialTableState = createInitialTableState;
 exports.createParticipantState = createParticipantState;
 exports.createInactiveTimer = createInactiveTimer;
+exports.createContentPhaseState = createContentPhaseState;
+exports.createRound = createRound;
 exports.createActiveTimer = createActiveTimer;
 const uuid_1 = require("uuid");
 // ============================================================================
@@ -19,11 +21,12 @@ const uuid_1 = require("uuid");
  * Creates a new TableState for a room.
  * This is the only way to initialize a room's state.
  */
-function createInitialTableState(roomId) {
+function createInitialTableState(roomId, tableId) {
     return {
         // Identity
         sessionId: (0, uuid_1.v4)(),
         roomId,
+        tableId, // 🆕 Store table identity
         engineVersion: "v2",
         // Phase
         phase: "LOBBY",
@@ -35,6 +38,10 @@ function createInitialTableState(roomId) {
         syncPause: false,
         // Timer (inactive by default)
         timer: createInactiveTimer(),
+        // 🆕 Round system (Content Phase Feature)
+        currentRound: null,
+        roundsHistory: [],
+        contentPhase: null,
         // Lifecycle
         createdAt: Date.now(),
         lastUpdated: Date.now(),
@@ -75,6 +82,40 @@ function createInactiveTimer() {
         active: false,
         startTime: 0,
         durationMs: 0,
+    };
+}
+// ============================================================================
+// CONTENT PHASE & ROUND FACTORIES (🆕 Content Phase Feature)
+// ============================================================================
+/**
+ * Creates a new ContentPhaseState for voting
+ */
+function createContentPhaseState(themeKey, targetRoundNumber) {
+    return {
+        status: "voting",
+        tableThemeKey: themeKey,
+        targetRoundNumber,
+        votes: new Map(),
+        selectedSubjectKey: null,
+        selectedQuestionId: null,
+        selectedQuestionText: null,
+    };
+}
+/**
+ * Creates a new RoundState
+ */
+function createRound(config) {
+    return {
+        roundId: (0, uuid_1.v4)(),
+        roundNumber: config.roundNumber,
+        status: "active",
+        tableThemeKey: config.tableThemeKey,
+        subjectKey: config.subjectKey,
+        questionId: config.questionId,
+        glyphText: config.glyphText,
+        readyUserIds: new Set(),
+        startedAt: Date.now(),
+        endedAt: null,
     };
 }
 /**

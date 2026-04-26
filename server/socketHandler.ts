@@ -653,11 +653,40 @@ export function setupSocketHandlers(io: Server) {
 
     socket.on("request-join", ({ userId, name, avatarId, tableId }) => {
       // Use client-provided userId (stable UUID) or fallback to socket.id for legacy clients
-      const effectiveUserId = userId || socket.id;
+      let effectiveUserId = userId || socket.id;
+
+      // 🔒 CRITICAL: Validate userId uniqueness within the table
+      // Prevent duplicate userIds from causing "already exists" errors
+      const resolvedTableId = tableId || "default-room";
+      try {
+        const { roomRegistry } = require("./engine-v2/registry/RoomRegistry");
+        const roomState = roomRegistry.getRoom(resolvedTableId);
+
+        if (roomState && roomState.participants) {
+          // Check if this userId is already in use by a CONNECTED participant
+          const existingParticipant =
+            roomState.participants.get(effectiveUserId);
+          if (
+            existingParticipant &&
+            existingParticipant.presence === "CONNECTED"
+          ) {
+            console.warn(
+              `⚠️ [UserId Collision] userId "${effectiveUserId}" already in use by user "${existingParticipant.displayName}" → using socket.id instead`,
+            );
+            effectiveUserId = socket.id; // Use socket.id as unique fallback
+          }
+        }
+      } catch (error) {
+        // V2 not available or error reading state, continue with provided userId
+        console.warn(
+          "[UserId Validation] Could not check for duplicate userId:",
+          error,
+        );
+      }
 
       console.log(
         formatSessionLog(
-          `📨 Join request: ${name} as ${avatarId} → table: ${tableId || "default-room"} (socket: ${socket.id}, userId: ${effectiveUserId})`,
+          `📨 Join request: ${name} as ${avatarId} → table: ${resolvedTableId} (socket: ${socket.id}, userId: ${effectiveUserId})`,
           "INFO",
         ),
       );
@@ -677,7 +706,6 @@ export function setupSocketHandlers(io: Server) {
       }
 
       // Store user data in socket for disconnect handling and V2
-      const resolvedTableId = tableId || "default-room";
       socket.data.roomId = resolvedTableId;
       socket.data.tableId = resolvedTableId;
       socket.data.userName = name; // Phase E: Store for disconnect logging
@@ -1559,6 +1587,120 @@ export function setupSocketHandlers(io: Server) {
       );
       socket.emit("avatars", roomAvatars);
     });
+
+    // ========================================================================
+    // CONTENT PHASE & ROUNDS (🆕 Content Phase Feature)
+    // ========================================================================
+
+    // Content Phase: Vote for subject
+    socket.on("content:vote-subject", (payload: { subjectKey: string }) => {
+      console.log(`[Socket] content:vote-subject from ${socket.id}`, payload);
+
+      const { FEATURE_CONTENT_PHASE } = require("./config/featureFlags");
+
+      if (!FEATURE_CONTENT_PHASE) {
+        console.warn("[Socket] Content Phase feature disabled");
+        return;
+      }
+
+      const roomId = socket.data?.roomId || socket.data?.tableId;
+
+      if (!roomId) {
+        console.error("[Socket] content:vote-subject: No roomId found");
+        return;
+      }
+
+      const userId = socket.data.userId || socket.id; // Use stored userId
+
+      const ActionTypes = require("./engine-v2/actions/actionTypes");
+
+      // Dispatch vote action through Engine V2
+      dispatchAndRun(
+        roomId,
+        userId,
+        {
+          type: ActionTypes.VOTE_CONTENT_SUBJECT,
+          payload: {
+            subjectKey: payload.subjectKey,
+          },
+        },
+        io,
+      );
+    });
+
+    // Round Readiness: Mark as ready for next question
+    socket.on("round:ready", () => {
+      console.log(`[Socket] round:ready from ${socket.id}`);
+
+      const { FEATURE_CONTENT_PHASE } = require("./config/featureFlags");
+
+      if (!FEATURE_CONTENT_PHASE) {
+        console.warn("[Socket] Content Phase feature disabled");
+        return;
+      }
+
+      const roomId = socket.data?.roomId || socket.data?.tableId;
+
+      if (!roomId) {
+        console.error("[Socket] round:ready: No roomId found");
+        return;
+      }
+
+      const userId = socket.data.userId || socket.id; // Use stored userId
+
+      const ActionTypes = require("./engine-v2/actions/actionTypes");
+
+      // Dispatch ready action through Engine V2
+      dispatchAndRun(
+        roomId,
+        userId,
+        {
+          type: ActionTypes.ROUND_MARK_READY,
+        },
+        io,
+      );
+
+      console.log(`[Socket] Marked ready for next question`);
+    });
+
+    // Round Readiness: Unmark ready
+    socket.on("round:unready", () => {
+      console.log(`[Socket] round:unready from ${socket.id}`);
+
+      const { FEATURE_CONTENT_PHASE } = require("./config/featureFlags");
+
+      if (!FEATURE_CONTENT_PHASE) {
+        console.warn("[Socket] Content Phase feature disabled");
+        return;
+      }
+
+      const roomId = socket.data?.roomId || socket.data?.tableId;
+
+      if (!roomId) {
+        console.error("[Socket] round:unready: No roomId found");
+        return;
+      }
+
+      const userId = socket.data.userId || socket.id; // Use stored userId
+
+      const ActionTypes = require("./engine-v2/actions/actionTypes");
+
+      // Dispatch unready action through Engine V2
+      dispatchAndRun(
+        roomId,
+        userId,
+        {
+          type: ActionTypes.ROUND_UNMARK_READY,
+        },
+        io,
+      );
+
+      console.log(`[Socket] Unmarked ready`);
+    });
+
+    // ========================================================================
+    // END CONTENT PHASE & ROUNDS HANDLERS
+    // ========================================================================
 
     function cleanupUser(socket: Socket) {
       const user = users.get(socket.id);

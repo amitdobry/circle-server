@@ -24,7 +24,7 @@ export function buildAttentionPanel(ctx: PanelContext): PanelConfig {
           targetUser: name,
         },
       };
-    }
+    },
   );
 
   // ✨ Ready to Glow button

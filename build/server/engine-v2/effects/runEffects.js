@@ -375,6 +375,49 @@ function executeEffect(effect, io) {
             break;
         }
         // ========================================================================
+        // CONTENT PHASE & ROUNDS (🆕 Feature)
+        // ========================================================================
+        case "EMIT_ROUND_STATE": {
+            // Emit current round state to all users in room
+            const { roomRegistry } = require("../registry/RoomRegistry");
+            const tableState = roomRegistry.getRoom(effect.roomId);
+            if (!tableState) {
+                console.warn(`[runEffects] EMIT_ROUND_STATE: Room ${effect.roomId} not found`);
+                break;
+            }
+            const roundData = tableState.currentRound
+                ? {
+                    roundId: tableState.currentRound.roundId,
+                    roundNumber: tableState.currentRound.roundNumber,
+                    glyphText: tableState.currentRound.glyphText,
+                    subjectKey: tableState.currentRound.subjectKey,
+                    questionId: tableState.currentRound.questionId,
+                    status: tableState.currentRound.status,
+                }
+                : null;
+            io.to(effect.roomId).emit("round:state", roundData);
+            console.log(`[runEffects] EMIT_ROUND_STATE → room ${effect.roomId} | Round ${roundData?.roundNumber || "none"}`);
+            break;
+        }
+        case "EMIT_READINESS_UPDATE": {
+            // Emit readiness counts to all users in room
+            const { roomRegistry } = require("../registry/RoomRegistry");
+            const { getReadinessSummary } = require("../round/roundLifecycle");
+            const tableState = roomRegistry.getRoom(effect.roomId);
+            if (!tableState) {
+                console.warn(`[runEffects] EMIT_READINESS_UPDATE: Room ${effect.roomId} not found`);
+                break;
+            }
+            if (!tableState.currentRound) {
+                console.warn(`[runEffects] EMIT_READINESS_UPDATE: No active round in room ${effect.roomId}`);
+                break;
+            }
+            const readinessSummary = getReadinessSummary(tableState.currentRound, tableState.participants);
+            io.to(effect.roomId).emit("round:readiness", readinessSummary);
+            console.log(`[runEffects] EMIT_READINESS_UPDATE → room ${effect.roomId} | ${readinessSummary.ready}/${readinessSummary.total} ready`);
+            break;
+        }
+        // ========================================================================
         // UNKNOWN EFFECT
         // ========================================================================
         default:

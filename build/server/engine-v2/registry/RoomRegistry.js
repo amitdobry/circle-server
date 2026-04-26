@@ -10,6 +10,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.roomRegistry = void 0;
 const defaults_1 = require("../state/defaults");
+const tableDefinitions_1 = require("../../ui-config/tableDefinitions");
 // ============================================================================
 // ROOM REGISTRY (Singleton)
 // ============================================================================
@@ -27,14 +28,25 @@ class RoomRegistry {
     /**
      * Create a new room with initial state.
      * Throws if room already exists.
+     *
+     * 🆕 CRITICAL: Extracts tableId from roomId (format: "tableId" or "tableId-variant")
      */
     createRoom(roomId) {
         if (this.rooms.has(roomId)) {
             throw new Error(`Room '${roomId}' already exists`);
         }
-        const tableState = (0, defaults_1.createInitialTableState)(roomId);
+        // Extract tableId from roomId (e.g., "hearth" or "hearth-1" → "hearth")
+        const tableId = roomId.split("-")[0];
+        if (!(0, tableDefinitions_1.isValidTableId)(tableId)) {
+            console.warn(`[RoomRegistry] ⚠️ Invalid tableId extracted from roomId: ${roomId} → ${tableId}, defaulting to 'hearth'`);
+            // For safety, default to hearth if invalid
+            const tableState = (0, defaults_1.createInitialTableState)(roomId, "hearth");
+            this.rooms.set(roomId, tableState);
+            return tableState;
+        }
+        const tableState = (0, defaults_1.createInitialTableState)(roomId, tableId);
         this.rooms.set(roomId, tableState);
-        console.log(`[RoomRegistry] Room '${roomId}' created`);
+        console.log(`[RoomRegistry] Room '${roomId}' created for table '${tableId}'`);
         return tableState;
     }
     /**
@@ -81,7 +93,7 @@ class RoomRegistry {
                 console.log(`        • ${participant.displayName} (${userId}) - ${participant.presence}`);
             }
             console.log(`      - Phase: ${room.phase}`);
-            console.log(`      - Session: ${room.sessionId || 'none'}`);
+            console.log(`      - Session: ${room.sessionId || "none"}`);
         }
         console.log(`   ================================\n`);
     }

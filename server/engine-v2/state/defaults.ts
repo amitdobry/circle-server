@@ -12,6 +12,8 @@ import {
   SessionTimerState,
   PresenceState,
   ParticipantRole,
+  ContentPhaseState,
+  RoundState,
 } from "./types";
 
 // ============================================================================
@@ -22,11 +24,15 @@ import {
  * Creates a new TableState for a room.
  * This is the only way to initialize a room's state.
  */
-export function createInitialTableState(roomId: string): TableState {
+export function createInitialTableState(
+  roomId: string,
+  tableId: string, // 🆕 Table identity (e.g., "hearth")
+): TableState {
   return {
     // Identity
     sessionId: uuidv4(),
     roomId,
+    tableId, // 🆕 Store table identity
     engineVersion: "v2",
 
     // Phase
@@ -42,6 +48,11 @@ export function createInitialTableState(roomId: string): TableState {
 
     // Timer (inactive by default)
     timer: createInactiveTimer(),
+
+    // 🆕 Round system (Content Phase Feature)
+    currentRound: null,
+    roundsHistory: [],
+    contentPhase: null,
 
     // Lifecycle
     createdAt: Date.now(),
@@ -96,6 +107,52 @@ export function createInactiveTimer(): SessionTimerState {
     active: false,
     startTime: 0,
     durationMs: 0,
+  };
+}
+
+// ============================================================================
+// CONTENT PHASE & ROUND FACTORIES (🆕 Content Phase Feature)
+// ============================================================================
+
+/**
+ * Creates a new ContentPhaseState for voting
+ */
+export function createContentPhaseState(
+  themeKey: string,
+  targetRoundNumber: number,
+): ContentPhaseState {
+  return {
+    status: "voting",
+    tableThemeKey: themeKey,
+    targetRoundNumber,
+    votes: new Map(),
+    selectedSubjectKey: null,
+    selectedQuestionId: null,
+    selectedQuestionText: null,
+  };
+}
+
+/**
+ * Creates a new RoundState
+ */
+export function createRound(config: {
+  roundNumber: number;
+  tableThemeKey: string;
+  subjectKey: string;
+  questionId: string;
+  glyphText: string;
+}): RoundState {
+  return {
+    roundId: uuidv4(),
+    roundNumber: config.roundNumber,
+    status: "active",
+    tableThemeKey: config.tableThemeKey,
+    subjectKey: config.subjectKey,
+    questionId: config.questionId,
+    glyphText: config.glyphText,
+    readyUserIds: new Set(),
+    startedAt: Date.now(),
+    endedAt: null,
   };
 }
 

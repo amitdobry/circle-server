@@ -30,14 +30,14 @@ function handleOfferMicToUserFromPassTheMic(payload, context) {
     // 👆 Set pointer and update state
     (0, socketHandler_1.setPointer)(name, targetUser, roomId);
     io.to(roomId).emit("update-pointing", { from: name, to: targetUser });
-    (0, socketHandler_1.setIsSyncPauseMode)(true);
+    (0, socketHandler_1.setIsSyncPauseMode)(true, roomId);
     // Clear live speaker — the interrupter has chosen a candidate,
     // the previous speaker's authority is suspended from this point.
     // (In V1 this was handled by evaluateSync detecting broken consensus.)
     (0, socketHandler_1.setLiveSpeaker)(null, roomId);
     // Emit updates
     for (const [socketId, user] of roomUsers.entries()) {
-        const config = (0, panelConfigService_1.getPanelConfigFor)(user.name);
+        const config = (0, panelConfigService_1.getPanelConfigFor)(user.name, roomId);
         io.to(socketId).emit("receive:panelConfig", config);
     }
 }

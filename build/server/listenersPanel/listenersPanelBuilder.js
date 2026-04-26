@@ -76,7 +76,7 @@ function buildListenerSyncPanel(ctx) {
     config.forEach((block) => {
         if (block.id === "listener-top-bar") {
             block.blocks.forEach((b) => {
-                if (b.id === "listening-to-text") {
+                if (b.id === "listening-to-text" && b.type === "text") {
                     b.content = `Listening to - ${speakerName}`;
                 }
             });
@@ -106,7 +106,9 @@ function buildListenerSyncPanel(ctx) {
         config.forEach((block) => {
             if (block.id === "ear-sub-gesture-buttons") {
                 // Preserve any listenerControl (blue) buttons already in the config
-                const blueBlocks = block.blocks.filter((b) => b.type === "button" && "button" in b && b.button?.type === "listenerControl");
+                const blueBlocks = block.blocks.filter((b) => b.type === "button" &&
+                    "button" in b &&
+                    b.button?.type === "listenerControl");
                 block.blocks = [...gesturePanelBlocks, ...blueBlocks];
             }
         });
@@ -118,7 +120,7 @@ function buildListenerSyncPanel(ctx) {
         config.forEach((block) => {
             if (block.id === "listener-waiting-panel") {
                 block.blocks.forEach((b) => {
-                    if (b.id === "listener-waiting-text") {
+                    if (b.id === "listener-waiting-text" && b.type === "text") {
                         b.content = `🧠 ${name} is having a moment of thought — perhaps an epiphany?`;
                     }
                 });
@@ -132,7 +134,7 @@ function buildListenerSyncPanel(ctx) {
         config.forEach((block) => {
             if (block.id === "listener-mic-drop-text") {
                 block.blocks.forEach((b) => {
-                    if (b.id === "mic-drop-message") {
+                    if (b.id === "mic-drop-message" && b.type === "text") {
                         b.content = `🎤 ${name} dropped the mic. Will you pick it up?`;
                     }
                 });
@@ -146,7 +148,7 @@ function buildListenerSyncPanel(ctx) {
         config.forEach((block) => {
             if (block.id === "mic-consent-text") {
                 block.blocks.forEach((b) => {
-                    if (b.id === "mic-consent-message") {
+                    if (b.id === "mic-consent-message" && b.type === "text") {
                         b.content = `🎤 ${name} wants to pick up the mic. Listen to ${name}?`;
                     }
                 });
@@ -164,7 +166,7 @@ function buildListenerSyncPanel(ctx) {
         config.forEach((block) => {
             if (block.id === "waiting-to-become-speaker") {
                 block.blocks.forEach((b) => {
-                    if (b.id === "speaker-candidate-waiting-text") {
+                    if (b.id === "speaker-candidate-waiting-text" && b.type === "text") {
                         b.content = `⏳ You’ve requested to speak. Waiting for the group to sync with you...`;
                     }
                 });
@@ -177,7 +179,7 @@ function buildListenerSyncPanel(ctx) {
         config.forEach((block) => {
             if (block.id === "Concent-mic-drop-pickup") {
                 block.blocks.forEach((b) => {
-                    if (b.id === "speaker-candidate-waiting-text") {
+                    if (b.id === "speaker-candidate-waiting-text" && b.type === "text") {
                         b.content = `⏳ You’ve gave concent for ${name} to speak. Waiting for the group to sync with you...`;
                     }
                 });
@@ -214,7 +216,7 @@ function buildListenerSyncPanel(ctx) {
         config.forEach((block) => {
             if (block.id === "mic-offer-received") {
                 block.blocks.forEach((b) => {
-                    if (b.id === "mic-offer-text") {
+                    if (b.id === "mic-offer-text" && b.type === "text") {
                         b.content = `🎤 ${speakerName} wants to pass you the mic. Will you speak?`;
                     }
                 });
@@ -227,7 +229,7 @@ function buildListenerSyncPanel(ctx) {
         config.forEach((block) => {
             if (block.id === "waiting-for-mic-acceptance") {
                 block.blocks.forEach((b) => {
-                    if (b.id === "waiting-text") {
+                    if (b.id === "waiting-text" && b.type === "text") {
                         b.content = `⏳ Waiting for ${targetName} to decide whether to accept the mic...`;
                     }
                 });
@@ -242,7 +244,7 @@ function buildListenerSyncPanel(ctx) {
         config.forEach((block) => {
             if (block.id === "others-await-offer-result") {
                 block.blocks.forEach((b) => {
-                    if (b.id === "watching-offer-text") {
+                    if (b.id === "watching-offer-text" && b.type === "text") {
                         b.content = `🎤 ${speakerName} has offered the mic to ${targetName}, who is deciding whether to speak.`;
                     }
                 });
@@ -256,7 +258,7 @@ function buildListenerSyncPanel(ctx) {
         config.forEach((block) => {
             if (block.id === "listener-waiting-panel") {
                 block.blocks.forEach((b) => {
-                    if (b.id === "listener-waiting-text") {
+                    if (b.id === "listener-waiting-text" && b.type === "text") {
                         b.content = `🟦 ${byName} is choosing who to offer the mic to…`;
                     }
                 });

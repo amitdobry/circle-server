@@ -23,7 +23,7 @@
  *   - V1_ONLY: V2 disabled (emergency rollback)
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ENGINE_MODE = exports.ENGINE_V2_SPEAKER_MANAGER = void 0;
+exports.ENGINE_MODE = exports.FEATURE_CONTENT_PHASE = exports.ENGINE_V2_SPEAKER_MANAGER = void 0;
 exports.shouldUseV2 = shouldUseV2;
 exports.isShadowModeActive = isShadowModeActive;
 exports.shouldExecuteV2Effects = shouldExecuteV2Effects;
@@ -79,9 +79,19 @@ const FEATURE_FLAGS = {
 // ============================================================================
 /**
  * Speaker Manager: Room-scoped speaker state (Phase B)
+  console.log(`Content Phase:     ${FEATURE_CONTENT_PHASE ? "ENABLED" : "DISABLED"}`);
  * When enabled, uses SpeakerManager instead of global variables
  */
 exports.ENGINE_V2_SPEAKER_MANAGER = parseEnvBoolean("ENGINE_V2_SPEAKER_MANAGER", false);
+// ============================================================================
+// CONTENT PHASE FEATURE FLAG (🆕)
+// ============================================================================
+/**
+ * Content Phase & Round System
+ * When enabled, allows users to vote on philosophical subjects and creates
+ * multi-round sessions with Glyphs. Defaults to FALSE for safe deployment.
+ */
+exports.FEATURE_CONTENT_PHASE = parseEnvBoolean("FEATURE_CONTENT_PHASE", false);
 // ============================================================================
 // ENGINE MODE
 // ============================================================================
@@ -182,6 +192,7 @@ function logConfigSummary() {
     console.log(`Shadow Active:     ${summary.shadowActive}`);
     console.log(`Execute Effects:   ${summary.executeEffects}`);
     console.log(`Speaker Manager:   ${exports.ENGINE_V2_SPEAKER_MANAGER ? "V2" : "V1"}`);
+    console.log(`Content Phase:     ${exports.FEATURE_CONTENT_PHASE ? "ENABLED" : "DISABLED"}`);
     console.log(`Enabled Features:  ${summary.enabledFeatures.length > 0 ? "" : "None"}`);
     if (summary.enabledFeatures.length > 0) {
         summary.enabledFeatures.forEach((feature) => {

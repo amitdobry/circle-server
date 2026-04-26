@@ -16,7 +16,11 @@
 
 import { TableState, Action, Effect } from "../state/types";
 import * as ActionTypes from "../actions/actionTypes";
-import { createParticipantState } from "../state/defaults";
+import {
+  createParticipantState,
+  createContentPhaseState,
+  createRound,
+} from "../state/defaults";
 import {
   evaluateConsensus,
   findParticipantByDisplayName,
@@ -29,6 +33,20 @@ import { removeParticipantSafely } from "../state/participantLifecycle";
 import { handleDisconnect } from "../handlers/handleDisconnect";
 import { handleLeaveSession } from "../handlers/handleLeaveSession";
 import { handlePurgeGhost } from "../handlers/handlePurgeGhost";
+import {
+  castVote,
+  removeVote,
+  allUsersVoted,
+  resolveVotes,
+} from "../content/contentPhaseLogic";
+import {
+  markUserReady,
+  unmarkUserReady,
+  allUsersReady,
+  endRound,
+} from "../round/roundLifecycle";
+import { contentConfigLoader } from "../../config/content/ContentConfigLoader";
+import { getTableDefinition } from "../../ui-config/tableDefinitions";
 
 // Import transition functions (to be created)
 // import * as transitions from "./transitions";
@@ -138,7 +156,7 @@ export function reducer(
         `[V2 Reducer] ✅ ${displayName} joined | Total participants: ${tableState.participants.size} | Phase: ${tableState.phase}`,
       );
 
-      return [
+      const effects: Effect[] = [
         {
           type: "SYSTEM_LOG",
           roomId: tableState.roomId,
@@ -157,6 +175,36 @@ export function reducer(
           },
         },
       ];
+
+      // 🆕 Content Phase Feature: Start CONTENT_PHASE when 2+ users join (if feature enabled)
+      const { FEATURE_CONTENT_PHASE } = require("../../config/featureFlags");
+
+      if (FEATURE_CONTENT_PHASE) {
+        const connectedCount = getConnectedParticipants(tableState).length;
+
+        if (
+          connectedCount >= 2 &&
+          (tableState.phase === "LOBBY" ||
+            tableState.phase === "ATTENTION_SELECTION") &&
+          !tableState.contentPhase &&
+          !tableState.currentRound
+        ) {
+          console.log(
+            `[V2 Reducer] 🚀 Starting Content Phase (${connectedCount} users joined)`,
+          );
+
+          effects.push({
+            type: "DELAYED_ACTION",
+            roomId: tableState.roomId,
+            delayMs: 500,
+            action: {
+              type: ActionTypes.START_CONTENT_PHASE,
+            },
+          });
+        }
+      }
+
+      return effects;
     }
 
     case ActionTypes.LEAVE_SESSION: {
@@ -295,6 +343,33 @@ export function reducer(
           roomId: tableState.roomId,
         },
       );
+
+      // 🆕 Content Phase Feature: Check if we should start CONTENT_PHASE on reconnect
+      const { FEATURE_CONTENT_PHASE } = require("../../config/featureFlags");
+
+      if (
+        FEATURE_CONTENT_PHASE &&
+        tableState.phase === "LOBBY" &&
+        !tableState.contentPhase &&
+        !tableState.currentRound
+      ) {
+        const connectedCount = getConnectedParticipants(tableState).length;
+
+        if (connectedCount >= 2) {
+          console.log(
+            `[V2 Reducer] 🚀 Starting Content Phase after reconnect (${connectedCount} users)`,
+          );
+
+          effects.push({
+            type: "DELAYED_ACTION",
+            roomId: tableState.roomId,
+            delayMs: 500,
+            action: {
+              type: ActionTypes.START_CONTENT_PHASE,
+            },
+          });
+        }
+      }
 
       return effects;
     }
@@ -928,6 +1003,325 @@ export function reducer(
           type: "SCHEDULE_CLEANUP",
           roomId: tableState.roomId,
           delayMs: 10000, // 10 seconds before cleanup (fast)
+        },
+      ];
+    }
+
+    // ========================================================================
+    // CONTENT PHASE & ROUNDS (🆕 Feature)
+    // ========================================================================
+
+    case ActionTypes.START_CONTENT_PHASE: {
+      console.log(
+        `[V2 Reducer] 📖 START_CONTENT_PHASE | Room: ${tableState.roomId}`,
+      );
+
+      // 🆕 CRITICAL: Use tableId, not roomId, for content lookup
+      const tableDefinition = getTableDefinition(tableState.tableId);
+
+      if (!tableDefinition || !tableDefinition.content) {
+        console.error(
+          `[V2 Reducer] ❌ No table definition or content config for table: ${tableState.tableId}`,
+        );
+        tableState.phase = "ENDED";
+        return [];
+      }
+
+      const themeKey = tableDefinition.content.themeKey;
+      const tableSubjects = tableDefinition.content.subjects;
+
+      console.log(
+        `[V2 Reducer] Content Phase for table '${tableDefinition.name}' with theme '${themeKey}' and ${tableSubjects.length} subjects`,
+      );
+
+      const targetRoundNumber = (tableState.roundsHistory?.length || 0) + 1;
+
+      tableState.phase = "CONTENT_PHASE";
+      tableState.contentPhase = createContentPhaseState(
+        themeKey,
+        targetRoundNumber,
+      );
+
+      return [
+        {
+          type: "SYSTEM_LOG",
+          roomId: tableState.roomId,
+          message: `Content Phase started - choose the direction of the circle`,
+          level: "info",
+        },
+        {
+          type: "REBUILD_ALL_PANELS",
+          roomId: tableState.roomId,
+        },
+      ];
+    }
+
+    case ActionTypes.VOTE_CONTENT_SUBJECT: {
+      console.log(
+        `[V2 Reducer] 🗳️ VOTE_CONTENT_SUBJECT | Room: ${tableState.roomId} | User: ${userId}`,
+      );
+
+      if (!userId) {
+        console.error(`[V2 Reducer] ❌ VOTE_CONTENT_SUBJECT requires userId`);
+        return [];
+      }
+
+      if (!tableState.contentPhase || tableState.phase !== "CONTENT_PHASE") {
+        console.error(`[V2 Reducer] ❌ Not in CONTENT_PHASE`);
+        return [];
+      }
+
+      const { subjectKey } = action.payload || {};
+
+      if (!subjectKey) {
+        console.error(
+          `[V2 Reducer] ❌ VOTE_CONTENT_SUBJECT missing subjectKey`,
+        );
+        return [];
+      }
+
+      // 🆕 CRITICAL: Pass tableId for table-based validation
+      castVote(tableState.contentPhase, userId, subjectKey, tableState.tableId);
+
+      const effects: Effect[] = [
+        {
+          type: "REBUILD_ALL_PANELS",
+          roomId: tableState.roomId,
+        },
+      ];
+
+      // Check if all users have voted
+      if (allUsersVoted(tableState.contentPhase, tableState.participants)) {
+        console.log(`[V2 Reducer] ✅ All users voted, resolving...`);
+
+        effects.push({
+          type: "DELAYED_ACTION",
+          roomId: tableState.roomId,
+          delayMs: 1000,
+          action: {
+            type: ActionTypes.RESOLVE_CONTENT_PHASE,
+          },
+        });
+      }
+
+      return effects;
+    }
+
+    case ActionTypes.RESOLVE_CONTENT_PHASE: {
+      console.log(
+        `[V2 Reducer] 🎯 RESOLVE_CONTENT_PHASE | Room: ${tableState.roomId}`,
+      );
+
+      if (!tableState.contentPhase) {
+        console.error(`[V2 Reducer] ❌ No content phase to resolve`);
+        return [];
+      }
+
+      const winningSubject = resolveVotes(tableState.contentPhase);
+
+      if (!winningSubject) {
+        console.error(`[V2 Reducer] ❌ No votes to resolve`);
+        return [];
+      }
+
+      // Get random question from winning subject
+      const questionData = contentConfigLoader.getRandomQuestion(
+        tableState.contentPhase.tableThemeKey,
+        winningSubject,
+      );
+
+      if (!questionData) {
+        console.error(
+          `[V2 Reducer] ❌ Failed to get question for subject: ${winningSubject}`,
+        );
+        return [];
+      }
+
+      // Mark as resolved and store results
+      tableState.contentPhase.status = "resolved";
+      tableState.contentPhase.selectedSubjectKey = winningSubject;
+      tableState.contentPhase.selectedQuestionId = questionData.id;
+      tableState.contentPhase.selectedQuestionText = questionData.text;
+
+      console.log(
+        `[V2 Reducer] ✅ Resolved: ${winningSubject} | Question: "${questionData.text}"`,
+      );
+
+      return [
+        {
+          type: "SYSTEM_LOG",
+          roomId: tableState.roomId,
+          message: `Circle chose: ${winningSubject}`,
+          level: "info",
+        },
+        {
+          type: "REBUILD_ALL_PANELS",
+          roomId: tableState.roomId,
+        },
+        {
+          type: "DELAYED_ACTION",
+          roomId: tableState.roomId,
+          delayMs: 1500,
+          action: {
+            type: ActionTypes.START_ROUND,
+            payload: {
+              tableThemeKey: tableState.contentPhase.tableThemeKey,
+              subjectKey: winningSubject,
+              questionId: questionData.id,
+              glyphText: questionData.text,
+            },
+          },
+        },
+      ];
+    }
+
+    case ActionTypes.START_ROUND: {
+      console.log(`[V2 Reducer] 🔥 START_ROUND | Room: ${tableState.roomId}`);
+
+      if (
+        !tableState.contentPhase ||
+        tableState.contentPhase.status !== "resolved"
+      ) {
+        console.error(`[V2 Reducer] ❌ Content phase not resolved`);
+        return [];
+      }
+
+      const { tableThemeKey, subjectKey, questionId, glyphText } =
+        action.payload || {};
+
+      if (!tableThemeKey || !subjectKey || !questionId || !glyphText) {
+        console.error(`[V2 Reducer] ❌ START_ROUND missing required fields`);
+        return [];
+      }
+
+      // Calculate round number
+      const roundNumber = (tableState.roundsHistory?.length || 0) + 1;
+
+      // Create new round (includes Glyph)
+      const newRound = createRound({
+        roundNumber,
+        tableThemeKey,
+        subjectKey,
+        questionId,
+        glyphText,
+      });
+
+      // Set as current round
+      tableState.currentRound = newRound;
+
+      // Clear content phase
+      tableState.contentPhase = null;
+
+      // Transition to ATTENTION_SELECTION
+      tableState.phase = "ATTENTION_SELECTION";
+
+      console.log(
+        `[V2 Reducer] ✅ Round ${roundNumber} started: "${glyphText}"`,
+      );
+
+      return [
+        {
+          type: "SYSTEM_LOG",
+          roomId: tableState.roomId,
+          message: `Round ${roundNumber} begins`,
+          level: "info",
+        },
+        {
+          type: "REBUILD_ALL_PANELS",
+          roomId: tableState.roomId,
+        },
+        {
+          type: "EMIT_ROUND_STATE",
+          roomId: tableState.roomId,
+        },
+        // 🆕 ISSUE 6 FIX: Emit initial readiness state (0 / X ready)
+        {
+          type: "EMIT_READINESS_UPDATE",
+          roomId: tableState.roomId,
+        },
+      ];
+    }
+
+    case ActionTypes.ROUND_MARK_READY: {
+      console.log(
+        `[V2 Reducer] ✋ ROUND_MARK_READY | Room: ${tableState.roomId} | User: ${userId}`,
+      );
+
+      if (!userId) {
+        console.error(`[V2 Reducer] ❌ ROUND_MARK_READY requires userId`);
+        return [];
+      }
+
+      if (!tableState.currentRound) {
+        console.error(`[V2 Reducer] ❌ No active round`);
+        return [];
+      }
+
+      const changed = markUserReady(tableState.currentRound, userId);
+
+      if (!changed) {
+        return []; // User was already ready
+      }
+
+      const effects: Effect[] = [
+        {
+          type: "EMIT_READINESS_UPDATE",
+          roomId: tableState.roomId,
+        },
+      ];
+
+      // Check if all users are ready (unanimous consensus)
+      if (allUsersReady(tableState.currentRound, tableState.participants)) {
+        console.log(
+          `[V2 Reducer] 🎉 All users ready - ending round, starting new content phase`,
+        );
+
+        // End current round
+        endRound(tableState.currentRound);
+
+        // Move to history
+        tableState.roundsHistory.push(tableState.currentRound);
+        tableState.currentRound = null;
+
+        // Start new content phase (reads theme from table definition)
+        effects.push({
+          type: "DELAYED_ACTION",
+          roomId: tableState.roomId,
+          delayMs: 1500,
+          action: {
+            type: ActionTypes.START_CONTENT_PHASE,
+          },
+        });
+      }
+
+      return effects;
+    }
+
+    case ActionTypes.ROUND_UNMARK_READY: {
+      console.log(
+        `[V2 Reducer] 🤚 ROUND_UNMARK_READY | Room: ${tableState.roomId} | User: ${userId}`,
+      );
+
+      if (!userId) {
+        console.error(`[V2 Reducer] ❌ ROUND_UNMARK_READY requires userId`);
+        return [];
+      }
+
+      if (!tableState.currentRound) {
+        console.error(`[V2 Reducer] ❌ No active round`);
+        return [];
+      }
+
+      const changed = unmarkUserReady(tableState.currentRound, userId);
+
+      if (!changed) {
+        return []; // User was not ready
+      }
+
+      return [
+        {
+          type: "EMIT_READINESS_UPDATE",
+          roomId: tableState.roomId,
         },
       ];
     }

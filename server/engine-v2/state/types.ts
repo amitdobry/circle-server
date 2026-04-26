@@ -11,6 +11,7 @@
 
 export type SessionPhase =
   | "LOBBY" // Pre-session, users joining
+  | "CONTENT_PHASE" // 🆕 Voting on philosophical subjects
   | "ATTENTION_SELECTION" // Picker mode, deciding who speaks
   | "SYNC_PAUSE" // Brief freeze after consensus (2-3 seconds)
   | "LIVE_SPEAKER" // Someone has the mic
@@ -73,6 +74,54 @@ export interface SessionTimerState {
 }
 
 // ============================================================================
+// ROUND STATE (Content Phase Feature)
+// ============================================================================
+
+/**
+ * RoundState - One question cycle with its own Glyph
+ *
+ * Round = data/meaning container (NOT a phase)
+ * A session can have multiple rounds.
+ * Glyph lives INSIDE round (NOT separate state).
+ */
+export interface RoundState {
+  roundId: string; // UUID for this round
+  roundNumber: number; // Sequential number (1, 2, 3...)
+  status: "active" | "ended"; // Round lifecycle
+
+  // Content identity
+  tableThemeKey: string; // e.g., "philosophy"
+  subjectKey: string; // e.g., "truth"
+  questionId: string; // e.g., "truth_q3"
+
+  // 🔥 GLYPH (lives here, NOT in separate state)
+  glyphText: string; // The actual question text
+
+  // Readiness tracking (unanimous consensus)
+  readyUserIds: Set<string>; // Users who marked ready for next question
+
+  // Timestamps
+  startedAt: number; // Unix timestamp (ms)
+  endedAt: number | null; // null while active
+}
+
+/**
+ * ContentPhaseState - Voting state for round creation
+ *
+ * Temporary state during CONTENT_PHASE.
+ * Cleared after round starts.
+ */
+export interface ContentPhaseState {
+  status: "voting" | "resolved";
+  tableThemeKey: string; // e.g., "philosophy"
+  targetRoundNumber: number; // Which round number we're creating
+  votes: Map<string, string>; // userId -> subjectKey
+  selectedSubjectKey: string | null;
+  selectedQuestionId: string | null;
+  selectedQuestionText: string | null;
+}
+
+// ============================================================================
 // TABLE STATE (Single Source of Truth)
 // ============================================================================
 
@@ -80,6 +129,7 @@ export interface TableState {
   // Identity
   sessionId: string; // UUID for this session
   roomId: string; // URL-based room identifier
+  tableId: string; // 🆕 Table identity (e.g., "hearth", "bridge") - USE THIS for content lookup
   engineVersion: "v1" | "v2"; // Which engine is running this room
 
   // Phase control
@@ -95,6 +145,11 @@ export interface TableState {
 
   // Timer
   timer: SessionTimerState;
+
+  // 🆕 ROUND SYSTEM (Content Phase Feature)
+  currentRound: RoundState | null; // Active round (includes Glyph)
+  roundsHistory: RoundState[]; // Previous rounds (in-memory for MVP)
+  contentPhase: ContentPhaseState | null; // Temporary voting state
 
   // Lifecycle
   createdAt: number; // Unix timestamp (ms)
@@ -158,7 +213,8 @@ export type Effect =
     }
   // Delayed action (schedules future dispatch)
   | {
-      type: "DELAYED_ACTION"; key?: string;
+      type: "DELAYED_ACTION";
+      key?: string;
       roomId: string;
       delayMs: number;
       action: Action;
@@ -179,6 +235,15 @@ export type Effect =
     }
   | {
       type: "REBUILD_ALL_PANELS";
+      roomId: string;
+    }
+  // 🆕 Round & Readiness (Content Phase Feature)
+  | {
+      type: "EMIT_ROUND_STATE";
+      roomId: string;
+    }
+  | {
+      type: "EMIT_READINESS_UPDATE";
       roomId: string;
     };
 

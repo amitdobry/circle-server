@@ -25,7 +25,7 @@ function buildSpeakerPanel(ctx) {
         if (currentUser?.state === "postSpeakerWaitingOnBlue") {
             config.forEach((block) => {
                 block.blocks.forEach((b) => {
-                    if (b.id === "thinking-wait-text") {
+                    if (b.id === "thinking-wait-text" && b.type === "text") {
                         b.content = `Please wait while ${interrupterName} is deciding to offer the mic to someone...`;
                     }
                 });
@@ -34,7 +34,7 @@ function buildSpeakerPanel(ctx) {
         else {
             config.forEach((block) => {
                 block.blocks.forEach((b) => {
-                    if (b.id === "thinking-wait-text") {
+                    if (b.id === "thinking-wait-text" && b.type === "text") {
                         b.content = `Please wait while ${interrupterName} is thinking...`;
                     }
                 });

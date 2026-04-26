@@ -22,10 +22,46 @@
  * 2. Update client to consume pointers from panelConfig
  * 3. Remove update-pointing events from this handler
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleDisconnect = handleDisconnect;
 const selectors_1 = require("../state/selectors");
 const speakerLifecycle_1 = require("../state/speakerLifecycle");
+const contentPhaseLogic_1 = require("../content/contentPhaseLogic");
+const roundLifecycle_1 = require("../round/roundLifecycle");
+const ActionTypes = __importStar(require("../actions/actionTypes"));
 function handleDisconnect(tableState, userId) {
     const effects = [];
     // Find participant by socketId
@@ -41,6 +77,48 @@ function handleDisconnect(tableState, userId) {
     participant.presence = "GHOST";
     participant.socketId = null;
     participant.lastSeen = Date.now();
+    // ========================================================================
+    // STEP 1.5: Remove vote if in content phase (🆕 Content Phase Feature)
+    // ========================================================================
+    if (tableState.contentPhase && tableState.phase === "CONTENT_PHASE") {
+        (0, contentPhaseLogic_1.removeVote)(tableState.contentPhase, participant.userId);
+        // Check if remaining users all voted
+        if ((0, contentPhaseLogic_1.allUsersVoted)(tableState.contentPhase, tableState.participants)) {
+            console.log(`[handleDisconnect] ✅ All remaining users voted after ghost disconnect`);
+            effects.push({
+                type: "DELAYED_ACTION",
+                roomId: tableState.roomId,
+                delayMs: 1000,
+                action: {
+                    type: ActionTypes.RESOLVE_CONTENT_PHASE,
+                },
+            });
+        }
+    }
+    // ========================================================================
+    // STEP 1.6: Remove readiness if in active round (🆕 CRITICAL BUG FIX)
+    // ========================================================================
+    if (tableState.currentRound && tableState.currentRound.status === "active") {
+        (0, roundLifecycle_1.removeReadinessFromUser)(tableState.currentRound, participant.userId);
+        console.log(`[handleDisconnect] Removed readiness from user: ${participant.userId}`);
+        // Re-check consensus after removal
+        if ((0, roundLifecycle_1.allUsersReady)(tableState.currentRound, tableState.participants)) {
+            console.log("[handleDisconnect] All remaining users ready - triggering new round");
+            effects.push({
+                type: "DELAYED_ACTION",
+                roomId: tableState.roomId,
+                delayMs: 1500,
+                action: {
+                    type: ActionTypes.START_CONTENT_PHASE,
+                },
+            });
+        }
+        // Emit updated readiness state
+        effects.push({
+            type: "EMIT_READINESS_UPDATE",
+            roomId: tableState.roomId,
+        });
+    }
     // ========================================================================
     // STEP 2: Clear pointer (they can't point while disconnected)
     // ========================================================================

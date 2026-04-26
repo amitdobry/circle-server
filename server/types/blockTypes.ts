@@ -20,7 +20,9 @@ export type PanelBlock =
   | SpacerBlock
   | AttentionButtonBlock
   | GestureButtonConfig
-  | ListenerButtonBlock;
+  | ListenerButtonBlock
+  | SubjectSelectionBlock // 🆕 Content Phase Feature
+  | RoundDisplayBlock; // 🆕 Round UI Feature
 
 export type EmojiBlock = {
   id: string;
@@ -109,4 +111,29 @@ export type AttentionButtonConfig = {
   icon?: string;
   state?: string;
   flavor?: string; // Optional flavor for special buttons
+};
+
+// 🆕 Content Phase Feature
+export type SubjectSelectionBlock = {
+  id?: string;
+  type: "subjectSelection";
+  subjects: Array<{
+    key: string;
+    label: string;
+    description: string;
+  }>;
+  selectedSubject: string | null;
+  hasVoted: boolean;
+};
+
+// 🆕 Round Display Feature (Glyph + Readiness)
+export type RoundDisplayBlock = {
+  id: string;
+  type: "roundDisplay";
+  roundNumber: number;
+  glyphText: string;
+  subjectKey: string;
+  userIsReady: boolean;
+  readyCount: number;
+  totalCount: number;
 };

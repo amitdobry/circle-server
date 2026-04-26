@@ -49,6 +49,18 @@ export const END_SESSION = "END_SESSION";
 export const ADMIN_END_SESSION = "ADMIN_END_SESSION"; // Admin manually ends session
 
 // ============================================================================
+// CONTENT PHASE & ROUNDS (🆕 Feature)
+// ============================================================================
+
+export const START_CONTENT_PHASE = "START_CONTENT_PHASE";
+export const VOTE_CONTENT_SUBJECT = "VOTE_CONTENT_SUBJECT";
+export const RESOLVE_CONTENT_PHASE = "RESOLVE_CONTENT_PHASE";
+export const START_ROUND = "START_ROUND";
+export const END_ROUND = "END_ROUND";
+export const ROUND_MARK_READY = "ROUND_MARK_READY";
+export const ROUND_UNMARK_READY = "ROUND_UNMARK_READY";
+
+// ============================================================================
 // SYSTEM ACTIONS (Internal)
 // ============================================================================
 
