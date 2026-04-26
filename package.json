@@ -11,7 +11,7 @@
     "start": "node build/index.js",
     "dev": "nodemon --exec ts-node index.ts",
     "dev:shadow": "cross-env ENGINE_V2_SHADOW=true nodemon --exec ts-node index.ts",
-    "build": "tsc && copyfiles -u 1 \"server/config/content/*.json\" build",
+    "build": "tsc && copyfiles -u 0 \"server/config/content/*.json\" build",
     "heroku-postbuild": "npm run build",
     "test": "npm run build && mocha test/**/*.spec.js",
     "test:watch": "npm run build && mocha test/**/*.spec.js --watch"
