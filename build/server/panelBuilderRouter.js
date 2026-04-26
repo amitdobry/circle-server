@@ -118,27 +118,21 @@ function panelBuilderRouter(ctx) {
         console.log("[Router DEBUG] → Routing to buildContentPhasePanel");
         return buildContentPhasePanel(ctx);
     }
-    // 🆕 Build base panel (attention/speaker/listener)
-    let basePanel;
+    // 🆕 Route to appropriate base panel
+    // Note: Round UI (glyph + readiness) is handled outside the panel system
+    // in TableView.tsx via <Glyph> and <RoundReadinessRow> components
     if (!ctx.userIsParticipant) {
-        basePanel = (0, attentionPanelBuilder_1.buildAttentionPanel)(ctx); //this is just for now
+        return (0, attentionPanelBuilder_1.buildAttentionPanel)(ctx); //this is just for now
     }
     else if (ctx.liveSpeaker || ctx.isSyncPauseMode) {
         if (ctx.isUserSpeaker) {
-            basePanel = (0, speakerPanelBuilder_1.buildSpeakerPanel)(ctx);
+            return (0, speakerPanelBuilder_1.buildSpeakerPanel)(ctx);
         }
         else {
-            basePanel = (0, listenersPanelBuilder_1.buildListenerSyncPanel)(ctx);
+            return (0, listenersPanelBuilder_1.buildListenerSyncPanel)(ctx);
         }
     }
     else {
-        basePanel = (0, attentionPanelBuilder_1.buildAttentionPanel)(ctx);
+        return (0, attentionPanelBuilder_1.buildAttentionPanel)(ctx);
     }
-    // 🆕 If currentRound exists, prepend round UI to base panel
-    if (ctx.currentRound) {
-        console.log(`[Router DEBUG] → Prepending round UI (Round ${ctx.currentRound.roundNumber})`);
-        const roundSection = buildRoundSection(ctx);
-        return [roundSection, ...basePanel];
-    }
-    return basePanel;
 }

@@ -188,11 +188,19 @@ export type Effect =
       userId: string;
       config: any; // PanelConfig type (to be defined in ui/)
     }
-  // Gliff log operations
+  // Gliff log operations (uses V1 format for compatibility)
   | {
       type: "GLIFF_APPEND";
       roomId: string;
-      entry: GliffMessage;
+      entry: {
+        userName: string;
+        message: {
+          messageType: "gesture" | "action" | "textInput" | "context";
+          content: string;
+          timestamp?: number;
+          emoji?: string;
+        };
+      };
     }
   // Timer operations
   | {

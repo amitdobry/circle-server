@@ -1,0 +1,300 @@
+{
+  "tableThemeKey": "philosophy",
+  "tableThemeLabel": "Philosophy",
+  "phaseKey": "content-phase",
+  "phaseTitle": "Choose the direction of the circle",
+  "phaseSubtitle": "Vote for the subject the circle should hold. The Firekeeper will reveal one question from the chosen subject.",
+  "minUsersToStart": 2,
+  "selectionMode": "vote-subject-random-question",
+  "tieBreakMode": "random-between-tied-subjects",
+  "subjects": [
+    {
+      "key": "truth",
+      "label": "Truth",
+      "description": "What is real? What can we know? How do we distinguish truth from illusion?",
+      "questions": [
+        {
+          "id": "truth_1",
+          "text": "Is truth discovered or created?",
+          "intensity": "medium"
+        },
+        {
+          "id": "truth_2",
+          "text": "Can a lie ever be more truthful than the truth?",
+          "intensity": "deep"
+        },
+        {
+          "id": "truth_3",
+          "text": "Is absolute truth possible, or only perspective?",
+          "intensity": "deep"
+        },
+        {
+          "id": "truth_4",
+          "text": "Does knowing the truth always make us freer?",
+          "intensity": "medium"
+        },
+        {
+          "id": "truth_5",
+          "text": "Can someone be honest and still deceive?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "freedom",
+      "label": "Freedom",
+      "description": "What does it mean to be free? Are we ever truly free? What constrains us?",
+      "questions": [
+        {
+          "id": "freedom_1",
+          "text": "Can we be truly free while needing others?",
+          "intensity": "medium"
+        },
+        {
+          "id": "freedom_2",
+          "text": "Is freedom possible without responsibility?",
+          "intensity": "medium"
+        },
+        {
+          "id": "freedom_3",
+          "text": "Do limits create freedom or destroy it?",
+          "intensity": "deep"
+        },
+        {
+          "id": "freedom_4",
+          "text": "Are we ever free from ourselves?",
+          "intensity": "deep"
+        },
+        {
+          "id": "freedom_5",
+          "text": "Is choosing less a form of greater freedom?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "meaning",
+      "label": "Meaning",
+      "description": "What gives life meaning? How do we create purpose?",
+      "questions": [
+        {
+          "id": "meaning_1",
+          "text": "Is meaning something we find or something we create?",
+          "intensity": "medium"
+        },
+        {
+          "id": "meaning_2",
+          "text": "Can a life without purpose still be meaningful?",
+          "intensity": "deep"
+        },
+        {
+          "id": "meaning_3",
+          "text": "Does suffering give life meaning or take it away?",
+          "intensity": "deep"
+        },
+        {
+          "id": "meaning_4",
+          "text": "Is meaning personal or universal?",
+          "intensity": "medium"
+        },
+        {
+          "id": "meaning_5",
+          "text": "Does meaning require others, or can it exist alone?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "self",
+      "label": "Self",
+      "description": "Who are we? What is the nature of identity?",
+      "questions": [
+        {
+          "id": "self_1",
+          "text": "Is the self something stable or constantly changing?",
+          "intensity": "medium"
+        },
+        {
+          "id": "self_2",
+          "text": "Do we choose who we become or discover it?",
+          "intensity": "medium"
+        },
+        {
+          "id": "self_3",
+          "text": "Is being true to yourself always right?",
+          "intensity": "deep"
+        },
+        {
+          "id": "self_4",
+          "text": "Can you fully know yourself?",
+          "intensity": "medium"
+        },
+        {
+          "id": "self_5",
+          "text": "Is self-love clarity or illusion?",
+          "intensity": "deep"
+        }
+      ]
+    },
+    {
+      "key": "morality",
+      "label": "Morality",
+      "description": "What is right and wrong? Where does morality come from?",
+      "questions": [
+        {
+          "id": "morality_1",
+          "text": "Is it ever right to do the wrong thing?",
+          "intensity": "deep"
+        },
+        {
+          "id": "morality_2",
+          "text": "What matters more: intention or outcome?",
+          "intensity": "medium"
+        },
+        {
+          "id": "morality_3",
+          "text": "Are people inherently good or shaped to be?",
+          "intensity": "medium"
+        },
+        {
+          "id": "morality_4",
+          "text": "Does morality exist without consequences?",
+          "intensity": "deep"
+        },
+        {
+          "id": "morality_5",
+          "text": "Is moral compromise necessary for survival?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "fear",
+      "label": "Fear",
+      "description": "What do we fear? What does fear teach us?",
+      "questions": [
+        {
+          "id": "fear_1",
+          "text": "Is fear a guide or an obstacle?",
+          "intensity": "medium"
+        },
+        {
+          "id": "fear_2",
+          "text": "Can fear be a form of intelligence?",
+          "intensity": "deep"
+        },
+        {
+          "id": "fear_3",
+          "text": "Is a fearless life a better life?",
+          "intensity": "medium"
+        },
+        {
+          "id": "fear_4",
+          "text": "Does fear reveal truth or distort it?",
+          "intensity": "medium"
+        },
+        {
+          "id": "fear_5",
+          "text": "Should we trust what we fear?",
+          "intensity": "deep"
+        }
+      ]
+    },
+    {
+      "key": "connection",
+      "label": "Connection",
+      "description": "What binds us? What separates us?",
+      "questions": [
+        {
+          "id": "connection_1",
+          "text": "Can we ever truly understand another person?",
+          "intensity": "medium"
+        },
+        {
+          "id": "connection_2",
+          "text": "Is connection discovered or built?",
+          "intensity": "medium"
+        },
+        {
+          "id": "connection_3",
+          "text": "Does vulnerability create connection or risk it?",
+          "intensity": "deep"
+        },
+        {
+          "id": "connection_4",
+          "text": "Is deep connection rare or avoided?",
+          "intensity": "medium"
+        },
+        {
+          "id": "connection_5",
+          "text": "Can you be fully yourself and still belong?",
+          "intensity": "deep"
+        }
+      ]
+    },
+    {
+      "key": "attention",
+      "label": "Attention",
+      "description": "Where does our attention go? What deserves it?",
+      "questions": [
+        {
+          "id": "attention_1",
+          "text": "Does what we pay attention to define who we are?",
+          "intensity": "medium"
+        },
+        {
+          "id": "attention_2",
+          "text": "Is attention a form of control or surrender?",
+          "intensity": "deep"
+        },
+        {
+          "id": "attention_3",
+          "text": "Can we choose what deserves our attention?",
+          "intensity": "medium"
+        },
+        {
+          "id": "attention_4",
+          "text": "Is distraction a failure or a protection?",
+          "intensity": "medium"
+        },
+        {
+          "id": "attention_5",
+          "text": "Does attention create reality?",
+          "intensity": "deep"
+        }
+      ]
+    },
+    {
+      "key": "existence",
+      "label": "Existence",
+      "description": "What does it mean to exist? Why is there something rather than nothing?",
+      "questions": [
+        {
+          "id": "existence_1",
+          "text": "Is existence itself meaningful or neutral?",
+          "intensity": "deep"
+        },
+        {
+          "id": "existence_2",
+          "text": "Do we exist independently or through others?",
+          "intensity": "medium"
+        },
+        {
+          "id": "existence_3",
+          "text": "Is being enough, or do we need to become?",
+          "intensity": "medium"
+        },
+        {
+          "id": "existence_4",
+          "text": "Does awareness define existence?",
+          "intensity": "deep"
+        },
+        {
+          "id": "existence_5",
+          "text": "Is life something to understand or to experience?",
+          "intensity": "medium"
+        }
+      ]
+    }
+  ]
+}

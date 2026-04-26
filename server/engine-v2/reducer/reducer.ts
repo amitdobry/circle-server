@@ -1226,6 +1226,19 @@ export function reducer(
           message: `Round ${roundNumber} begins`,
           level: "info",
         },
+        // 🆕 Emit question to GliffLog as first entry of round
+        {
+          type: "GLIFF_APPEND",
+          roomId: tableState.roomId,
+          entry: {
+            userName: "Firekeeper", // System author
+            message: {
+              messageType: "context",
+              content: glyphText,
+              timestamp: Date.now(),
+            },
+          },
+        },
         {
           type: "REBUILD_ALL_PANELS",
           roomId: tableState.roomId,

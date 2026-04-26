@@ -231,11 +231,25 @@ function executeEffect(effect, io) {
         // ========================================================================
         // GLIFF LOG
         // ========================================================================
-        case "GLIFF_APPEND":
+        case "GLIFF_APPEND": {
             // Append to gliff log (conversation log)
-            console.warn("[runEffects] GLIFF_APPEND not yet implemented:", effect.roomId);
-            // TODO: Integrate with gliffService
+            console.log(`[runEffects] GLIFF_APPEND → room ${effect.roomId} | type: ${effect.entry.message.messageType}`);
+            // Import gliffService
+            const { createGliffLog } = require("../../gliffLogService");
+            // Convert Engine V2 GliffMessage to V1 format for createGliffLog
+            const gliffEntry = {
+                userName: effect.entry.userName,
+                message: {
+                    messageType: effect.entry.message.messageType,
+                    content: effect.entry.message.content,
+                    timestamp: effect.entry.message.timestamp || Date.now(),
+                    emoji: effect.entry.message.emoji,
+                },
+            };
+            // Emit to room via gliffService
+            createGliffLog(gliffEntry, io, effect.roomId);
             break;
+        }
         // ========================================================================
         // TIMER
         // ========================================================================
