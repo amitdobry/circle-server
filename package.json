@@ -10,9 +10,8 @@
   "scripts": {
     "start": "node build/index.js",
     "dev": "nodemon --exec ts-node index.ts",
-    "dev:shadow": "cross-env ENGINE_V2_SHADOW=true tsx watch server/app.ts",
     "dev:shadow": "cross-env ENGINE_V2_SHADOW=true nodemon --exec ts-node index.ts",
-    "build": "tsc",
+    "build": "tsc && copyfiles -u 1 \"server/config/content/*.json\" build",
     "heroku-postbuild": "npm run build",
     "test": "npm run build && mocha test/**/*.spec.js",
     "test:watch": "npm run build && mocha test/**/*.spec.js --watch"
@@ -46,6 +45,7 @@
     "@types/passport-google-oauth20": "^2.0.16",
     "@types/supertest": "^2.0.16",
     "chai": "^4.5.0",
+    "copyfiles": "^2.4.1",
     "cross-env": "^10.1.0",
     "jest": "^30.2.0",
     "mocha": "^10.8.2",
