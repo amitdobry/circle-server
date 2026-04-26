@@ -948,12 +948,17 @@ function reducer(tableState, userId, action) {
                     message: `Round ${roundNumber} begins`,
                     level: "info",
                 },
+                // 🧹 Clear previous round's gliff log
+                {
+                    type: "CLEAR_GLIFF",
+                    roomId: tableState.roomId,
+                },
                 // 🆕 Emit question to GliffLog as first entry of round
                 {
                     type: "GLIFF_APPEND",
                     roomId: tableState.roomId,
                     entry: {
-                        userName: "Firekeeper", // System author
+                        userName: "", // No author for context messages
                         message: {
                             messageType: "context",
                             content: glyphText,

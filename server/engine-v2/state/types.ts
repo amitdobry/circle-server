@@ -202,6 +202,10 @@ export type Effect =
         };
       };
     }
+  | {
+      type: "CLEAR_GLIFF";
+      roomId: string;
+    }
   // Timer operations
   | {
       type: "TIMER_START";

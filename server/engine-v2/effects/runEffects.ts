@@ -331,6 +331,15 @@ function executeEffect(effect: Effect, io: Server): void {
       break;
     }
 
+    case "CLEAR_GLIFF": {
+      // Clear gliff log (e.g., at start of new round)
+      console.log(`[runEffects] CLEAR_GLIFF → room ${effect.roomId}`);
+
+      const { clearGliffLog } = require("../../gliffLogService");
+      clearGliffLog(io, effect.roomId);
+      break;
+    }
+
     // ========================================================================
     // TIMER
     // ========================================================================
