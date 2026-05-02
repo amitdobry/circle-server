@@ -37,7 +37,7 @@ export function handleDropTheMic(
 
   logAction(`👄 ${name} dropped the mic (breakSync)`);
   setLiveSpeaker(null, roomId);
-  setIsSyncPauseMode(true);
+  setIsSyncPauseMode(true, roomId);
 
   for (const [socketId, user] of roomUsers.entries()) {
     const config = getPanelConfigFor(user.name);

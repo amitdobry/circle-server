@@ -295,6 +295,582 @@
           "intensity": "medium"
         }
       ]
+    },
+    {
+      "key": "beauty",
+      "label": "Beauty",
+      "description": "What is beauty? Why do we seek it?",
+      "questions": [
+        {
+          "id": "beauty_1",
+          "text": "Is beauty truth made visible?",
+          "intensity": "deep"
+        },
+        {
+          "id": "beauty_2",
+          "text": "Can something be beautiful without being good?",
+          "intensity": "medium"
+        },
+        {
+          "id": "beauty_3",
+          "text": "Does beauty exist without an observer?",
+          "intensity": "deep"
+        },
+        {
+          "id": "beauty_4",
+          "text": "Is beauty in harmony or in contrast?",
+          "intensity": "medium"
+        },
+        {
+          "id": "beauty_5",
+          "text": "Why does beauty move us?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "silence",
+      "label": "Silence",
+      "description": "What does silence reveal? What does it conceal?",
+      "questions": [
+        {
+          "id": "silence_1",
+          "text": "Is silence empty or full?",
+          "intensity": "deep"
+        },
+        {
+          "id": "silence_2",
+          "text": "Can silence say more than words?",
+          "intensity": "medium"
+        },
+        {
+          "id": "silence_3",
+          "text": "Are we afraid of silence, or of what it shows us?",
+          "intensity": "deep"
+        },
+        {
+          "id": "silence_4",
+          "text": "Is silence a kind of listening?",
+          "intensity": "medium"
+        },
+        {
+          "id": "silence_5",
+          "text": "Does silence belong to us or to the world?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "presence",
+      "label": "Presence",
+      "description": "What does it mean to be fully present?",
+      "questions": [
+        {
+          "id": "presence_1",
+          "text": "Is presence a choice or a state?",
+          "intensity": "medium"
+        },
+        {
+          "id": "presence_2",
+          "text": "Can we be present without forgetting ourselves?",
+          "intensity": "deep"
+        },
+        {
+          "id": "presence_3",
+          "text": "Does presence require silence?",
+          "intensity": "medium"
+        },
+        {
+          "id": "presence_4",
+          "text": "Is being present the same as being alive?",
+          "intensity": "deep"
+        },
+        {
+          "id": "presence_5",
+          "text": "What pulls us out of the present?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "compassion",
+      "label": "Compassion",
+      "description": "What does it mean to truly care for another?",
+      "questions": [
+        {
+          "id": "compassion_1",
+          "text": "Is compassion natural or learned?",
+          "intensity": "medium"
+        },
+        {
+          "id": "compassion_2",
+          "text": "Can we be compassionate without understanding?",
+          "intensity": "deep"
+        },
+        {
+          "id": "compassion_3",
+          "text": "Does compassion require sacrifice?",
+          "intensity": "medium"
+        },
+        {
+          "id": "compassion_4",
+          "text": "Is self-compassion the root of all compassion?",
+          "intensity": "deep"
+        },
+        {
+          "id": "compassion_5",
+          "text": "Where does compassion end and pity begin?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "knowledge",
+      "label": "Knowledge",
+      "description": "What can we truly know? How do we know it?",
+      "questions": [
+        {
+          "id": "knowledge_1",
+          "text": "Is knowledge the same as understanding?",
+          "intensity": "medium"
+        },
+        {
+          "id": "knowledge_2",
+          "text": "Can we know something without language for it?",
+          "intensity": "deep"
+        },
+        {
+          "id": "knowledge_3",
+          "text": "Does more knowledge bring more peace, or less?",
+          "intensity": "medium"
+        },
+        {
+          "id": "knowledge_4",
+          "text": "Is unlearning a kind of knowing?",
+          "intensity": "deep"
+        },
+        {
+          "id": "knowledge_5",
+          "text": "What is the cost of knowing?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "wisdom",
+      "label": "Wisdom",
+      "description": "What separates wisdom from knowledge?",
+      "questions": [
+        {
+          "id": "wisdom_1",
+          "text": "Is wisdom earned only through suffering?",
+          "intensity": "deep"
+        },
+        {
+          "id": "wisdom_2",
+          "text": "Can the young be wise?",
+          "intensity": "medium"
+        },
+        {
+          "id": "wisdom_3",
+          "text": "Is wisdom knowing what to ignore?",
+          "intensity": "medium"
+        },
+        {
+          "id": "wisdom_4",
+          "text": "Does wisdom require humility?",
+          "intensity": "deep"
+        },
+        {
+          "id": "wisdom_5",
+          "text": "Is it wiser to act or to wait?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "clarity",
+      "label": "Clarity",
+      "description": "What does it mean to see clearly?",
+      "questions": [
+        {
+          "id": "clarity_1",
+          "text": "Is clarity simplicity, or distillation?",
+          "intensity": "medium"
+        },
+        {
+          "id": "clarity_2",
+          "text": "Can clarity be painful?",
+          "intensity": "deep"
+        },
+        {
+          "id": "clarity_3",
+          "text": "Does clarity come from thought or from stillness?",
+          "intensity": "medium"
+        },
+        {
+          "id": "clarity_4",
+          "text": "Is clarity the same as truth?",
+          "intensity": "deep"
+        },
+        {
+          "id": "clarity_5",
+          "text": "What blocks us from seeing clearly?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "dialogue",
+      "label": "Dialogue",
+      "description": "What makes a real conversation?",
+      "questions": [
+        {
+          "id": "dialogue_1",
+          "text": "Is dialogue possible without disagreement?",
+          "intensity": "medium"
+        },
+        {
+          "id": "dialogue_2",
+          "text": "Can we hear someone we already disagree with?",
+          "intensity": "deep"
+        },
+        {
+          "id": "dialogue_3",
+          "text": "Is silence part of dialogue?",
+          "intensity": "medium"
+        },
+        {
+          "id": "dialogue_4",
+          "text": "Does dialogue change who we are?",
+          "intensity": "deep"
+        },
+        {
+          "id": "dialogue_5",
+          "text": "What turns talk into dialogue?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "understanding",
+      "label": "Understanding",
+      "description": "What does it mean to truly understand?",
+      "questions": [
+        {
+          "id": "understanding_1",
+          "text": "Can we understand without agreeing?",
+          "intensity": "medium"
+        },
+        {
+          "id": "understanding_2",
+          "text": "Is understanding a feeling or a thought?",
+          "intensity": "deep"
+        },
+        {
+          "id": "understanding_3",
+          "text": "Does understanding always bring closeness?",
+          "intensity": "medium"
+        },
+        {
+          "id": "understanding_4",
+          "text": "Can we understand someone we have never been?",
+          "intensity": "deep"
+        },
+        {
+          "id": "understanding_5",
+          "text": "Is understanding ever complete?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "empathy",
+      "label": "Empathy",
+      "description": "What does it mean to feel with another?",
+      "questions": [
+        {
+          "id": "empathy_1",
+          "text": "Is empathy a gift or a burden?",
+          "intensity": "medium"
+        },
+        {
+          "id": "empathy_2",
+          "text": "Can we have too much empathy?",
+          "intensity": "deep"
+        },
+        {
+          "id": "empathy_3",
+          "text": "Is empathy possible without experience?",
+          "intensity": "medium"
+        },
+        {
+          "id": "empathy_4",
+          "text": "Where does empathy end and self-loss begin?",
+          "intensity": "deep"
+        },
+        {
+          "id": "empathy_5",
+          "text": "Can empathy be taught?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "passion",
+      "label": "Passion",
+      "description": "What does it mean to live with passion?",
+      "questions": [
+        {
+          "id": "passion_1",
+          "text": "Is passion a guide or a danger?",
+          "intensity": "medium"
+        },
+        {
+          "id": "passion_2",
+          "text": "Can a life without passion be a full life?",
+          "intensity": "deep"
+        },
+        {
+          "id": "passion_3",
+          "text": "Does passion clarify or distort?",
+          "intensity": "medium"
+        },
+        {
+          "id": "passion_4",
+          "text": "Is passion the opposite of peace?",
+          "intensity": "deep"
+        },
+        {
+          "id": "passion_5",
+          "text": "Can we choose what we are passionate about?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "creativity",
+      "label": "Creativity",
+      "description": "Where does creativity come from?",
+      "questions": [
+        {
+          "id": "creativity_1",
+          "text": "Is creativity discovery or invention?",
+          "intensity": "deep"
+        },
+        {
+          "id": "creativity_2",
+          "text": "Can creativity exist without limits?",
+          "intensity": "medium"
+        },
+        {
+          "id": "creativity_3",
+          "text": "Is everyone creative, or only some?",
+          "intensity": "medium"
+        },
+        {
+          "id": "creativity_4",
+          "text": "Does creativity require suffering?",
+          "intensity": "deep"
+        },
+        {
+          "id": "creativity_5",
+          "text": "Is creating an act of courage?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "energy",
+      "label": "Energy",
+      "description": "What animates us? Where does our energy come from?",
+      "questions": [
+        {
+          "id": "energy_1",
+          "text": "Is energy something we have or something we channel?",
+          "intensity": "medium"
+        },
+        {
+          "id": "energy_2",
+          "text": "Can energy be wasted, or only redirected?",
+          "intensity": "deep"
+        },
+        {
+          "id": "energy_3",
+          "text": "Does what we focus on grow our energy?",
+          "intensity": "medium"
+        },
+        {
+          "id": "energy_4",
+          "text": "Is rest the opposite of energy or its source?",
+          "intensity": "deep"
+        },
+        {
+          "id": "energy_5",
+          "text": "What drains us most without us noticing?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "vitality",
+      "label": "Vitality",
+      "description": "What does it mean to feel alive?",
+      "questions": [
+        {
+          "id": "vitality_1",
+          "text": "Is vitality the same as happiness?",
+          "intensity": "medium"
+        },
+        {
+          "id": "vitality_2",
+          "text": "Can we be alive without feeling alive?",
+          "intensity": "deep"
+        },
+        {
+          "id": "vitality_3",
+          "text": "Does vitality come from the body or the mind?",
+          "intensity": "medium"
+        },
+        {
+          "id": "vitality_4",
+          "text": "Is vitality a choice or a gift?",
+          "intensity": "deep"
+        },
+        {
+          "id": "vitality_5",
+          "text": "What makes a life feel fully lived?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "change",
+      "label": "Change",
+      "description": "What does it mean to change? What stays the same?",
+      "questions": [
+        {
+          "id": "change_1",
+          "text": "Can we change without losing ourselves?",
+          "intensity": "deep"
+        },
+        {
+          "id": "change_2",
+          "text": "Is change something that happens or something we do?",
+          "intensity": "medium"
+        },
+        {
+          "id": "change_3",
+          "text": "Does anything truly stay the same?",
+          "intensity": "medium"
+        },
+        {
+          "id": "change_4",
+          "text": "Is fear of change really fear of loss?",
+          "intensity": "deep"
+        },
+        {
+          "id": "change_5",
+          "text": "What is the smallest change that changes everything?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "time",
+      "label": "Time",
+      "description": "What is time? How do we live with it?",
+      "questions": [
+        {
+          "id": "time_1",
+          "text": "Is time a thing, or only a way of thinking?",
+          "intensity": "deep"
+        },
+        {
+          "id": "time_2",
+          "text": "Does time heal, or only distance?",
+          "intensity": "medium"
+        },
+        {
+          "id": "time_3",
+          "text": "Can we ever step out of time?",
+          "intensity": "deep"
+        },
+        {
+          "id": "time_4",
+          "text": "Is the present real, or always already past?",
+          "intensity": "deep"
+        },
+        {
+          "id": "time_5",
+          "text": "Does time give meaning or take it away?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "impermanence",
+      "label": "Impermanence",
+      "description": "How do we live knowing nothing lasts?",
+      "questions": [
+        {
+          "id": "impermanence_1",
+          "text": "Does impermanence make life precious or painful?",
+          "intensity": "deep"
+        },
+        {
+          "id": "impermanence_2",
+          "text": "Can we love something without trying to keep it?",
+          "intensity": "deep"
+        },
+        {
+          "id": "impermanence_3",
+          "text": "Is letting go the same as giving up?",
+          "intensity": "medium"
+        },
+        {
+          "id": "impermanence_4",
+          "text": "What endures, if nothing is permanent?",
+          "intensity": "medium"
+        },
+        {
+          "id": "impermanence_5",
+          "text": "Does accepting impermanence free us or sadden us?",
+          "intensity": "medium"
+        }
+      ]
+    },
+    {
+      "key": "acceptance",
+      "label": "Acceptance",
+      "description": "What does it mean to accept what is?",
+      "questions": [
+        {
+          "id": "acceptance_1",
+          "text": "Is acceptance peace, or surrender?",
+          "intensity": "deep"
+        },
+        {
+          "id": "acceptance_2",
+          "text": "Can we accept what we cannot understand?",
+          "intensity": "medium"
+        },
+        {
+          "id": "acceptance_3",
+          "text": "Does acceptance mean we stop trying to change?",
+          "intensity": "medium"
+        },
+        {
+          "id": "acceptance_4",
+          "text": "Is accepting yourself harder than accepting others?",
+          "intensity": "deep"
+        },
+        {
+          "id": "acceptance_5",
+          "text": "What is the difference between acceptance and resignation?",
+          "intensity": "medium"
+        }
+      ]
     }
   ]
 }

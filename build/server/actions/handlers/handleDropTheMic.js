@@ -29,7 +29,7 @@ function handleDropTheMic(payload, context) {
     }
     logAction(`👄 ${name} dropped the mic (breakSync)`);
     (0, socketHandler_1.setLiveSpeaker)(null, roomId);
-    (0, socketHandler_1.setIsSyncPauseMode)(true);
+    (0, socketHandler_1.setIsSyncPauseMode)(true, roomId);
     for (const [socketId, user] of roomUsers.entries()) {
         const config = (0, panelConfigService_1.getPanelConfigFor)(user.name);
         // console.logAction(
