@@ -592,8 +592,17 @@ function executeEffect(effect: Effect, io: Server): void {
       }
 
       if (!tableState.currentRound) {
-        console.warn(
-          `[runEffects] EMIT_READINESS_UPDATE: No active round in room ${effect.roomId}`,
+        // Round ended — emit a zero-reset so clients clear the indicator
+        const activeCount = Array.from(
+          (tableState.participants as Map<string, any>).values(),
+        ).filter((p) => p.presence === "CONNECTED").length;
+        io.to(effect.roomId).emit("round:readiness", {
+          ready: 0,
+          total: activeCount,
+          readyUserIds: [],
+        });
+        console.log(
+          `[runEffects] EMIT_READINESS_UPDATE (reset) → room ${effect.roomId} | round ended`,
         );
         break;
       }

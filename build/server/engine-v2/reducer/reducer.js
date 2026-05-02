@@ -1009,6 +1009,11 @@ function reducer(tableState, userId, action) {
                 // Move to history
                 tableState.roundsHistory.push(tableState.currentRound);
                 tableState.currentRound = null;
+                // Tell clients the round ended (roundData → null → hides readiness indicator)
+                effects.push({
+                    type: "EMIT_ROUND_STATE",
+                    roomId: tableState.roomId,
+                });
                 // Start new content phase (reads theme from table definition)
                 effects.push({
                     type: "DELAYED_ACTION",
