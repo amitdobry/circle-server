@@ -26,6 +26,13 @@ import {
   serializePointerMap,
 } from "../state/selectors";
 import { removeParticipantSafely } from "../state/participantLifecycle";
+import { removeVote, allUsersVoted } from "../content/contentPhaseLogic";
+import {
+  removeReadinessFromUser,
+  allUsersReady,
+  endRound,
+} from "../round/roundLifecycle";
+import * as ActionTypes from "../actions/actionTypes";
 
 export function handleLeaveSession(
   tableState: TableState,
@@ -107,6 +114,18 @@ export function handleLeaveSession(
   }
 
   // ========================================================================
+  // STEP 1.5: Remove vote if leaving during content phase
+  // Mirrors handleDisconnect — without this the phase deadlocks if the
+  // remaining users have already voted but the leaver hadn't.
+  // ========================================================================
+  if (tableState.contentPhase && tableState.phase === "CONTENT_PHASE") {
+    removeVote(tableState.contentPhase, leaver.userId);
+    console.log(
+      `[handleLeaveSession] 🗳️ Removed vote for ${leaver.displayName} (if any)`,
+    );
+  }
+
+  // ========================================================================
   // STEP 2: Remove participant (handles speaker invalidation internally)
   // ========================================================================
   const result = removeParticipantSafely(tableState, leaver.userId, "LEAVE");
@@ -128,6 +147,8 @@ export function handleLeaveSession(
 
   // ========================================================================
   // STEP 4: Check if all remaining participants are ghosts
+  // NOTE: connectedCount is intentionally calculated AFTER removeParticipantSafely
+  // (Step 2) so it reflects the post-leave headcount, not the pre-leave snapshot.
   // ========================================================================
   const connectedCount = Array.from(tableState.participants.values()).filter(
     (p) => p.presence === "CONNECTED",
@@ -138,6 +159,71 @@ export function handleLeaveSession(
     console.log(
       `[handleLeaveSession] ⚠️ All participants are ghosts → phase = ENDING`,
     );
+  }
+
+  // ========================================================================
+  // STEP 4.5: Remove round readiness if in an active round, then re-check
+  // consensus. Mirrors handleDisconnect — without this, a leaver who was the
+  // last "not ready" blocker deadlocks the round forever.
+  // ========================================================================
+  if (tableState.currentRound && tableState.currentRound.status === "active") {
+    removeReadinessFromUser(tableState.currentRound, leaver.userId);
+    console.log(
+      `[handleLeaveSession] 🟢 Removed readiness for ${leaver.displayName} (if any)`,
+    );
+
+    if (connectedCount < 2) {
+      // A single user cannot achieve group consensus — abort round readiness
+      // and route to waiting panel instead of advancing.
+      console.log(
+        `[handleLeaveSession] ⚠️ Only ${connectedCount} participant(s) remain — aborting round readiness, routing to waiting panel`,
+      );
+      endRound(tableState.currentRound);
+      tableState.roundsHistory.push(tableState.currentRound);
+      tableState.currentRound = null;
+      effects.push(
+        { type: "EMIT_ROUND_STATE", roomId: tableState.roomId },
+        { type: "REBUILD_ALL_PANELS", roomId: tableState.roomId },
+      );
+    } else {
+      if (allUsersReady(tableState.currentRound, tableState.participants)) {
+        console.log(
+          `[handleLeaveSession] ✅ All remaining users ready after leave — triggering new round`,
+        );
+        effects.push({
+          type: "DELAYED_ACTION",
+          roomId: tableState.roomId,
+          delayMs: 1500,
+          action: { type: ActionTypes.START_CONTENT_PHASE },
+        });
+      }
+      effects.push({
+        type: "EMIT_READINESS_UPDATE",
+        roomId: tableState.roomId,
+      });
+    }
+  }
+
+  // ========================================================================
+  // STEP 4.6: Re-check vote consensus after removal
+  // The leaver may have been the last unvoted blocker — resolve if so.
+  // ========================================================================
+  if (
+    tableState.contentPhase &&
+    tableState.phase === "CONTENT_PHASE" &&
+    connectedCount > 0
+  ) {
+    if (allUsersVoted(tableState.contentPhase, tableState.participants)) {
+      console.log(
+        `[handleLeaveSession] ✅ All remaining users voted after leave — resolving content phase`,
+      );
+      effects.push({
+        type: "DELAYED_ACTION",
+        roomId: tableState.roomId,
+        delayMs: 1000,
+        action: { type: ActionTypes.RESOLVE_CONTENT_PHASE },
+      });
+    }
   }
 
   console.log(

@@ -202,6 +202,22 @@ export function reducer(
             },
           });
         }
+
+        // 🆕 If joining during an active round, push round state + readiness
+        // to the whole room so the new joiner's client gets roundData and
+        // can render the readiness row. Also updates everyone's total count.
+        if (
+          tableState.currentRound &&
+          tableState.currentRound.status === "active"
+        ) {
+          console.log(
+            `[V2 Reducer] 🔄 New joiner during active round — emitting round state to room`,
+          );
+          effects.push(
+            { type: "EMIT_ROUND_STATE", roomId: tableState.roomId },
+            { type: "EMIT_READINESS_UPDATE", roomId: tableState.roomId },
+          );
+        }
       }
 
       return effects;
@@ -1016,6 +1032,45 @@ export function reducer(
         `[V2 Reducer] 📖 START_CONTENT_PHASE | Room: ${tableState.roomId}`,
       );
 
+      // Abort if the session is already winding down (all users left during
+      // the delay window). Prevents invariant violations from stale timers.
+      if (
+        tableState.phase === "ENDING" ||
+        tableState.phase === "ENDED" ||
+        getConnectedParticipants(tableState).length === 0
+      ) {
+        console.log(
+          `[V2 Reducer] ⏸️ START_CONTENT_PHASE aborted — session is ending or no connected users`,
+        );
+        return [];
+      }
+
+      // Guard: if a round is still active (delayed action from handleLeaveSession),
+      // re-validate that all current users are ready before proceeding.
+      // Bug A: round active + all ready → end round, then continue.
+      // Bug C: round active + NOT all ready (new joiner arrived in delay window) → abort.
+      let roundEndedHere = false;
+      if (
+        tableState.currentRound &&
+        tableState.currentRound.status === "active"
+      ) {
+        if (!allUsersReady(tableState.currentRound, tableState.participants)) {
+          console.log(
+            `[V2 Reducer] ⏸️ START_CONTENT_PHASE aborted — new joiner arrived during delay, not all users ready`,
+          );
+          return [];
+        }
+        // All current users are ready — end the round and clear it so the
+        // client hides the readiness row before the content phase begins.
+        endRound(tableState.currentRound);
+        tableState.roundsHistory.push(tableState.currentRound);
+        tableState.currentRound = null;
+        roundEndedHere = true;
+        console.log(
+          `[V2 Reducer] ✅ Round ended by START_CONTENT_PHASE (solo-ready path)`,
+        );
+      }
+
       // 🆕 CRITICAL: Use tableId, not roomId, for content lookup
       const tableDefinition = getTableDefinition(tableState.tableId);
 
@@ -1042,7 +1097,7 @@ export function reducer(
         targetRoundNumber,
       );
 
-      return [
+      const contentPhaseEffects: Effect[] = [
         {
           type: "SYSTEM_LOG",
           roomId: tableState.roomId,
@@ -1054,6 +1109,16 @@ export function reducer(
           roomId: tableState.roomId,
         },
       ];
+
+      // If we just ended a round here, tell clients so the readiness row clears
+      if (roundEndedHere) {
+        contentPhaseEffects.unshift({
+          type: "EMIT_ROUND_STATE",
+          roomId: tableState.roomId,
+        });
+      }
+
+      return contentPhaseEffects;
     }
 
     case ActionTypes.VOTE_CONTENT_SUBJECT: {
@@ -1114,6 +1179,17 @@ export function reducer(
 
       if (!tableState.contentPhase) {
         console.error(`[V2 Reducer] ❌ No content phase to resolve`);
+        return [];
+      }
+
+      // Re-validate: a new participant may have joined during the delay window
+      // (e.g. Alice voted, Bob left triggering a delayed resolve, Charlie joined
+      // in the 1000ms gap and hasn't voted yet). If consensus no longer holds,
+      // abort — the phase stays open until Charlie votes.
+      if (!allUsersVoted(tableState.contentPhase, tableState.participants)) {
+        console.log(
+          `[V2 Reducer] ⏸️ RESOLVE_CONTENT_PHASE aborted — not all connected users have voted (participant set changed during delay)`,
+        );
         return [];
       }
 

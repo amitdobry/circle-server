@@ -19,10 +19,45 @@
  * 2. Update client to consume pointers from panelConfig
  * 3. Remove update-pointing events from this handler
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleLeaveSession = handleLeaveSession;
 const selectors_1 = require("../state/selectors");
 const participantLifecycle_1 = require("../state/participantLifecycle");
+const contentPhaseLogic_1 = require("../content/contentPhaseLogic");
+const ActionTypes = __importStar(require("../actions/actionTypes"));
 function handleLeaveSession(tableState, userId, displayName) {
     const effects = [];
     // Find participant
@@ -82,6 +117,15 @@ function handleLeaveSession(tableState, userId, displayName) {
         }
     }
     // ========================================================================
+    // STEP 1.5: Remove vote if leaving during content phase
+    // Mirrors handleDisconnect — without this the phase deadlocks if the
+    // remaining users have already voted but the leaver hadn't.
+    // ========================================================================
+    if (tableState.contentPhase && tableState.phase === "CONTENT_PHASE") {
+        (0, contentPhaseLogic_1.removeVote)(tableState.contentPhase, leaver.userId);
+        console.log(`[handleLeaveSession] 🗳️ Removed vote for ${leaver.displayName} (if any)`);
+    }
+    // ========================================================================
     // STEP 2: Remove participant (handles speaker invalidation internally)
     // ========================================================================
     const result = (0, participantLifecycle_1.removeParticipantSafely)(tableState, leaver.userId, "LEAVE");
@@ -106,6 +150,23 @@ function handleLeaveSession(tableState, userId, displayName) {
     if (connectedCount === 0 && tableState.participants.size > 0) {
         tableState.phase = "ENDING";
         console.log(`[handleLeaveSession] ⚠️ All participants are ghosts → phase = ENDING`);
+    }
+    // ========================================================================
+    // STEP 4.5: Re-check vote consensus after removal
+    // The leaver may have been the last unvoted blocker — resolve if so.
+    // ========================================================================
+    if (tableState.contentPhase &&
+        tableState.phase === "CONTENT_PHASE" &&
+        connectedCount > 0) {
+        if ((0, contentPhaseLogic_1.allUsersVoted)(tableState.contentPhase, tableState.participants)) {
+            console.log(`[handleLeaveSession] ✅ All remaining users voted after leave — resolving content phase`);
+            effects.push({
+                type: "DELAYED_ACTION",
+                roomId: tableState.roomId,
+                delayMs: 1000,
+                action: { type: ActionTypes.RESOLVE_CONTENT_PHASE },
+            });
+        }
     }
     console.log(`[handleLeaveSession] ✅ ${leaver.displayName} left | Remaining: ${tableState.participants.size}`);
     // ========================================================================

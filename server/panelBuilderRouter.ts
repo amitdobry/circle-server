@@ -119,16 +119,9 @@ function buildContentPhasePanel(ctx: PanelContext): PanelConfig {
 }
 
 export function panelBuilderRouter(ctx: PanelContext): PanelConfig {
-  // 🚨 CRITICAL: Single user = WAITING_FOR_USERS state
-  // Must check FIRST before any other routing logic
-  if (ctx.totalParticipants === 1) {
-    console.log(
-      "[Router DEBUG] → Single user, routing to WAITING_FOR_USERS panel",
-    );
-    return buildWaitingPanel(ctx);
-  }
-
-  // 🆕 Content Phase takes priority (Content Phase Feature)
+  // 🆕 Content Phase takes priority — even for a single remaining user.
+  // A user in an active vote must NOT be sent to the waiting panel just
+  // because other participants left; they still need to cast their vote.
   console.log(
     `[Router DEBUG] contentPhaseActive=${ctx.contentPhaseActive} hasConfig=${!!ctx.contentPhaseConfig} currentRound=${!!ctx.currentRound}`,
   );
@@ -136,6 +129,14 @@ export function panelBuilderRouter(ctx: PanelContext): PanelConfig {
   if (ctx.contentPhaseActive && ctx.contentPhaseConfig) {
     console.log("[Router DEBUG] → Routing to buildContentPhasePanel");
     return buildContentPhasePanel(ctx);
+  }
+
+  // 🚨 CRITICAL: Single user = WAITING_FOR_USERS state
+  if (ctx.totalParticipants === 1) {
+    console.log(
+      "[Router DEBUG] → Single user, routing to WAITING_FOR_USERS panel",
+    );
+    return buildWaitingPanel(ctx);
   }
 
   // 🆕 Route to appropriate base panel
