@@ -957,7 +957,23 @@ export function setupSocketHandlers(io: Server) {
       sendCurrentLiveSpeaker(socket, resolvedTableId); // Pass roomId
     });
 
-    // 🔄 Handle Ghost Mode reconnection
+    // � Client requests gliff snapshot after mounting its listener
+    // This fires from TableView's useEffect, guaranteeing the
+    // socket.on("gliffLog:update") listener is already registered.
+    socket.on("request-gliff-snapshot", () => {
+      const roomId: string = socket.data.tableId || socket.data.roomId;
+      if (!roomId) return;
+      const { getGliffSnapshot } = require("./gliffLogService");
+      const snapshot = getGliffSnapshot(roomId);
+      if (snapshot.length > 0) {
+        socket.emit("gliffLog:update", snapshot);
+        console.log(
+          `[socketHandler] request-gliff-snapshot → socket ${socket.id} | ${snapshot.length} entries`,
+        );
+      }
+    });
+
+    // �🔄 Handle Ghost Mode reconnection
     socket.on("request-reconnect", ({ userId, tableId }) => {
       console.log(
         formatSessionLog(

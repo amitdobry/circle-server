@@ -86,6 +86,17 @@ export function createGliffLog(
   return enriched;
 }
 
+/**
+ * Get a snapshot of the current gliff log for a room.
+ * Used to hydrate late joiners who missed the initial broadcast.
+ */
+export function getGliffSnapshot(
+  roomId: string = "default-room",
+): GliffMessage[] {
+  const memory = gliffMemoryByRoom.get(roomId);
+  return memory ? [...memory] : [];
+}
+
 // Function to clear the gliff log (e.g., when session ends)
 export function clearGliffLog(io: Server, roomId: string = "default-room") {
   console.log(`🧹 [Room ${roomId}] Clearing gliff log - session ended`);

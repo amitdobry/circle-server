@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createGliffLog = createGliffLog;
+exports.getGliffSnapshot = getGliffSnapshot;
 exports.clearGliffLog = clearGliffLog;
 // Phase E: Room-scoped gliff memory
 const gliffMemoryByRoom = new Map();
@@ -59,6 +60,14 @@ function createGliffLog(entry, io, roomId = "default-room") {
     // Phase E: Room-scoped broadcast
     io.to(roomId).emit("gliffLog:update", gliffMemory);
     return enriched;
+}
+/**
+ * Get a snapshot of the current gliff log for a room.
+ * Used to hydrate late joiners who missed the initial broadcast.
+ */
+function getGliffSnapshot(roomId = "default-room") {
+    const memory = gliffMemoryByRoom.get(roomId);
+    return memory ? [...memory] : [];
 }
 // Function to clear the gliff log (e.g., when session ends)
 function clearGliffLog(io, roomId = "default-room") {

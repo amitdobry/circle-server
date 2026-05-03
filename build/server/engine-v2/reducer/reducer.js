@@ -170,6 +170,23 @@ function reducer(tableState, userId, action) {
                         },
                     });
                 }
+                // 🆕 If joining during an active round, push round state + readiness
+                // to the whole room so the new joiner's client gets roundData and
+                // can render the readiness row. Also updates everyone's total count.
+                if (tableState.currentRound &&
+                    tableState.currentRound.status === "active") {
+                    console.log(`[V2 Reducer] 🔄 New joiner during active round — emitting round state to room`);
+                    effects.push({ type: "EMIT_ROUND_STATE", roomId: tableState.roomId }, { type: "EMIT_READINESS_UPDATE", roomId: tableState.roomId }, 
+                    // Replay gliff snapshot to the joining socket so the question
+                    // and prior speech are visible immediately. This runs through the
+                    // async effects pipeline so it arrives AFTER TableView has mounted
+                    // and registered its socket.on("gliffLog:update") listener.
+                    {
+                        type: "EMIT_GLIFF_SNAPSHOT_TO_USER",
+                        roomId: tableState.roomId,
+                        userId: socketId, // socket.id of the joining user
+                    });
+                }
             }
             return effects;
         }
@@ -799,6 +816,33 @@ function reducer(tableState, userId, action) {
         // ========================================================================
         case ActionTypes.START_CONTENT_PHASE: {
             console.log(`[V2 Reducer] 📖 START_CONTENT_PHASE | Room: ${tableState.roomId}`);
+            // Abort if the session is already winding down (all users left during
+            // the delay window). Prevents invariant violations from stale timers.
+            if (tableState.phase === "ENDING" ||
+                tableState.phase === "ENDED" ||
+                (0, selectors_1.getConnectedParticipants)(tableState).length === 0) {
+                console.log(`[V2 Reducer] ⏸️ START_CONTENT_PHASE aborted — session is ending or no connected users`);
+                return [];
+            }
+            // Guard: if a round is still active (delayed action from handleLeaveSession),
+            // re-validate that all current users are ready before proceeding.
+            // Bug A: round active + all ready → end round, then continue.
+            // Bug C: round active + NOT all ready (new joiner arrived in delay window) → abort.
+            let roundEndedHere = false;
+            if (tableState.currentRound &&
+                tableState.currentRound.status === "active") {
+                if (!(0, roundLifecycle_1.allUsersReady)(tableState.currentRound, tableState.participants)) {
+                    console.log(`[V2 Reducer] ⏸️ START_CONTENT_PHASE aborted — new joiner arrived during delay, not all users ready`);
+                    return [];
+                }
+                // All current users are ready — end the round and clear it so the
+                // client hides the readiness row before the content phase begins.
+                (0, roundLifecycle_1.endRound)(tableState.currentRound);
+                tableState.roundsHistory.push(tableState.currentRound);
+                tableState.currentRound = null;
+                roundEndedHere = true;
+                console.log(`[V2 Reducer] ✅ Round ended by START_CONTENT_PHASE (solo-ready path)`);
+            }
             // 🆕 CRITICAL: Use tableId, not roomId, for content lookup
             const tableDefinition = (0, tableDefinitions_1.getTableDefinition)(tableState.tableId);
             if (!tableDefinition || !tableDefinition.content) {
@@ -812,7 +856,7 @@ function reducer(tableState, userId, action) {
             const targetRoundNumber = (tableState.roundsHistory?.length || 0) + 1;
             tableState.phase = "CONTENT_PHASE";
             tableState.contentPhase = (0, defaults_1.createContentPhaseState)(themeKey, targetRoundNumber);
-            return [
+            const contentPhaseEffects = [
                 {
                     type: "SYSTEM_LOG",
                     roomId: tableState.roomId,
@@ -824,6 +868,14 @@ function reducer(tableState, userId, action) {
                     roomId: tableState.roomId,
                 },
             ];
+            // If we just ended a round here, tell clients so the readiness row clears
+            if (roundEndedHere) {
+                contentPhaseEffects.unshift({
+                    type: "EMIT_ROUND_STATE",
+                    roomId: tableState.roomId,
+                });
+            }
+            return contentPhaseEffects;
         }
         case ActionTypes.VOTE_CONTENT_SUBJECT: {
             console.log(`[V2 Reducer] 🗳️ VOTE_CONTENT_SUBJECT | Room: ${tableState.roomId} | User: ${userId}`);
@@ -866,6 +918,14 @@ function reducer(tableState, userId, action) {
             console.log(`[V2 Reducer] 🎯 RESOLVE_CONTENT_PHASE | Room: ${tableState.roomId}`);
             if (!tableState.contentPhase) {
                 console.error(`[V2 Reducer] ❌ No content phase to resolve`);
+                return [];
+            }
+            // Re-validate: a new participant may have joined during the delay window
+            // (e.g. Alice voted, Bob left triggering a delayed resolve, Charlie joined
+            // in the 1000ms gap and hasn't voted yet). If consensus no longer holds,
+            // abort — the phase stays open until Charlie votes.
+            if (!(0, contentPhaseLogic_1.allUsersVoted)(tableState.contentPhase, tableState.participants)) {
+                console.log(`[V2 Reducer] ⏸️ RESOLVE_CONTENT_PHASE aborted — not all connected users have voted (participant set changed during delay)`);
                 return [];
             }
             const winningSubject = (0, contentPhaseLogic_1.resolveVotes)(tableState.contentPhase);

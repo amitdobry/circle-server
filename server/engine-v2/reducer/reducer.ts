@@ -216,6 +216,15 @@ export function reducer(
           effects.push(
             { type: "EMIT_ROUND_STATE", roomId: tableState.roomId },
             { type: "EMIT_READINESS_UPDATE", roomId: tableState.roomId },
+            // Replay gliff snapshot to the joining socket so the question
+            // and prior speech are visible immediately. This runs through the
+            // async effects pipeline so it arrives AFTER TableView has mounted
+            // and registered its socket.on("gliffLog:update") listener.
+            {
+              type: "EMIT_GLIFF_SNAPSHOT_TO_USER",
+              roomId: tableState.roomId,
+              userId: socketId!, // socket.id of the joining user
+            },
           );
         }
       }

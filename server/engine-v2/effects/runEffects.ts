@@ -619,6 +619,27 @@ function executeEffect(effect: Effect, io: Server): void {
       break;
     }
 
+    case "EMIT_GLIFF_SNAPSHOT_TO_USER": {
+      // Replay the current gliff log to a single joining socket.
+      // This runs asynchronously (after the dynamic import resolves) so
+      // TableView has had time to mount and register socket.on("gliffLog:update").
+      if (!effect.userId) {
+        console.warn(
+          "[runEffects] EMIT_GLIFF_SNAPSHOT_TO_USER: missing userId",
+        );
+        break;
+      }
+      const { getGliffSnapshot } = require("../../gliffLogService");
+      const snapshot = getGliffSnapshot(effect.roomId);
+      if (snapshot.length > 0) {
+        io.to(effect.userId).emit("gliffLog:update", snapshot);
+        console.log(
+          `[runEffects] EMIT_GLIFF_SNAPSHOT_TO_USER → socket ${effect.userId} | ${snapshot.length} entries`,
+        );
+      }
+      break;
+    }
+
     // ========================================================================
     // UNKNOWN EFFECT
     // ========================================================================

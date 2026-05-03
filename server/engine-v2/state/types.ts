@@ -257,6 +257,14 @@ export type Effect =
   | {
       type: "EMIT_READINESS_UPDATE";
       roomId: string;
+    }
+  | {
+      // Replay the current gliff snapshot to a single joining socket.
+      // Sent asynchronously (via effects pipeline) so it arrives AFTER the
+      // client's TableView has mounted and registered its socket listeners.
+      type: "EMIT_GLIFF_SNAPSHOT_TO_USER";
+      roomId: string;
+      userId: string; // socket.id of the joining user
     };
 
 // ============================================================================
